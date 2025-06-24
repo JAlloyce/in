@@ -1,15 +1,15 @@
 import { Link, useLocation } from "react-router-dom"
-import { HiUser, HiBookmark, HiClock, HiFlag, HiUserGroup, HiPlus, HiSparkles, HiEye, HiChartBar } from "react-icons/hi"
+import { HiUser, HiBookmark, HiClock, HiFlag, HiUserGroup, HiPlus, HiEye, HiTrendingUp } from "react-icons/hi"
 
 /**
- * Sidebar Component - Futuristic Edition
+ * Sidebar Component - Professional Edition
  * 
- * Enhanced with cutting-edge design elements:
- * - Glassmorphism effects with animated backgrounds
- * - Neon glow effects and gradient borders
- * - Neural network-inspired visual indicators
- * - Interactive hover states with smooth animations
- * - Modern typography and spacing
+ * Enhanced with modern design elements while maintaining LinkedIn's professional aesthetic:
+ * - Clean glassmorphism effects
+ * - Professional color scheme
+ * - LinkedIn-style user profile card
+ * - Smooth hover interactions
+ * - Professional typography and spacing
  */
 export default function Sidebar() {
   const location = useLocation();
@@ -24,190 +24,132 @@ export default function Sidebar() {
     { 
       icon: HiUser, 
       text: "Your Profile", 
-      path: "/my-profile",
-      glow: "hover:text-cyan-400",
-      gradient: "from-cyan-400 to-blue-500"
+      path: "/my-profile"
     },
     { 
       icon: HiUserGroup, 
       text: "Communities", 
-      path: "/communities",
-      glow: "hover:text-purple-400",
-      gradient: "from-purple-400 to-pink-500"
+      path: "/communities"
     },
     { 
       icon: HiBookmark, 
       text: "Saved", 
-      path: "/saved",
-      glow: "hover:text-amber-400",
-      gradient: "from-amber-400 to-orange-500"
+      path: "/saved"
     },
     { 
       icon: HiClock, 
       text: "Recent", 
-      path: "/recent",
-      glow: "hover:text-green-400",
-      gradient: "from-green-400 to-emerald-500"
+      path: "/recent"
     },
     { 
       icon: HiFlag, 
       text: "Pages", 
-      path: "/pages",
-      glow: "hover:text-pink-400",
-      gradient: "from-pink-400 to-rose-500"
+      path: "/pages"
     },
   ]
 
   return (
-    <aside className="w-full">
-      {/* Enhanced Profile Card with Glassmorphism */}
-      <div className="card-modern hover-lift p-0 overflow-hidden mb-6">
-        {/* Neural Background Header */}
-        <div className="relative h-20 bg-gradient-to-r from-cyan-500 via-purple-600 to-pink-500 overflow-hidden">
-          {/* Animated background particles */}
-          <div className="absolute inset-0">
-            <div className="absolute top-2 right-4 w-1 h-1 bg-white rounded-full opacity-60 animate-ping" style={{animationDelay: '0s'}}></div>
-            <div className="absolute top-6 left-8 w-0.5 h-0.5 bg-white rounded-full opacity-40 animate-pulse" style={{animationDelay: '1s'}}></div>
-            <div className="absolute bottom-3 right-1/3 w-1.5 h-1.5 bg-white rounded-full opacity-50 float" style={{animationDelay: '2s'}}></div>
-          </div>
-          
-          {/* Neural network pattern overlay */}
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
+    <aside className="w-full space-y-4">
+      {/* Professional Profile Card */}
+      <div className="card-modern hover-lift p-0 overflow-hidden">
+        {/* LinkedIn-style header */}
+        <div className="relative h-16 bg-gradient-to-r from-blue-600 to-blue-700">
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-600/90 to-blue-700/90"></div>
         </div>
         
-        <div className="px-6 pb-6 -mt-10 relative">
-          {/* Enhanced Profile Avatar */}
-          <div className="relative mb-4">
-            <div className="w-20 h-20 rounded-full bg-gradient-to-r from-cyan-400 to-purple-500 p-1">
-              <div className="w-full h-full rounded-full bg-gray-900 border-4 border-white/20 flex items-center justify-center">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-r from-cyan-400 to-purple-500"></div>
+        <div className="px-4 pb-4 -mt-8 relative">
+          {/* Professional Avatar */}
+          <div className="relative mb-3">
+            <div className="w-16 h-16 rounded-full bg-white border-4 border-white shadow-lg flex items-center justify-center">
+              <div className="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center text-white font-semibold text-lg">
+                JD
               </div>
             </div>
             
-            {/* Status indicator */}
-            <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-400 rounded-full border-3 border-gray-900 flex items-center justify-center animate-pulse">
-              <div className="w-2 h-2 bg-white rounded-full"></div>
-            </div>
-            
-            {/* Neural activity indicator */}
-            <div className="absolute -top-2 -right-2 w-4 h-4 bg-cyan-400 rounded-full animate-ping opacity-75"></div>
+            {/* Online status indicator */}
+            <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
           </div>
 
-          {/* Enhanced Profile Info */}
+          {/* Professional Profile Info */}
           <div className="text-center mb-4">
-            <h3 className="font-bold text-xl text-white mb-1">Neural User</h3>
-            <p className="text-gray-300 text-sm mb-2">Future Architect at TechCorp</p>
-            <p className="text-gray-400 text-xs">Building tomorrow's digital landscapes</p>
+            <h3 className="font-semibold text-lg text-gray-900 mb-1">John Doe</h3>
+            <p className="text-gray-600 text-sm mb-2">Software Engineer at TechCorp</p>
+            <p className="text-gray-500 text-xs">Building innovative solutions</p>
           </div>
 
-          {/* Enhanced Statistics */}
-          <div className="space-y-3 pt-4 border-t border-white/10">
-            <div className="flex justify-between items-center group cursor-pointer">
-              <div className="flex items-center gap-2">
-                <HiEye className="w-4 h-4 text-cyan-400" />
-                <span className="text-gray-400 text-sm">Neural Views</span>
+          {/* Professional Statistics */}
+          <div className="space-y-2 pt-3 border-t border-gray-100">
+            <div className="flex justify-between items-center text-sm">
+              <div className="flex items-center gap-2 text-gray-600">
+                <HiEye className="w-4 h-4" />
+                <span>Profile views</span>
               </div>
-              <div className="flex items-center gap-1">
-                <span className="text-cyan-400 font-bold text-sm">2.8K</span>
-                <div className="w-1 h-1 bg-cyan-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity animate-pulse"></div>
-              </div>
+              <span className="text-blue-600 font-semibold">142</span>
             </div>
             
-            <div className="flex justify-between items-center group cursor-pointer">
-              <div className="flex items-center gap-2">
-                <HiChartBar className="w-4 h-4 text-purple-400" />
-                <span className="text-gray-400 text-sm">Signal Strength</span>
+            <div className="flex justify-between items-center text-sm">
+              <div className="flex items-center gap-2 text-gray-600">
+                <HiTrendingUp className="w-4 h-4" />
+                <span>Post impressions</span>
               </div>
-              <div className="flex items-center gap-1">
-                <span className="text-purple-400 font-bold text-sm">95%</span>
-                <div className="w-1 h-1 bg-purple-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity animate-pulse"></div>
-              </div>
-            </div>
-            
-            <div className="flex justify-between items-center group cursor-pointer">
-              <div className="flex items-center gap-2">
-                <HiSparkles className="w-4 h-4 text-amber-400" />
-                <span className="text-gray-400 text-sm">Neural Score</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <span className="text-amber-400 font-bold text-sm">A+</span>
-                <div className="w-1 h-1 bg-amber-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity animate-pulse"></div>
-              </div>
+              <span className="text-blue-600 font-semibold">1,204</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Enhanced Navigation Menu */}
+      {/* Professional Navigation Menu */}
       <div className="card-modern p-0 overflow-hidden">
-        <div className="p-4 border-b border-white/10">
-          <h4 className="text-futuristic font-semibold">Neural Navigation</h4>
-        </div>
-        
         <nav className="p-2">
           <ul className="space-y-1">
             {menuItems.map((item, index) => (
               <li key={index}>
                 <Link 
                   to={item.path}
-                  className={`
-                    group relative flex items-center gap-4 p-4 rounded-xl
-                    transition-all duration-300 transform hover:scale-105
-                    text-gray-300 hover:bg-white/5 ${item.glow}
-                    overflow-hidden
-                  `}
-                  style={{
-                    animationDelay: `${index * 100}ms`
-                  }}
+                  className="
+                    group flex items-center gap-3 p-3 rounded-lg
+                    transition-all duration-200
+                    text-gray-700 hover:bg-gray-50 hover:text-blue-600
+                  "
                 >
-                  {/* Icon with gradient background */}
-                  <div className={`
-                    relative w-10 h-10 rounded-xl 
-                    bg-gradient-to-r ${item.gradient} 
-                    bg-opacity-20 flex items-center justify-center
-                    group-hover:bg-opacity-30 transition-all duration-300
-                  `}>
-                    <item.icon className="w-5 h-5 text-white drop-shadow-lg" />
-                  </div>
-                  
-                  {/* Text with enhanced typography */}
-                  <span className="font-medium text-white group-hover:text-cyan-300 transition-colors">
-                    {item.text}
-                  </span>
-                  
-                  {/* Hover effect overlay */}
-                  <div className={`
-                    absolute inset-0 bg-gradient-to-r ${item.gradient} 
-                    opacity-0 group-hover:opacity-10 transition-opacity duration-300 rounded-xl
-                  `}></div>
-                  
-                  {/* Neural activity indicator */}
-                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                    <div className="w-1 h-1 bg-cyan-400 rounded-full animate-ping"></div>
-                  </div>
+                  <item.icon className="w-5 h-5 text-gray-500 group-hover:text-blue-600 transition-colors" />
+                  <span className="font-medium">{item.text}</span>
                 </Link>
               </li>
             ))}
           </ul>
         </nav>
 
-        {/* Enhanced Discovery Section */}
-        <div className="p-4 border-t border-white/10">
+        {/* Professional Discovery Section */}
+        <div className="p-4 border-t border-gray-100">
           <button className="
-            group w-full flex items-center justify-center gap-3
-            p-4 rounded-xl
-            bg-gradient-to-r from-cyan-500/20 to-purple-500/20
-            hover:from-cyan-500/30 hover:to-purple-500/30
-            border border-white/20 hover:border-cyan-400/50
-            transition-all duration-300 transform hover:scale-105
-            text-gray-300 hover:text-cyan-300
+            group w-full flex items-center justify-center gap-2
+            p-3 rounded-lg
+            text-gray-600 hover:text-blue-600
+            border border-gray-200 hover:border-blue-300
+            hover:bg-blue-50
+            transition-all duration-200
+            font-medium text-sm
           ">
-            <HiPlus className="w-5 h-5" />
-            <span className="font-medium">Explore Neural Network</span>
-            
-            {/* Button enhancement effect */}
-            <div className="absolute inset-0 bg-gradient-to-r from-cyan-400/10 to-purple-400/10 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            <HiPlus className="w-4 h-4" />
+            <span>Discover more</span>
           </button>
+        </div>
+      </div>
+
+      {/* LinkedIn Premium Suggestion */}
+      <div className="card-modern p-4 border border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50">
+        <div className="flex items-start gap-3">
+          <div className="w-8 h-8 bg-amber-500 rounded flex items-center justify-center flex-shrink-0">
+            <span className="text-white font-bold text-xs">P</span>
+          </div>
+          <div>
+            <h4 className="font-semibold text-gray-900 text-sm mb-1">Try Premium for free</h4>
+            <p className="text-gray-600 text-xs mb-2">See who's viewed your profile and access exclusive tools</p>
+            <button className="text-blue-600 text-xs font-semibold hover:underline">
+              Try for free
+            </button>
+          </div>
         </div>
       </div>
     </aside>

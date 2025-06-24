@@ -5,7 +5,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom"
 import { 
   HiSearch, HiHome, HiUserGroup, HiBriefcase, 
   HiChat, HiBell, HiViewGrid, HiCog, HiMenu, HiX, HiDotsHorizontal,
-  HiLogin, HiLogout, HiUserCircle, HiUser, HiSparkles, HiLightningBolt
+  HiLogin, HiLogout, HiUserCircle, HiUser
 } from "react-icons/hi"
 import SettingsModal from "../settings/SettingsModal"
 
@@ -26,26 +26,25 @@ export default function Navbar() {
   const location = useLocation()
   const navigate = useNavigate()
   
-  // Enhanced navigation items with futuristic styling
+  // Professional navigation items
   const navItems = isLoggedIn
     ? [
-        { icon: HiHome, label: "Home", path: "/", glow: "hover:text-cyan-400" },
-        { icon: HiUserGroup, label: "Network", path: "/network", glow: "hover:text-purple-400" },
-        { icon: HiBriefcase, label: "Jobs", path: "/jobs", glow: "hover:text-green-400" },
-        { icon: HiChat, label: "Messaging", path: "/messaging", glow: "hover:text-blue-400" },
+        { icon: HiHome, label: "Home", path: "/" },
+        { icon: HiUserGroup, label: "My Network", path: "/network" },
+        { icon: HiBriefcase, label: "Jobs", path: "/jobs" },
+        { icon: HiChat, label: "Messaging", path: "/messaging" },
         { 
           icon: HiBell, 
           label: "Notifications", 
           path: "/notifications",
-          badge: unreadNotifications,
-          glow: "hover:text-amber-400"
+          badge: unreadNotifications
         },
-        { icon: HiViewGrid, label: "Work", path: "/workspace", glow: "hover:text-pink-400" },
+        { icon: HiViewGrid, label: "Work", path: "/workspace" },
       ]
     : [
-        { icon: HiHome, label: "Home", path: "/", glow: "hover:text-cyan-400" },
-        { icon: HiUserGroup, label: "Network", path: "/network", glow: "hover:text-purple-400" },
-        { icon: HiBriefcase, label: "Jobs", path: "/jobs", glow: "hover:text-green-400" },
+        { icon: HiHome, label: "Home", path: "/" },
+        { icon: HiUserGroup, label: "Network", path: "/network" },
+        { icon: HiBriefcase, label: "Jobs", path: "/jobs" },
       ]
 
   const isActive = (path) => location.pathname === path
@@ -112,12 +111,12 @@ export default function Navbar() {
     }
   }
 
-  // Enhanced notification badge component
+  // Professional notification badge
   const NotificationBadge = ({ count }) => {
     if (count === 0) return null;
     
     return (
-      <span className="absolute -top-1 -right-1 bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center animate-pulse shadow-[0_0_10px_rgba(239,68,68,0.5)]">
+      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
         {count > 9 ? "9+" : count}
       </span>
     );
@@ -125,59 +124,53 @@ export default function Navbar() {
 
   return (
     <>
-      {/* Futuristic Header with Glassmorphism */}
-      <header className="sticky top-0 z-50 backdrop-blur-xl bg-black/20 border-b border-white/10 shadow-2xl">
-        <div className="max-w-7xl mx-auto px-4 py-3">
+      {/* Professional Header */}
+      <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-gray-200 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 py-2">
           <div className="flex items-center justify-between">
             
-            {/* Enhanced Logo with Neon Effect */}
+            {/* LinkedIn Logo */}
             <div className="flex items-center mr-6">
-              <div className="relative group cursor-pointer">
-                <div className="text-3xl font-black bg-gradient-to-r from-cyan-400 to-purple-500 bg-clip-text text-transparent">
+              <Link to="/" className="flex items-center group">
+                <div className="text-2xl font-bold text-blue-600 group-hover:text-blue-700 transition-colors">
                   in
                 </div>
-                <div className="absolute inset-0 bg-gradient-to-r from-cyan-400 to-purple-500 opacity-0 group-hover:opacity-30 blur-lg transition-opacity duration-300"></div>
-              </div>
+              </Link>
             </div>
 
-            {/* Futuristic Search Bar */}
+            {/* Professional Search Bar */}
             <div className="hidden md:block relative flex-1 max-w-md">
-              <div className="relative group">
-                <HiSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 group-focus-within:text-cyan-400 transition-colors" />
+              <div className="relative">
+                <HiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 w-4 h-4" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search the neural network..."
+                  placeholder="Search"
                   className="
-                    w-full pl-12 pr-4 py-3 
-                    bg-white/10 backdrop-blur-sm
-                    border border-white/20 
-                    rounded-xl
-                    text-white placeholder-gray-400
-                    focus:outline-none focus:border-cyan-400/50 focus:bg-white/15
-                    focus:shadow-[0_0_20px_rgba(34,211,238,0.3)]
-                    transition-all duration-300
+                    w-full pl-10 pr-4 py-2 
+                    bg-gray-100 hover:bg-gray-50
+                    border border-transparent hover:border-gray-300
+                    rounded-md
+                    text-gray-900 placeholder-gray-500
+                    focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200
+                    transition-all duration-200
                   "
                 />
-                {/* Search enhancement indicator */}
-                <div className="absolute right-3 top-1/2 transform -translate-y-1/2 opacity-60">
-                  <HiSparkles className="w-4 h-4 text-cyan-400 animate-pulse" />
-                </div>
               </div>
             </div>
 
-            {/* Desktop Navigation with Enhanced Styling */}
+            {/* Desktop Navigation */}
             <nav className="hidden md:flex items-center space-x-2 ml-6">
               {navItems.map((item) => (
                 <button
                   key={item.label}
                   className={`
-                    group relative flex flex-col items-center p-3 rounded-xl
-                    transition-all duration-300 transform hover:scale-105
+                    group relative flex flex-col items-center p-3 rounded-lg
+                    transition-all duration-200
                     ${isActive(item.path) 
-                      ? "text-cyan-400 bg-cyan-400/10 shadow-[0_0_15px_rgba(34,211,238,0.3)]" 
-                      : `text-gray-300 hover:bg-white/5 ${item.glow}`
+                      ? "text-gray-900" 
+                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
                     }
                   `}
                   onClick={() => handleProtectedClick(item.path, item.action)}
@@ -185,85 +178,61 @@ export default function Navbar() {
                   <div className="relative">
                     <item.icon className="text-xl mb-1" />
                     {item.badge !== undefined && <NotificationBadge count={item.badge} />}
-                    
-                    {/* Active indicator */}
-                    {isActive(item.path) && (
-                      <div className="absolute -bottom-4 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-cyan-400 rounded-full"></div>
-                    )}
                   </div>
                   <span className="text-xs font-medium">{item.label}</span>
                   
-                  {/* Hover glow effect */}
-                  <div className="absolute inset-0 bg-gradient-to-r from-cyan-400/20 to-purple-400/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-lg"></div>
+                  {/* Active indicator */}
+                  {isActive(item.path) && (
+                    <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-8 h-0.5 bg-blue-600 rounded-full"></div>
+                  )}
                 </button>
               ))}
             </nav>
 
-            {/* Mobile Menu Button with Futuristic Styling */}
+            {/* Mobile Menu Button */}
             <div className="md:hidden">
               <button 
                 onClick={() => setShowMobileMenu(!showMobileMenu)}
-                className="
-                  p-3 rounded-xl
-                  bg-white/10 backdrop-blur-sm
-                  border border-white/20
-                  text-white hover:text-cyan-400
-                  hover:bg-white/15 hover:border-cyan-400/50
-                  transition-all duration-300
-                "
+                className="p-2 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors"
               >
                 {showMobileMenu ? <HiX className="w-6 h-6" /> : <HiMenu className="w-6 h-6" />}
               </button>
             </div>
 
-            {/* Enhanced Right Side Actions */}
-            <div className="hidden md:flex items-center space-x-3 ml-6">
+            {/* Right Side Actions */}
+            <div className="hidden md:flex items-center space-x-2 ml-6">
               {isLoggedIn ? (
                 <>
                   {/* Settings Button */}
                   <button
                     onClick={() => setShowSettings(true)}
-                    className="
-                      group relative p-3 rounded-xl
-                      text-gray-300 hover:text-purple-400
-                      hover:bg-white/5 
-                      transition-all duration-300 transform hover:scale-105
-                    "
+                    className="p-3 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors"
                   >
                     <HiCog className="text-xl" />
-                    <div className="absolute inset-0 bg-purple-400/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-lg"></div>
                   </button>
 
-                  {/* Enhanced Profile Dropdown */}
+                  {/* Profile Dropdown */}
                   <div className="relative" ref={profileRef}>
                     <button
                       onClick={() => setShowProfileDropdown(!showProfileDropdown)}
-                      className="
-                        group relative flex items-center gap-3 p-2 rounded-xl
-                        hover:bg-white/5 transition-all duration-300
-                      "
+                      className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-50 transition-colors"
                     >
-                      <div className="relative">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-r from-cyan-400 to-purple-500 p-0.5">
-                          <div className="w-full h-full rounded-full bg-gray-900 flex items-center justify-center">
-                            <HiUser className="text-cyan-400 w-5 h-5" />
-                          </div>
-                        </div>
-                        <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-400 rounded-full border-2 border-gray-900 animate-pulse"></div>
+                      <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-medium text-sm">
+                        JD
                       </div>
-                      <span className="text-white font-medium">Neural User</span>
+                      <span className="text-sm font-medium text-gray-700 hidden lg:block">John Doe</span>
                     </button>
                     
-                    {/* Enhanced Profile Dropdown Menu */}
+                    {/* Profile Dropdown Menu */}
                     {showProfileDropdown && (
-                      <div className="absolute right-0 mt-2 w-64 card-modern rounded-xl shadow-2xl py-2 border border-white/20">
-                        <div className="px-4 py-3 border-b border-white/10">
-                          <p className="text-white font-semibold">Neural User</p>
-                          <p className="text-gray-400 text-sm">Future Architect</p>
+                      <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
+                        <div className="px-4 py-3 border-b border-gray-100">
+                          <p className="font-semibold text-gray-900">John Doe</p>
+                          <p className="text-sm text-gray-600">Software Engineer</p>
                         </div>
                         <Link 
                           to="/my-profile" 
-                          className="flex items-center px-4 py-3 text-gray-300 hover:text-cyan-400 hover:bg-white/5 transition-colors"
+                          className="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-50 transition-colors"
                           onClick={() => setShowProfileDropdown(false)}
                         >
                           <HiUser className="w-4 h-4 mr-3" />
@@ -271,7 +240,7 @@ export default function Navbar() {
                         </Link>
                         <button 
                           onClick={handleLogout}
-                          className="flex items-center w-full px-4 py-3 text-gray-300 hover:text-red-400 hover:bg-white/5 transition-colors"
+                          className="flex items-center w-full px-4 py-2 text-gray-700 hover:bg-gray-50 transition-colors"
                         >
                           <HiLogout className="w-4 h-4 mr-3" />
                           Sign Out
@@ -281,36 +250,31 @@ export default function Navbar() {
                   </div>
                 </>
               ) : (
-                /* Enhanced Login Button */
                 <button
                   onClick={() => setShowLoginModal(true)}
-                  className="
-                    btn-futuristic
-                    flex items-center gap-2
-                    hover:shadow-[0_0_20px_rgba(34,211,238,0.4)]
-                  "
+                  className="btn-professional flex items-center gap-2"
                 >
                   <HiLogin className="w-4 h-4" />
-                  <span>Neural Access</span>
+                  <span>Sign In</span>
                 </button>
               )}
             </div>
           </div>
         </div>
 
-        {/* Enhanced Mobile Navigation */}
+        {/* Mobile Navigation */}
         {showMobileMenu && (
-          <div className="md:hidden absolute top-full left-0 right-0 card-modern m-4 rounded-xl border border-white/20">
+          <div className="md:hidden bg-white border-t border-gray-200">
             <nav className="p-4 space-y-2">
               {navItems.map((item) => (
                 <button
                   key={item.label}
                   className={`
-                    w-full flex items-center gap-4 p-4 rounded-xl
-                    transition-all duration-300
+                    w-full flex items-center gap-4 p-3 rounded-lg text-left
+                    transition-colors
                     ${isActive(item.path) 
-                      ? "text-cyan-400 bg-cyan-400/10" 
-                      : `text-gray-300 hover:bg-white/5 ${item.glow}`
+                      ? "text-blue-600 bg-blue-50" 
+                      : "text-gray-700 hover:bg-gray-50"
                     }
                   `}
                   onClick={() => {
@@ -326,21 +290,21 @@ export default function Navbar() {
                 </button>
               ))}
               
-              {/* Mobile Login/Logout */}
+              {/* Mobile Auth Actions */}
               {!isLoggedIn ? (
                 <button
                   onClick={() => {
                     setShowLoginModal(true)
                     setShowMobileMenu(false)
                   }}
-                  className="w-full btn-futuristic mt-4"
+                  className="w-full btn-professional mt-4"
                 >
-                  Neural Access
+                  Sign In
                 </button>
               ) : (
                 <button
                   onClick={handleLogout}
-                  className="w-full flex items-center gap-4 p-4 rounded-xl text-red-400 hover:bg-red-400/10 transition-colors"
+                  className="w-full flex items-center gap-4 p-3 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
                 >
                   <HiLogout className="text-xl" />
                   <span className="font-medium">Sign Out</span>
@@ -351,15 +315,15 @@ export default function Navbar() {
         )}
       </header>
 
-      {/* Enhanced Login Modal */}
+      {/* Professional Login Modal */}
       {showLoginModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="card-modern max-w-md w-full p-8 rounded-2xl border border-white/20">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white max-w-md w-full p-8 rounded-lg shadow-xl">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-futuristic">Neural Access</h2>
+              <h2 className="text-2xl font-bold text-gray-900">Sign In</h2>
               <button 
                 onClick={() => setShowLoginModal(false)}
-                className="text-gray-400 hover:text-white transition-colors"
+                className="text-gray-400 hover:text-gray-600 transition-colors"
               >
                 <HiX className="w-6 h-6" />
               </button>
@@ -367,35 +331,40 @@ export default function Navbar() {
             
             <form onSubmit={handleLogin} className="space-y-6">
               <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Email
+                </label>
                 <input
                   type="email"
-                  placeholder="Neural ID (Email)"
+                  placeholder="Enter your email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="input-futuristic w-full"
+                  className="input-modern w-full"
                 />
               </div>
               
               <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Password
+                </label>
                 <input
                   type="password"
-                  placeholder="Security Code"
+                  placeholder="Enter your password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="input-futuristic w-full"
+                  className="input-modern w-full"
                 />
               </div>
               
               {loginError && (
-                <p className="text-red-400 text-sm">{loginError}</p>
+                <p className="text-red-600 text-sm">{loginError}</p>
               )}
               
               <button
                 type="submit"
-                className="w-full btn-futuristic flex items-center justify-center gap-2"
+                className="w-full btn-professional flex items-center justify-center gap-2"
               >
-                <HiLightningBolt className="w-4 h-4" />
-                Initialize Connection
+                Sign In
               </button>
             </form>
           </div>
