@@ -1,6 +1,14 @@
-import { HiUserAdd, HiUserGroup, HiCalendar } from "react-icons/hi"
+import { useState } from "react";
+import { 
+  HiUserAdd, HiUserGroup, HiCalendar, 
+  HiSearch, HiChevronDown, HiDotsVertical 
+} from "react-icons/hi";
 
 export default function Network() {
+  const [filter, setFilter] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showFilterDropdown, setShowFilterDropdown] = useState(false);
+  
   const suggestions = [
     { name: "Alice Johnson", title: "Product Manager at Google", mutualConnections: 12 },
     { name: "Bob Smith", title: "Software Engineer at Microsoft", mutualConnections: 8 },
@@ -8,23 +16,120 @@ export default function Network() {
     { name: "David Wilson", title: "Data Scientist at Netflix", mutualConnections: 6 },
     { name: "Emma Brown", title: "Marketing Manager at Spotify", mutualConnections: 9 },
     { name: "Frank Miller", title: "DevOps Engineer at Amazon", mutualConnections: 11 },
-  ]
+  ];
+  
+  const connections = [
+    { name: "Michael Chen", title: "Senior Developer at TechCorp", connected: "3 months ago" },
+    { name: "Sarah Johnson", title: "Product Lead at InnovateX", connected: "1 month ago" },
+    { name: "Alex Rodriguez", title: "UX Director at DesignHub", connected: "2 weeks ago" },
+    { name: "Emma Wilson", title: "Marketing Director at BrandBoost", connected: "1 week ago" },
+  ];
+  
+  const filteredSuggestions = suggestions.filter(person => 
+    person.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    person.title.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <div className="lg:col-span-2">
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <h2 className="text-xl font-semibold mb-4">People you may know</h2>
-          <div className="flex flex-col gap-4">
-            {suggestions.map((person, index) => (
-              <div key={index} className="border rounded-lg p-4 hover:shadow-md transition-shadow w-full">
-                <div className="flex items-start space-x-3 min-w-0">
-                  <div className="w-16 h-16 rounded-full bg-gray-300 flex-shrink-0"></div>
+    <div className="space-y-6">
+      {/* Network Header */}
+      <div className="bg-white rounded-lg shadow p-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+          <h1 className="text-2xl font-bold">My Network</h1>
+          
+          <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+            <div className="relative w-full sm:w-48">
+              <button 
+                className="flex items-center justify-between bg-gray-100 px-4 py-2 rounded-lg w-full"
+                onClick={() => setShowFilterDropdown(!showFilterDropdown)}
+              >
+                <span>Filter: {filter === "all" ? "All" : "Mutual"}</span>
+                <HiChevronDown className="ml-1 w-4 h-4" />
+              </button>
+              {showFilterDropdown && (
+                <div className="absolute top-full left-0 mt-1 w-full bg-white rounded-lg shadow-lg py-2 border z-10">
+                  <button 
+                    className="w-full text-left px-4 py-2 hover:bg-gray-100"
+                    onClick={() => {
+                      setFilter("all");
+                      setShowFilterDropdown(false);
+                    }}
+                  >
+                    All Connections
+                  </button>
+                  <button 
+                    className="w-full text-left px-4 py-2 hover:bg-gray-100"
+                    onClick={() => {
+                      setFilter("mutual");
+                      setShowFilterDropdown(false);
+                    }}
+                  >
+                    Mutual Connections
+                  </button>
+                </div>
+              )}
+            </div>
+            
+            <div className="relative w-full sm:w-64">
+              <HiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500" />
+              <input
+                type="text"
+                placeholder="Search connections..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Connections Section */}
+      <div className="bg-white rounded-lg shadow p-6">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold">Your Connections</h2>
+          <button className="text-blue-600 text-sm font-medium">See all</button>
+        </div>
+        
+        <div className="space-y-4">
+          {connections.map((connection, index) => (
+            <div key={index} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+              <div className="flex items-center space-x-3">
+                <div className="w-12 h-12 rounded-full bg-gray-300 flex-shrink-0"></div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-gray-900 truncate">{connection.name}</h3>
+                  <p className="text-sm text-gray-600 truncate mb-1">{connection.title}</p>
+                  <p className="text-xs text-gray-500">Connected {connection.connected}</p>
+                </div>
+                <button className="text-gray-500 hover:text-gray-700">
+                  <HiDotsVertical className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+      
+      {/* Suggestions Section */}
+      <div className="bg-white rounded-lg shadow p-6">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold">
+            {searchQuery ? "Search Results" : "People You May Know"}
+          </h2>
+          <button className="text-blue-600 text-sm font-medium">See all</button>
+        </div>
+        
+        {filteredSuggestions.length > 0 ? (
+          <div className="space-y-4">
+            {filteredSuggestions.map((person, index) => (
+              <div key={index} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                <div className="flex items-start space-x-3">
+                  <div className="w-12 h-12 rounded-full bg-gray-300 flex-shrink-0"></div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-gray-900">{person.name}</h3>
-                    <p className="text-sm text-gray-600 mb-2">{person.title}</p>
+                    <h3 className="font-semibold text-gray-900 truncate">{person.name}</h3>
+                    <p className="text-sm text-gray-600 truncate mb-1">{person.title}</p>
                     <p className="text-xs text-gray-500 mb-3">{person.mutualConnections} mutual connections</p>
-                    <button className="bg-blue-600 text-white py-2 px-4 rounded-full text-sm font-medium hover:bg-blue-700 transition-colors">
+                    <button className="bg-blue-600 text-white py-1.5 px-4 rounded-full text-sm font-medium hover:bg-blue-700 transition-colors">
                       Connect
                     </button>
                   </div>
@@ -32,56 +137,48 @@ export default function Network() {
               </div>
             ))}
           </div>
-        </div>
-      </div>
-
-      <div className="space-y-4">
-        <div className="bg-white rounded-lg shadow p-6">
-          <h1 className="text-2xl font-bold mb-4">My Network</h1>
-          <p>Network page content coming soon...</p>
-        </div>
-
-        <div className="bg-white rounded-lg shadow p-4">
-          <h3 className="font-semibold mb-4">Your network</h3>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <HiUserGroup className="w-5 h-5 text-gray-600" />
-                <span className="text-sm">Connections</span>
-              </div>
-              <span className="text-sm font-medium">1,247</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <HiUserAdd className="w-5 h-5 text-gray-600" />
-                <span className="text-sm">Following</span>
-              </div>
-              <span className="text-sm font-medium">89</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <HiCalendar className="w-5 h-5 text-gray-600" />
-                <span className="text-sm">Events</span>
-              </div>
-              <span className="text-sm font-medium">3</span>
-            </div>
+        ) : (
+          <div className="text-center py-8 bg-gray-50 rounded-lg">
+            <HiUserGroup className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+            <h3 className="text-lg font-medium text-gray-900">No connections found</h3>
+            <p className="text-gray-500">
+              {searchQuery 
+                ? "No connections match your search" 
+                : "Try adjusting your search filters"}
+            </p>
           </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow p-4">
-          <h3 className="font-semibold mb-4">Recent activity</h3>
-          <div className="space-y-3">
-            <div className="text-sm text-gray-600">
-              <p className="font-medium">You appeared in 15 searches this week</p>
-              <p className="text-xs text-gray-500">See who viewed your profile</p>
+        )}
+      </div>
+      
+      {/* Network Stats Card */}
+      <div className="bg-white rounded-lg shadow p-6">
+        <h3 className="font-semibold text-lg mb-4">Your Network Stats</h3>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+            <div className="flex items-center space-x-3">
+              <HiUserGroup className="w-6 h-6 text-blue-600" />
+              <span className="font-medium">Connections</span>
             </div>
-            <div className="text-sm text-gray-600">
-              <p className="font-medium">3 new connection requests</p>
-              <p className="text-xs text-gray-500">Manage your invitations</p>
+            <span className="text-xl font-bold text-blue-600">1,247</span>
+          </div>
+          
+          <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+            <div className="flex items-center space-x-3">
+              <HiUserAdd className="w-6 h-6 text-green-600" />
+              <span className="font-medium">Following</span>
             </div>
+            <span className="text-xl font-bold text-green-600">89</span>
+          </div>
+          
+          <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
+            <div className="flex items-center space-x-3">
+              <HiCalendar className="w-6 h-6 text-purple-600" />
+              <span className="font-medium">Events</span>
+            </div>
+            <span className="text-xl font-bold text-purple-600">3</span>
           </div>
         </div>
       </div>
     </div>
-  )
+  );
 }
