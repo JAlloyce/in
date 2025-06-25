@@ -10,7 +10,7 @@ import {
  * PostActions Component - Mobile-Optimized with Enhanced Features
  * 
  * Features:
- * - Mobile-first responsive design
+ * - Mobile-first responsive design with icon-only buttons on small screens
  * - 3 dots menu with save, not interested, and report options
  * - Proper button spacing and overflow handling
  * - AI Insight button that adapts to screen size
@@ -83,49 +83,50 @@ export default function PostActions({
 
   return (
     <div className="border-t border-gray-200 bg-white">
-      <div className="flex items-center px-3 sm:px-4 py-2">
-        {/* Main actions - responsive layout */}
-        <div className="flex items-center space-x-1 sm:space-x-4 flex-1">
+      <div className="flex items-center px-2 sm:px-4 py-2">
+        {/* Main actions - responsive layout with icons only on mobile */}
+        <div className="flex items-center space-x-1 sm:space-x-2 flex-1">
           {mainActions.map((action, index) => (
             <button
               key={index}
               onClick={action.onClick}
               className={`
                 flex items-center justify-center gap-1 sm:gap-2
-                px-2 sm:px-4 py-2 rounded-lg
+                px-2 sm:px-3 lg:px-4 py-2 rounded-lg
                 transition-all duration-200
-                text-sm font-medium
+                text-sm font-medium min-w-0 flex-1 sm:flex-none
                 ${action.hoverColor}
                 ${action.active ? action.activeColor : "text-gray-600 hover:text-gray-800"}
               `}
               title={action.label}
             >
-              <action.icon className="w-5 h-5" />
+              <action.icon className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+              {/* Hide text on mobile (< 640px), show on sm and larger */}
               <span className="hidden sm:inline">{action.label}</span>
             </button>
           ))}
         </div>
         
         {/* AI Insight - shown on larger screens, hidden on mobile to save space */}
-        <div className="hidden md:flex items-center">
+        <div className="hidden lg:flex items-center">
           <button
             onClick={onAiInsight}
             className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-amber-600 hover:bg-amber-50 hover:text-amber-700 transition-all duration-200"
             title="AI Insight"
           >
-            <HiSparkles className="w-5 h-5" />
-            <span className="hidden lg:inline">AI Insight</span>
+            <HiSparkles className="w-4 h-4 sm:w-5 sm:h-5" />
+            <span className="hidden xl:inline">AI Insight</span>
           </button>
         </div>
         
         {/* More menu */}
-        <div className="relative">
+        <div className="relative ml-1 sm:ml-2">
           <button
             onClick={() => setShowMoreMenu(!showMoreMenu)}
             className="flex items-center justify-center p-2 rounded-lg text-gray-600 hover:bg-gray-100 hover:text-gray-800 transition-all duration-200"
             title="More options"
           >
-            <HiDotsVertical className="w-5 h-5" />
+            <HiDotsVertical className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
           
           {/* Dropdown menu */}
@@ -140,7 +141,7 @@ export default function PostActions({
               {/* Menu content */}
               <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border z-20 py-1">
                 {/* AI Insight for mobile - only show in more menu on small screens */}
-                <div className="md:hidden">
+                <div className="lg:hidden">
                   <button
                     onClick={() => {
                       onAiInsight()

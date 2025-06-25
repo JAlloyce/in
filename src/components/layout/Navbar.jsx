@@ -165,7 +165,7 @@ export default function Navbar() {
                   }`}
                 >
                   <div className="relative">
-                    <item.icon className="text-xl" />
+                  <item.icon className="text-xl" />
                     {item.label === "Notifications" && (
                       <NotificationBadge count={unreadNotifications} />
                     )}
@@ -271,15 +271,15 @@ export default function Navbar() {
       {/* Mobile Bottom Navigation - Fixed */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg z-40">
         <div className="flex justify-around items-center py-2 px-1 safe-area-bottom">
-          {navItems.slice(0, 4).map((item) => (
-            <Link
-              to={item.path}
-              key={item.label}
+            {navItems.slice(0, 4).map((item) => (
+              <Link
+                to={item.path}
+                key={item.label}
               className={`flex flex-col items-center px-1 py-2 min-w-0 ${
                 isActive(item.path) 
                   ? `${item.color}` 
                   : "text-gray-500"
-              }`}
+                }`}
             >
               <div className="relative">
                 <item.icon className="text-xl mb-1" />
@@ -288,15 +288,15 @@ export default function Navbar() {
                 )}
               </div>
               <span className="text-xs truncate max-w-full">{item.label}</span>
-            </Link>
-          ))}
-          
+              </Link>
+            ))}
+            
           {/* More button for mobile */}
-          <button
+              <button
             onClick={() => setShowMobileMenu(!showMobileMenu)}
             className={`flex flex-col items-center px-1 py-2 min-w-0 ${
               showMobileMenu ? "text-blue-500" : "text-gray-500"
-            }`}
+                }`}
           >
             <HiDotsHorizontal className="text-xl mb-1" />
             <span className="text-xs">More</span>
@@ -322,10 +322,10 @@ export default function Navbar() {
               {/* Primary nav items */}
               <div className="mb-6">
                 <h4 className="text-sm font-medium text-gray-500 mb-2">MAIN</h4>
-                {navItems.slice(4).map((item) => (
-                  <Link
-                    key={item.label}
-                    to={item.path}
+                  {navItems.slice(4).map((item) => (
+                      <Link
+                        key={item.label}
+                        to={item.path}
                     onClick={() => setShowMobileMenu(false)}
                     className={`flex items-center px-3 py-3 rounded-lg transition-colors ${
                       isActive(item.path) 
@@ -340,7 +340,7 @@ export default function Navbar() {
                       )}
                     </div>
                     <span className="font-medium">{item.label}</span>
-                  </Link>
+                      </Link>
                 ))}
               </div>
               
@@ -349,20 +349,20 @@ export default function Navbar() {
                 <h4 className="text-sm font-medium text-gray-500 mb-2">MORE</h4>
                 {secondaryNavItems.map((item) => (
                   <Link
-                    key={item.label}
+                        key={item.label}
                     to={item.path}
-                    onClick={() => {
+                        onClick={() => {
                       if (item.action) item.action()
                       setShowMobileMenu(false)
                     }}
                     className="flex items-center px-3 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
-                  >
+                      >
                     <item.icon className={`w-6 h-6 mr-3 ${item.color}`} />
                     <span className="font-medium">{item.label}</span>
                   </Link>
                 ))}
-              </div>
-              
+                      </div>
+                  
               {/* Profile section */}
               <div className="pt-4 border-t">
                 {isLoggedIn ? (
@@ -398,7 +398,7 @@ export default function Navbar() {
                     <span className="font-medium">Login</span>
                   </button>
                 )}
-              </div>
+                </div>
             </div>
           </div>
         </div>

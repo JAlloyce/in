@@ -24,13 +24,15 @@ import CommunityDetail from "./pages/CommunityDetail"
  * - Responsive grid layout that adapts to screen size
  * - Professional glassmorphism effects
  * - Smooth transitions and modern interactions
+ * - Mobile-optimized padding and spacing
  */
 function App() {
   return (
     <BrowserRouter>
       <div className="min-h-screen bg-gray-50">
         <Navbar />
-        <div className="max-w-7xl mx-auto px-4 py-6">
+        {/* Reduced padding for mobile - px-2 on mobile, px-4 on larger screens */}
+        <div className="max-w-7xl mx-auto px-2 sm:px-4 py-2 sm:py-4 lg:py-6">
           <AppContent />
         </div>
       </div>
@@ -46,6 +48,7 @@ function App() {
  * - Special handling for workspace (full-width) layout
  * - Responsive grid system for desktop/mobile
  * - Conditional sidebar and news feed rendering
+ * - Mobile-optimized spacing
  */
 function AppContent() {
   const location = useLocation();
@@ -53,7 +56,7 @@ function AppContent() {
   const isLoggedIn = !!localStorage.getItem("token");
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-4 gap-2 sm:gap-4 lg:gap-6">
       {!isWorkspace && isLoggedIn && (
         <div className="lg:col-span-1">
           <Sidebar />
@@ -80,16 +83,16 @@ function AppContent() {
       
       {!isWorkspace && isLoggedIn && (
         <div className="lg:col-span-1">
-          <div className="bg-white rounded-lg shadow p-4 sticky top-24">
-            <h3 className="font-semibold mb-4">LinkedIn News</h3>
-            <div className="space-y-3">
+          <div className="bg-white rounded-lg shadow p-3 sm:p-4 sticky top-20 sm:top-24">
+            <h3 className="font-semibold mb-3 sm:mb-4 text-sm sm:text-base">LinkedIn News</h3>
+            <div className="space-y-2 sm:space-y-3">
               {[
                 "Tech layoffs continue",
                 "AI adoption in workplace",
                 "Remote work trends",
                 "Startup funding news",
               ].map((news, index) => (
-                <div key={index} className="text-sm">
+                <div key={index} className="text-xs sm:text-sm">
                   <p className="font-medium text-gray-900">{news}</p>
                   <p className="text-gray-500">2h ago • 1,234 readers</p>
                 </div>

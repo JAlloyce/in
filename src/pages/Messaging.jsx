@@ -75,27 +75,27 @@ export default function Messaging() {
   useEffect(() => {
     const initialMessages = {
       1: [
-        {
-          id: 1,
-          sender: "Sarah Johnson",
-          content: "Hi John! Thanks for connecting with me on LinkedIn.",
-          time: "2:30 PM",
-          isMe: false,
-        },
-        {
-          id: 2,
-          sender: "Me",
-          content: "Hi Sarah! Great to connect. I saw your work at InnovateX and was really impressed.",
-          time: "2:32 PM",
-          isMe: true,
-        },
-        {
-          id: 3,
-          sender: "Sarah Johnson",
-          content: "Thank you! I've been following your projects too. Would you be open to a quick chat next week?",
-          time: "2:35 PM",
-          isMe: false,
-        },
+    {
+      id: 1,
+      sender: "Sarah Johnson",
+      content: "Hi John! Thanks for connecting with me on LinkedIn.",
+      time: "2:30 PM",
+      isMe: false,
+    },
+    {
+      id: 2,
+      sender: "Me",
+      content: "Hi Sarah! Great to connect. I saw your work at InnovateX and was really impressed.",
+      time: "2:32 PM",
+      isMe: true,
+    },
+    {
+      id: 3,
+      sender: "Sarah Johnson",
+      content: "Thank you! I've been following your projects too. Would you be open to a quick chat next week?",
+      time: "2:35 PM",
+      isMe: false,
+    },
       ],
       2: [
         {
@@ -256,7 +256,7 @@ export default function Messaging() {
       <div className="w-full bg-white rounded-lg shadow overflow-hidden flex flex-col h-full">
         <div className="p-4 border-b">
           <div className="flex justify-between items-center">
-            <h2 className="text-xl font-bold">Messages</h2>
+          <h2 className="text-xl font-bold">Messages</h2>
             <button className="p-2 rounded-full hover:bg-gray-100">
               <HiDotsVertical className="w-5 h-5 text-gray-600" />
             </button>
@@ -286,7 +286,7 @@ export default function Messaging() {
               <div className="relative mr-3">
                 {/* Fixed user icon - proper sizing and not squeezed */}
                 <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-800 font-bold text-lg flex-shrink-0">
-                  {conversation.avatar}
+                {conversation.avatar}
                 </div>
                 {conversation.unread && (
                   <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-blue-500 border-2 border-white"></div>
@@ -320,8 +320,8 @@ export default function Messaging() {
               <div className="flex items-center min-w-0 flex-1">
                 {/* Fixed user icon in header - proper spacing */}
                 <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-800 font-bold mr-3 flex-shrink-0">
-                  {activeConversation.avatar}
-                </div>
+            {activeConversation.avatar}
+          </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center">
                     <h3 className="font-semibold truncate text-sm sm:text-base">{activeConversation.name}</h3>
@@ -351,8 +351,8 @@ export default function Messaging() {
                 
                 {/* 3 dots menu */}
                 <div className="relative">
-                  <button 
-                    className="p-2 rounded-full hover:bg-gray-100"
+                <button 
+                  className="p-2 rounded-full hover:bg-gray-100"
                     onClick={() => setShowMoreMenu(!showMoreMenu)}
                     title="More options"
                   >
@@ -375,15 +375,15 @@ export default function Messaging() {
                         >
                           <HiFlag className="w-5 h-5 mr-3" />
                           <span className="font-medium">Report</span>
-                        </button>
+                </button>
                         
-                        <button
+                <button 
                           onClick={handleBlock}
                           className="flex items-center w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-100 transition-colors"
-                        >
+                >
                           <HiEyeOff className="w-5 h-5 mr-3" />
                           <span className="font-medium">Block</span>
-                        </button>
+                </button>
                       </div>
                     </>
                   )}
@@ -396,23 +396,23 @@ export default function Messaging() {
                 >
                   <HiX className="w-5 h-5 text-gray-600" />
                 </button>
-              </div>
-            </div>
+          </div>
+        </div>
         
-            {/* Messages */}
+        {/* Messages */}
             <div className="flex-1 overflow-y-auto p-3 sm:p-4 bg-gray-50 flex flex-col">
               <div className="space-y-4 flex-1">
                 {messages[activeConversation.id]?.map(msg => (
-                  <div
-                    key={msg.id}
-                    className={`flex ${msg.isMe ? "justify-end" : "justify-start"}`}
-                  >
-                    <div
+              <div
+                key={msg.id}
+                className={`flex ${msg.isMe ? "justify-end" : "justify-start"}`}
+              >
+                <div
                       className={`max-w-[85%] sm:max-w-[75%] rounded-lg p-3 relative group ${
-                        msg.isMe
-                          ? "bg-blue-100 rounded-br-none"
-                          : "bg-white border rounded-bl-none"
-                      }`}
+                    msg.isMe
+                      ? "bg-blue-100 rounded-br-none"
+                      : "bg-white border rounded-bl-none"
+                  }`}
                       onContextMenu={(e) => {
                         e.preventDefault()
                         setSelectedMessage(msg)
@@ -434,8 +434,8 @@ export default function Messaging() {
                       <p className={`text-xs text-gray-500 mt-1 ${
                         msg.isMe ? "text-right" : ""
                       }`}>
-                        {msg.time}
-                      </p>
+                    {msg.time}
+                  </p>
                       
                       {/* Message actions - hidden on mobile for better UX */}
                       <div className={`absolute -top-2 ${msg.isMe ? '-right-8' : '-left-8'} opacity-0 group-hover:opacity-100 transition-opacity hidden sm:flex space-x-1`}>
@@ -454,12 +454,12 @@ export default function Messaging() {
                           <HiOutlineDuplicate className="w-4 h-4 text-gray-600" />
                         </button>
                       </div>
-                    </div>
-                  </div>
-                ))}
-                <div ref={messagesEndRef} />
+                </div>
               </div>
-            </div>
+            ))}
+                <div ref={messagesEndRef} />
+          </div>
+        </div>
             
             {/* Reply Preview */}
             {replyingTo && (
@@ -477,40 +477,40 @@ export default function Messaging() {
               </div>
             )}
         
-            {/* Message Input */}
+        {/* Message Input */}
             <div className="p-3 sm:p-4 border-t">
-              <div className="flex items-center">
+          <div className="flex items-center">
                 <button className="text-gray-500 hover:text-gray-700 p-2 mr-1 hidden sm:block">
-                  <HiPaperClip className="w-5 h-5" />
-                </button>
-                <input
-                  type="text"
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
-                  placeholder="Type a message..."
+              <HiPaperClip className="w-5 h-5" />
+            </button>
+            <input
+              type="text"
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
+              placeholder="Type a message..."
                   className="flex-1 px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-full focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm sm:text-base"
-                />
+            />
                 <button className="text-gray-500 hover:text-gray-700 p-2 ml-1 hidden sm:block">
-                  <HiEmojiHappy className="w-5 h-5" />
-                </button>
+              <HiEmojiHappy className="w-5 h-5" />
+            </button>
                 <button className="text-gray-500 hover:text-gray-700 p-2 ml-1 hidden sm:block">
-                  <HiMicrophone className="w-5 h-5" />
-                </button>
-                <button
-                  onClick={handleSendMessage}
-                  disabled={!message.trim()}
+              <HiMicrophone className="w-5 h-5" />
+            </button>
+            <button
+              onClick={handleSendMessage}
+              disabled={!message.trim()}
                   className={`ml-2 p-2 rounded-full transition-colors ${
-                    message.trim()
-                      ? "bg-blue-500 text-white hover:bg-blue-600"
-                      : "bg-gray-200 text-gray-400"
-                  }`}
-                >
-                  <HiPaperAirplane className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
+                message.trim()
+                  ? "bg-blue-500 text-white hover:bg-blue-600"
+                  : "bg-gray-200 text-gray-400"
+              }`}
+            >
+              <HiPaperAirplane className="w-5 h-5" />
+            </button>
           </div>
+        </div>
+      </div>
         </div>
       )}
       
