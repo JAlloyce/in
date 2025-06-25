@@ -32,19 +32,19 @@ export default function Home() {
     }
   }, [loading, user])
 
-  // Set up real-time subscription for new posts
-  useEffect(() => {
-    const subscription = realtime.subscribeToFeed((payload) => {
-      console.log('New post received:', payload)
-      if (payload.eventType === 'INSERT') {
-        loadFeedPosts() // Reload feed when new posts are added
-      }
-    })
+  // Disable real-time for now (causing WebSocket errors)
+  // useEffect(() => {
+  //   const subscription = realtime.subscribeToFeed((payload) => {
+  //     console.log('New post received:', payload)
+  //     if (payload.eventType === 'INSERT') {
+  //       loadFeedPosts() // Reload feed when new posts are added
+  //     }
+  //   })
 
-    return () => {
-      subscription.unsubscribe()
-    }
-  }, [])
+  //   return () => {
+  //     subscription.unsubscribe()
+  //   }
+  // }, [])
 
   // Removed initializeHome - now handled by AuthContext and useEffect
 

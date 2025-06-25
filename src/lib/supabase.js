@@ -125,21 +125,39 @@ export const profiles = {
 // Posts helpers
 export const posts = {
   getFeed: async (limit = 20, offset = 0) => {
+    // Temporarily get posts without foreign key join until constraint is fixed
     const { data, error } = await supabase
       .from('posts')
-      .select(`
-        *,
-        author:profiles!posts_author_id_fkey (
-          id, 
-          name, 
-          avatar_url, 
-          headline
-        )
-      `)
+      .select('*')
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1)
 
-    return { data, error }
+    if (error) {
+      console.error('Posts query error:', error);
+      return { data: [], error };
+    }
+
+    // Manually get author data for each post
+    if (data && data.length > 0) {
+      const postsWithAuthors = await Promise.all(
+        data.map(async (post) => {
+          if (post.author_id) {
+            const { data: author } = await supabase
+              .from('profiles')
+              .select('id, name, avatar_url, headline')
+              .eq('id', post.author_id)
+              .single();
+            
+            return { ...post, author };
+          }
+          return { ...post, author: null };
+        })
+      );
+      
+      return { data: postsWithAuthors, error: null };
+    }
+
+    return { data: data || [], error: null };
   },
 
   create: async (post) => {

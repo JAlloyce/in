@@ -1,11 +1,13 @@
 import { useState } from "react"
 import { 
   HiX, HiUser, HiLockClosed, HiBell, HiClock, 
-  HiQuestionMarkCircle, HiInformationCircle, HiShieldCheck 
+  HiQuestionMarkCircle, HiInformationCircle, HiShieldCheck, HiGlobe, HiCog 
 } from "react-icons/hi"
+import { useAuth } from "../../context/AuthContext"
 
 export default function SettingsModal({ isOpen, onClose }) {
-  const [activeTab, setActiveTab] = useState("account")
+  const { user, signOut } = useAuth()
+  const [activeTab, setActiveTab] = useState("profile")
   
   const [notificationSettings, setNotificationSettings] = useState({
     messages: true,
@@ -31,6 +33,13 @@ export default function SettingsModal({ isOpen, onClose }) {
     email: "john.doe@example.com",
   })
 
+  const tabs = [
+    { id: "profile", label: "Profile", icon: HiUser },
+    { id: "notifications", label: "Notifications", icon: HiBell },
+    { id: "privacy", label: "Privacy", icon: HiShieldCheck },
+    { id: "preferences", label: "Preferences", icon: HiGlobe },
+  ]
+
   if (!isOpen) return null
 
   const handleNotificationChange = (key) => {
@@ -55,241 +64,136 @@ export default function SettingsModal({ isOpen, onClose }) {
     }))
   }
 
-  const renderContent = () => {
-    switch(activeTab) {
-      case "notifications":
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case "profile":
         return (
-          <div className="space-y-6">
-            <h3 className="text-lg font-semibold">Notification preferences</h3>
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">Profile Settings</h3>
             <div className="space-y-4">
-              {Object.entries(notificationSettings).map(([key, value]) => (
-                <div key={key} className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">
-                      {key.split(/(?=[A-Z])/).map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      {key === 'messages' && 'When someone sends you a message'}
-                      {key === 'connectionRequests' && 'When someone wants to connect'}
-                      {key === 'postInteractions' && 'Likes, comments on your posts'}
-                      {key === 'jobAlerts' && 'New job recommendations'}
-                      {key === 'recommendations' && 'Profile suggestions and news'}
-                    </p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input 
-                      type="checkbox" 
-                      checked={value}
-                      onChange={() => handleNotificationChange(key)}
-                      className="sr-only peer" 
-                    />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                  </label>
-                </div>
-              ))}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Display Name
+                </label>
+                <input
+                  type="text"
+                  defaultValue={user?.user_metadata?.full_name || user?.email?.split('@')[0]}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  defaultValue={user?.email}
+                  disabled
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Headline
+                </label>
+                <input
+                  type="text"
+                  placeholder="Professional at LinkedIn Clone"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
             </div>
           </div>
         )
       
-      case "account":
+      case "notifications":
         return (
-          <div className="space-y-6">
-            <h3 className="text-lg font-semibold">Account information</h3>
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">Notification Settings</h3>
             <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Bio</label>
-                <textarea
-                  name="bio"
-                  value={accountInfo.bio}
-                  onChange={handleAccountChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  rows={3}
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-                <input
-                  type="tel"
-                  name="phone"
-                  value={accountInfo.phone}
-                  onChange={handleAccountChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Short Name (@handle)</label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-500">
-                    @
-                  </div>
-                  <input
-                    type="text"
-                    name="shortName"
-                    value={accountInfo.shortName.replace('@', '')}
-                    onChange={handleAccountChange}
-                    className="w-full pl-8 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="font-medium">Email Notifications</h4>
+                  <p className="text-sm text-gray-600">Receive notifications via email</p>
                 </div>
+                <input type="checkbox" defaultChecked className="h-4 w-4 text-blue-600" />
               </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                <input
-                  type="email"
-                  name="email"
-                  value={accountInfo.email}
-                  onChange={handleAccountChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  disabled
-                />
-                <p className="text-xs text-gray-500 mt-1">Contact support to change your email</p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="font-medium">Push Notifications</h4>
+                  <p className="text-sm text-gray-600">Receive browser notifications</p>
+                </div>
+                <input type="checkbox" defaultChecked className="h-4 w-4 text-blue-600" />
               </div>
-              
-              <div>
-                <h4 className="font-medium mb-2">Change Password</h4>
-                <button className="text-blue-600 hover:text-blue-700 font-medium">
-                  Change password
-                </button>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="font-medium">Connection Requests</h4>
+                  <p className="text-sm text-gray-600">Notify when someone wants to connect</p>
+                </div>
+                <input type="checkbox" defaultChecked className="h-4 w-4 text-blue-600" />
               </div>
             </div>
           </div>
         )
       
       case "privacy":
-        const visibilityOptions = [
-          { value: "all", label: "All users" },
-          { value: "friends_of_friends", label: "Friends of friends" },
-          { value: "friends", label: "Friends" },
-          { value: "only_me", label: "Only me" },
-          { value: "selected", label: "Certain friends" }
-        ]
-        
         return (
-          <div className="space-y-6">
-            <h3 className="text-lg font-semibold">Privacy settings</h3>
-            <div className="space-y-6">
-              {Object.entries(privacySettings).map(([key, value]) => (
-                <div key={key} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <div className="flex-1">
-                    <p className="font-medium">
-                      {key.split(/(?=[A-Z])/).map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      Who can see your {key === 'friendsList' ? 'connections' : key}
-                    </p>
-                  </div>
-                  <select
-                    value={value}
-                    onChange={(e) => handlePrivacyChange(key, e.target.value)}
-                    className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm w-full sm:w-auto"
-                  >
-                    {visibilityOptions.map(option => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              ))}
-            </div>
-          </div>
-        )
-      
-      case "activity":
-        return (
-          <div className="space-y-6">
-            <h3 className="text-lg font-semibold">Activity history</h3>
-            <div className="bg-gray-50 rounded-lg p-4">
-              <p className="text-gray-600 mb-4">
-                Your activity history shows all your actions on the platform. You can review and manage your activity here.
-              </p>
-              <div className="flex flex-wrap gap-3">
-                <button className="bg-blue-600 text-white px-4 py-2 rounded-md font-medium hover:bg-blue-700">
-                  Download activity data
-                </button>
-                <button className="border border-red-600 text-red-600 px-4 py-2 rounded-md font-medium hover:bg-red-50">
-                  Clear all activity
-                </button>
-              </div>
-            </div>
-            
-            <div className="border rounded-lg divide-y">
-              {[...Array(5)].map((_, i) => (
-                <div key={i} className="p-4 flex justify-between">
-                  <div>
-                    <p className="font-medium">Connected with Sarah Johnson</p>
-                    <p className="text-sm text-gray-500">2 hours ago</p>
-                  </div>
-                  <button className="text-gray-400 hover:text-gray-600">
-                    <HiX className="w-5 h-5" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )
-      
-      case "help":
-        return (
-          <div className="space-y-6">
-            <h3 className="text-lg font-semibold">Help & Support</h3>
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">Privacy Settings</h3>
             <div className="space-y-4">
-              <div className="border rounded-lg p-4 hover:bg-gray-50 cursor-pointer">
-                <p className="font-medium">How to change my profile information?</p>
-                <p className="text-sm text-gray-500 mt-1">Step-by-step guide to updating your profile</p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="font-medium">Profile Visibility</h4>
+                  <p className="text-sm text-gray-600">Who can see your profile</p>
+                </div>
+                <select className="border border-gray-300 rounded px-3 py-1">
+                  <option>Everyone</option>
+                  <option>Connections only</option>
+                  <option>Private</option>
+                </select>
               </div>
-              
-              <div className="border rounded-lg p-4 hover:bg-gray-50 cursor-pointer">
-                <p className="font-medium">Privacy settings explained</p>
-                <p className="text-sm text-gray-500 mt-1">Understand how to control your information visibility</p>
-              </div>
-              
-              <div className="border rounded-lg p-4 hover:bg-gray-50 cursor-pointer">
-                <p className="font-medium">Managing notifications</p>
-                <p className="text-sm text-gray-500 mt-1">Customize which notifications you receive</p>
-              </div>
-              
-              <div className="border rounded-lg p-4 hover:bg-gray-50 cursor-pointer">
-                <p className="font-medium">Report a problem</p>
-                <p className="text-sm text-gray-500 mt-1">Having issues? Let us know</p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="font-medium">Activity Status</h4>
+                  <p className="text-sm text-gray-600">Show when you're active</p>
+                </div>
+                <input type="checkbox" defaultChecked className="h-4 w-4 text-blue-600" />
               </div>
             </div>
           </div>
         )
       
-      case "about":
+      case "preferences":
         return (
-          <div className="space-y-6">
-            <h3 className="text-lg font-semibold">About LinkedIn Clone</h3>
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">Preferences</h3>
             <div className="space-y-4">
-              <p className="text-gray-700">
-                This LinkedIn clone is a demonstration project built with React, Vite, and Tailwind CSS. 
-                It showcases key features of professional networking platforms.
-              </p>
-              
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h4 className="font-medium mb-2">Version Information</h4>
-                <p className="text-sm">App Version: 1.2.0</p>
-                <p className="text-sm">Build Date: October 15, 2023</p>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Language
+                </label>
+                <select className="w-full border border-gray-300 rounded-lg px-3 py-2">
+                  <option>English</option>
+                  <option>Spanish</option>
+                  <option>French</option>
+                </select>
               </div>
-              
-              <div className="border-t pt-4">
-                <h4 className="font-medium mb-2">Terms & Policies</h4>
-                <div className="flex flex-wrap gap-4">
-                  <a href="#" className="text-blue-600 hover:underline">Privacy Policy</a>
-                  <a href="#" className="text-blue-600 hover:underline">Terms of Service</a>
-                  <a href="#" className="text-blue-600 hover:underline">Cookie Policy</a>
-                  <a href="#" className="text-blue-600 hover:underline">Copyright Policy</a>
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Time Zone
+                </label>
+                <select className="w-full border border-gray-300 rounded-lg px-3 py-2">
+                  <option>UTC</option>
+                  <option>EST</option>
+                  <option>PST</option>
+                </select>
               </div>
             </div>
           </div>
         )
       
       default:
-        return <div>Select a setting category</div>
+        return <div>Select a tab</div>
     }
   }
 
@@ -306,32 +210,34 @@ export default function SettingsModal({ isOpen, onClose }) {
         <div className="flex flex-1 min-h-0">
           <div className="w-1/3 border-r bg-gray-50 overflow-y-auto">
             <nav className="space-y-1 p-4">
-              {[
-                { id: "account", icon: HiUser, label: "Account" },
-                { id: "privacy", icon: HiLockClosed, label: "Privacy" },
-                { id: "notifications", icon: HiBell, label: "Notifications" },
-                { id: "activity", icon: HiClock, label: "Activity History" },
-                { id: "help", icon: HiQuestionMarkCircle, label: "Help & Support" },
-                { id: "about", icon: HiInformationCircle, label: "About" },
-              ].map((item) => (
+              {tabs.map((tab) => (
                 <button
-                  key={item.id}
-                  onClick={() => setActiveTab(item.id)}
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
                   className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left ${
-                    activeTab === item.id 
+                    activeTab === tab.id 
                       ? 'bg-blue-100 text-blue-700' 
                       : 'hover:bg-gray-200'
                   }`}
                 >
-                  <item.icon className="w-5 h-5" />
-                  <span>{item.label}</span>
+                  <tab.icon className="w-5 h-5" />
+                  <span>{tab.label}</span>
                 </button>
               ))}
             </nav>
           </div>
 
           <div className="flex-1 overflow-y-auto p-6">
-            {renderContent()}
+            {renderTabContent()}
+            
+            <div className="mt-6 pt-4 border-t">
+              <button
+                onClick={signOut}
+                className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+              >
+                Sign Out
+              </button>
+            </div>
           </div>
         </div>
       </div>
