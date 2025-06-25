@@ -54,16 +54,20 @@ function App() {
  */
 function AppContent() {
   const location = useLocation();
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading, user } = useAuth();
   const isWorkspace = location.pathname.startsWith("/workspace");
 
-      if (loading) {
-      return (
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-        </div>
-      );
-    }
+  console.log('🎯 App: Render state:', { loading, isAuthenticated, userEmail: user?.email, pathname: location.pathname });
+
+  if (loading) {
+    console.log('⏳ App: Still loading, showing loading spinner...');
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <p className="ml-4 text-gray-600">Loading application...</p>
+      </div>
+    );
+  }
 
     return (
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-2 sm:gap-4 lg:gap-6">

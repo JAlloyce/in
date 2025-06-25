@@ -21,52 +21,67 @@ export const AuthProvider = ({ children }) => {
     // Get initial session
     const getInitialSession = async () => {
       try {
+        console.log('🔍 AuthContext: Getting initial session...');
         const { session: initialSession, error } = await auth.getSession();
         if (error) {
-          console.error('Error getting session:', error);
+          console.error('❌ AuthContext: Error getting session:', error);
         } else {
+          console.log('✅ AuthContext: Session loaded:', initialSession?.user?.email || 'No user');
           setSession(initialSession);
           setUser(initialSession?.user || null);
           
           // Load user profile if session exists
           if (initialSession?.user) {
-            await loadUserProfile(initialSession.user.id);
+            console.log('👤 AuthContext: Skipping profile loading for now...');
+            // await loadUserProfile(initialSession.user.id);
           }
         }
       } catch (error) {
-        console.error('Error in getInitialSession:', error);
+        console.error('❌ AuthContext: Error in getInitialSession:', error);
       } finally {
+        console.log('✅ AuthContext: Loading complete, setting loading = false');
         setLoading(false);
       }
     };
 
     getInitialSession();
 
+    // Fallback timeout to prevent infinite loading
+    const timeoutId = setTimeout(() => {
+      console.log('⚠️ AuthContext: Timeout reached, forcing loading = false');
+      setLoading(false);
+    }, 5000);
+
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('Auth state change:', event, session?.user?.email);
+        console.log('🔄 AuthContext: Auth state change:', event, session?.user?.email);
         
         setSession(session);
         setUser(session?.user || null);
         
         if (event === 'SIGNED_IN' && session?.user) {
-          await loadUserProfile(session.user.id);
+          console.log('👤 AuthContext: User signed in, skipping profile for now...');
+          // await loadUserProfile(session.user.id);
         } else if (event === 'SIGNED_OUT') {
+          console.log('👋 AuthContext: User signed out');
           setProfile(null);
         }
         
+        console.log('✅ AuthContext: Auth state change complete, setting loading = false');
         setLoading(false);
       }
     );
 
     return () => {
+      clearTimeout(timeoutId);
       subscription?.unsubscribe();
     };
   }, []);
 
   const loadUserProfile = async (userId) => {
     try {
+      console.log('📋 AuthContext: Loading profile for user:', userId);
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -74,12 +89,13 @@ export const AuthProvider = ({ children }) => {
         .single();
       
       if (error && error.code !== 'PGRST116') { // PGRST116 = not found
-        console.error('Error loading profile:', error);
+        console.error('❌ AuthContext: Error loading profile:', error);
       } else {
+        console.log('✅ AuthContext: Profile loaded:', data?.name || 'No name');
         setProfile(data);
       }
     } catch (error) {
-      console.error('Error in loadUserProfile:', error);
+      console.error('❌ AuthContext: Error in loadUserProfile:', error);
     }
   };
 

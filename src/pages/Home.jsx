@@ -4,6 +4,7 @@ import { FaBuilding, FaRobot } from "react-icons/fa";
 import { useAuth } from "../context/AuthContext";
 import CreatePost from "../components/feed/CreatePost"
 import Comment from "../components/feed/Comment"
+import AuthDebug from "../components/debug/AuthDebug"
 import { posts, realtime } from '../lib/supabase'
 
 /**
@@ -391,6 +392,9 @@ export default function Home() {
 
   return (
     <div className="space-y-6">
+      {/* Debug Info */}
+      <AuthDebug />
+      
       {/* Post Creation Interface */}
       <CreatePost user={user} onPostCreated={handlePostCreated} />
       
