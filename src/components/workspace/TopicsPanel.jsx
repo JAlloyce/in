@@ -1,68 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { HiOutlineChevronDown, HiOutlineChevronRight, HiOutlinePlus, HiOutlineDocumentAdd, HiOutlineTrash, HiOutlineShare, HiOutlineCheckCircle, HiOutlineClipboardList } from 'react-icons/hi';
+import { workspace } from '../../lib/supabase';
 
-export default function TopicsPanel({ onAiRequest, onShareContent }) {
-  const [topics, setTopics] = useState([
-    {
-      id: 1,
-      title: "Calculus",
-      expanded: true,
-      progress: 65,
-      lastUpdated: "2 days ago",
-      subtopics: [
-        { id: 101, title: "Limits and Continuity", completed: true },
-        { id: 102, title: "Derivatives", completed: true },
-        { id: 103, title: "Applications of Derivatives", completed: false },
-        { id: 104, title: "Integration", completed: false }
-      ],
-      materials: [
-        { id: 1001, title: "Lecture Notes - Week 1", type: "pdf" },
-        { id: 1002, title: "Practice Problems", type: "doc" },
-        { id: 1003, title: "Reference Formulas", type: "image" }
-      ],
-      schedule: {
-        image: null,
-        description: "Monday & Wednesday 9-11 AM, Friday review sessions"
-      }
-    },
-    {
-      id: 2,
-      title: "Physics",
-      expanded: false,
-      progress: 40,
-      lastUpdated: "1 week ago",
-      subtopics: [
-        { id: 201, title: "Mechanics", completed: true },
-        { id: 202, title: "Thermodynamics", completed: false }
-      ],
-      materials: [
-        { id: 2001, title: "Lab Manual", type: "pdf" }
-      ],
-      schedule: {
-        image: null,
-        description: "Tuesday & Thursday 1-3 PM, Lab on Fridays"
-      }
-    },
-    {
-      id: 3,
-      title: "Computer Science",
-      expanded: false,
-      progress: 30,
-      lastUpdated: "3 days ago",
-      subtopics: [
-        { id: 301, title: "Data Structures", completed: false },
-        { id: 302, title: "Algorithms", completed: false }
-      ],
-      materials: [],
-      schedule: {
-        image: null,
-        description: "Online course, self-paced with weekly deadlines"
-      }
-    }
-  ]);
-
+export default function TopicsPanel({ topics: propTopics = [], onAiRequest, onShareContent, onRefresh, user }) {
+  // Use topics from props instead of local state
+  const [topics, setTopics] = useState(propTopics);
+  const [activeTopic, setActiveTopic] = useState(null);
   const [newTopic, setNewTopic] = useState('');
-  const [activeTopic, setActiveTopic] = useState(1);
   const [newMaterial, setNewMaterial] = useState({ title: '', type: 'pdf' });
   const [showAddMaterial, setShowAddMaterial] = useState(false);
   const [scheduleImage, setScheduleImage] = useState(null);
@@ -72,6 +16,15 @@ export default function TopicsPanel({ onAiRequest, onShareContent }) {
   const [isTopicListOpen, setIsTopicListOpen] = useState(false);
   const [showCompletedTasks, setShowCompletedTasks] = useState(false);
   const [showMaterials, setShowMaterials] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  // Update local topics when props change
+  useEffect(() => {
+    setTopics(propTopics);
+    if (propTopics.length > 0 && !activeTopic) {
+      setActiveTopic(propTopics[0].id);
+    }
+  }, [propTopics]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -94,40 +47,79 @@ export default function TopicsPanel({ onAiRequest, onShareContent }) {
     ));
   };
 
-  const addTopic = () => {
-    if (newTopic.trim()) {
-      const newTopicObj = {
-        id: Date.now(),
+  const addTopic = async () => {
+    if (!newTopic.trim() || !user) {
+      alert("Please enter a topic title and make sure you're logged in");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { data: createdTopic, error } = await workspace.createTopic({
         title: newTopic,
-        expanded: false,
-        progress: 0,
-        lastUpdated: "Just now",
-        subtopics: [],
-        materials: [],
-        schedule: {
-          image: null,
-          description: ""
-        }
-      };
-      setTopics([...topics, newTopicObj]);
+        description: "New study topic",
+        category: "General",
+        difficulty_level: "beginner",
+        is_active: true
+      }, user.id);
+
+      if (error) {
+        console.error('Error creating topic:', error);
+        alert('Failed to create topic');
+        return;
+      }
+
+      // Refresh the topics list
+      if (onRefresh) {
+        onRefresh();
+      }
+
       setNewTopic('');
       document.getElementById('topic-modal').close();
+    } catch (err) {
+      console.error('Error creating topic:', err);
+      alert('Failed to create topic');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const addMaterial = () => {
-    if (newMaterial.title.trim()) {
+  const addMaterial = async () => {
+    if (!newMaterial.title.trim() || !activeTopic || !user) {
+      alert("Please enter a material title");
+      return;
+    }
+
+    try {
+      const { data: createdMaterial, error } = await workspace.createMaterial({
+        topic_id: activeTopic,
+        title: newMaterial.title,
+        material_type: newMaterial.type,
+        file_url: null, // In real app, would upload file first
+        description: ''
+      });
+
+      if (error) {
+        console.error('Error creating material:', error);
+        alert('Failed to add material');
+        return;
+      }
+
+      // Update local state optimistically
       setTopics(topics.map(topic => 
         topic.id === activeTopic 
           ? { 
               ...topic, 
-              materials: [...topic.materials, { id: Date.now(), ...newMaterial }],
-              lastUpdated: "Just now"
+              materials: [...(topic.materials || []), createdMaterial]
             } 
           : topic
       ));
+
       setNewMaterial({ title: '', type: 'pdf' });
       setShowAddMaterial(false);
+    } catch (err) {
+      console.error('Error adding material:', err);
+      alert('Failed to add material');
     }
   };
 
@@ -139,8 +131,7 @@ export default function TopicsPanel({ onAiRequest, onShareContent }) {
             schedule: {
               image: scheduleImage,
               description: scheduleDescription
-            },
-            lastUpdated: "Just now"
+            }
           } 
         : topic
     ));
@@ -160,7 +151,7 @@ export default function TopicsPanel({ onAiRequest, onShareContent }) {
 
   const handleShareTopic = () => {
     const topic = topics.find(t => t.id === activeTopic);
-    if (topic) {
+    if (topic && onShareContent) {
       onShareContent({
         id: topic.id,
         type: 'topic',
@@ -172,35 +163,105 @@ export default function TopicsPanel({ onAiRequest, onShareContent }) {
 
   const handleRegenerateTopic = () => {
     const topic = topics.find(t => t.id === activeTopic);
-    if (topic) {
+    if (topic && onAiRequest) {
       onAiRequest(`Regenerate structure for topic: ${topic.title}`);
       alert(`AI is regenerating structure for: "${topic.title}"`);
     }
   };
 
-  const toggleSubtopicCompletion = (subtopicId) => {
-    setTopics(topics.map(topic => 
-      topic.id === activeTopic 
-        ? {
-            ...topic,
-            subtopics: topic.subtopics.map(sub => 
-              sub.id === subtopicId ? { ...sub, completed: !sub.completed } : sub
-            ),
-            lastUpdated: "Just now"
-          }
-        : topic
-    ));
+  const formatDate = (dateString) => {
+    if (!dateString) return 'Recently';
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
+    
+    if (diffInDays === 0) return 'Today';
+    if (diffInDays === 1) return 'Yesterday';
+    if (diffInDays < 7) return `${diffInDays} days ago`;
+    return date.toLocaleDateString();
+  };
+
+  const getProgress = (topic) => {
+    if (!topic.subtopics || topic.subtopics.length === 0) return 0;
+    const completed = topic.subtopics.filter(sub => sub.completed).length;
+    return Math.round((completed / topic.subtopics.length) * 100);
   };
 
   const getCompletedTasks = () => {
     const topic = topics.find(t => t.id === activeTopic);
-    return topic ? topic.subtopics.filter(sub => sub.completed) : [];
+    return topic?.subtopics?.filter(sub => sub.completed) || [];
   };
 
   const getPendingTasks = () => {
     const topic = topics.find(t => t.id === activeTopic);
-    return topic ? topic.subtopics.filter(sub => !sub.completed) : [];
+    return topic?.subtopics?.filter(sub => !sub.completed) || [];
   };
+
+  if (topics.length === 0) {
+    return (
+      <div className="flex flex-col h-full">
+        <div className="p-4 bg-white border-b">
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-bold">Study Topics</h2>
+            <button 
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center"
+              onClick={() => document.getElementById('topic-modal').showModal()}
+            >
+              <HiOutlinePlus className="mr-1" />
+              <span>New Topic</span>
+            </button>
+          </div>
+        </div>
+        
+        <div className="flex-1 flex items-center justify-center bg-gray-50">
+          <div className="text-center">
+            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <HiOutlineCheckCircle className="w-8 h-8 text-blue-600" />
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No study topics yet</h3>
+            <p className="text-gray-500 mb-4">Create your first topic to start organizing your learning</p>
+            <button 
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center mx-auto"
+              onClick={() => document.getElementById('topic-modal').showModal()}
+            >
+              <HiOutlinePlus className="mr-1" />
+              Create Topic
+            </button>
+          </div>
+        </div>
+
+        {/* New Topic Modal */}
+        <dialog id="topic-modal" className="modal">
+          <div className="modal-box">
+            <h3 className="font-bold text-lg mb-4">Create New Topic</h3>
+            <input
+              type="text"
+              placeholder="Enter topic title..."
+              value={newTopic}
+              onChange={(e) => setNewTopic(e.target.value)}
+              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
+            />
+            <div className="flex justify-end space-x-2">
+              <button 
+                className="px-4 py-2 border rounded-lg"
+                onClick={() => document.getElementById('topic-modal').close()}
+              >
+                Cancel
+              </button>
+              <button 
+                className={`px-4 py-2 bg-blue-600 text-white rounded-lg ${loading ? 'opacity-50' : ''}`}
+                onClick={addTopic}
+                disabled={loading}
+              >
+                {loading ? 'Creating...' : 'Create'}
+              </button>
+            </div>
+          </div>
+          <div className="modal-backdrop" onClick={() => document.getElementById('topic-modal').close()}></div>
+        </dialog>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full">
@@ -208,6 +269,14 @@ export default function TopicsPanel({ onAiRequest, onShareContent }) {
         <div className="flex justify-between items-center">
           <h2 className="text-xl font-bold">Study Topics</h2>
           <div className="flex space-x-2">
+            {onRefresh && (
+              <button 
+                className="bg-gray-100 text-gray-700 px-3 py-2 rounded-lg text-sm"
+                onClick={onRefresh}
+              >
+                Refresh
+              </button>
+            )}
             <button 
               className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center"
               onClick={() => document.getElementById('topic-modal').showModal()}
@@ -240,7 +309,7 @@ export default function TopicsPanel({ onAiRequest, onShareContent }) {
                       <input
                         type="checkbox"
                         checked={true}
-                        onChange={() => toggleSubtopicCompletion(task.id)}
+                        readOnly
                         className="mr-2"
                       />
                       <span className="text-sm line-through text-gray-600">{task.title}</span>
@@ -260,32 +329,32 @@ export default function TopicsPanel({ onAiRequest, onShareContent }) {
               >
                 <div className="flex items-center">
                   <HiOutlineClipboardList className="mr-2 text-blue-600" />
-                  <span className="font-medium">Materials ({topics.find(t => t.id === activeTopic)?.materials.length || 0})</span>
+                  <span className="font-medium">Materials ({topics.find(t => t.id === activeTopic)?.materials?.length || 0})</span>
                 </div>
                 {showMaterials ? <HiOutlineChevronDown /> : <HiOutlineChevronRight />}
               </button>
               {showMaterials && (
                 <div className="px-3 pb-3 space-y-2">
-                  {topics.find(t => t.id === activeTopic)?.materials.map(material => (
+                  {topics.find(t => t.id === activeTopic)?.materials?.map(material => (
                     <div key={material.id} className="flex items-center p-2 bg-blue-50 rounded">
                       <div className="mr-2">
-                        {material.type === 'pdf' && (
+                        {material.material_type === 'pdf' && (
                           <div className="bg-red-100 text-red-800 rounded text-xs px-2 py-1">PDF</div>
                         )}
-                        {material.type === 'doc' && (
+                        {material.material_type === 'doc' && (
                           <div className="bg-blue-100 text-blue-800 rounded text-xs px-2 py-1">DOC</div>
                         )}
-                        {material.type === 'image' && (
+                        {material.material_type === 'image' && (
                           <div className="bg-green-100 text-green-800 rounded text-xs px-2 py-1">IMG</div>
                         )}
-                        {material.type === 'video' && (
+                        {material.material_type === 'video' && (
                           <div className="bg-yellow-100 text-yellow-800 rounded text-xs px-2 py-1">VID</div>
                         )}
                       </div>
                       <span className="text-sm flex-1">{material.title}</span>
                     </div>
                   )) || []}
-                  {(!topics.find(t => t.id === activeTopic)?.materials.length) && (
+                  {(!topics.find(t => t.id === activeTopic)?.materials?.length) && (
                     <p className="text-sm text-gray-500 text-center py-2">No materials uploaded yet</p>
                   )}
                 </div>
@@ -304,7 +373,10 @@ export default function TopicsPanel({ onAiRequest, onShareContent }) {
                 placeholder="Search topics..."
                 className="flex-1 px-4 py-2 border rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
-              <button className="bg-blue-600 text-white px-4 rounded-r-lg">
+              <button 
+                className="bg-blue-600 text-white px-4 rounded-r-lg"
+                onClick={() => document.getElementById('topic-modal').showModal()}
+              >
                 <HiOutlinePlus className="w-5 h-5" />
               </button>
             </div>
@@ -324,7 +396,7 @@ export default function TopicsPanel({ onAiRequest, onShareContent }) {
                   <div className="p-3 bg-gray-50 flex justify-between items-center">
                     <div className="min-w-0">
                       <h3 className="font-medium truncate">{topic.title}</h3>
-                      <p className="text-sm text-gray-500 truncate">{topic.lastUpdated}</p>
+                      <p className="text-sm text-gray-500 truncate">{formatDate(topic.updated_at)}</p>
                     </div>
                     <button 
                       onClick={(e) => {
@@ -341,33 +413,36 @@ export default function TopicsPanel({ onAiRequest, onShareContent }) {
                       <div className="mb-3">
                         <div className="flex justify-between text-sm mb-1">
                           <span>Progress</span>
-                          <span>{topic.progress}%</span>
+                          <span>{getProgress(topic)}%</span>
                         </div>
                         <div className="w-full bg-gray-200 rounded-full h-2">
                           <div 
                             className="bg-blue-600 h-2 rounded-full" 
-                            style={{ width: `${topic.progress}%` }}
+                            style={{ width: `${getProgress(topic)}%` }}
                           ></div>
                         </div>
                       </div>
                       
                       <div className="text-sm">
-                        <p className="font-medium mb-1">Subtopics:</p>
-                        <ul className="space-y-1">
-                          {topic.subtopics.map(sub => (
-                            <li key={sub.id} className="flex items-center">
-                              <input 
-                                type="checkbox" 
-                                checked={sub.completed}
-                                className="mr-2"
-                                onChange={() => toggleSubtopicCompletion(sub.id)}
-                              />
-                              <span className={sub.completed ? 'line-through text-gray-500' : ''}>
-                                {sub.title}
-                              </span>
-                            </li>
-                          ))}
-                        </ul>
+                        <p className="font-medium mb-1">Description:</p>
+                        <p className="text-gray-600 mb-2">{topic.description || 'No description available'}</p>
+                        
+                        <div className="flex items-center gap-2 text-xs">
+                          {topic.category && (
+                            <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                              {topic.category}
+                            </span>
+                          )}
+                          {topic.difficulty_level && (
+                            <span className={`px-2 py-1 rounded ${
+                              topic.difficulty_level === 'beginner' ? 'bg-green-100 text-green-800' :
+                              topic.difficulty_level === 'intermediate' ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-red-100 text-red-800'
+                            }`}>
+                              {topic.difficulty_level}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   )}
@@ -397,9 +472,9 @@ export default function TopicsPanel({ onAiRequest, onShareContent }) {
               </button>
               <button 
                 className="bg-blue-600 text-white px-3 py-1 rounded-lg text-sm"
-                onClick={() => document.getElementById('subtopic-modal').showModal()}
+                onClick={() => setShowAddMaterial(true)}
               >
-                Add Subtopic
+                Add Material
               </button>
               <button 
                 className="bg-purple-600 text-white px-3 py-1 rounded-lg text-sm"
@@ -414,109 +489,117 @@ export default function TopicsPanel({ onAiRequest, onShareContent }) {
             {activeTopic && (
               <div className="space-y-6">
                 <div className={`${isMobile ? 'hidden' : 'block'}`}>
-                  <h3 className="font-bold mb-2">Pending Tasks</h3>
-                  <div className="space-y-2">
-                    {getPendingTasks().map(task => (
-                      <div key={task.id} className="flex items-center p-3 bg-yellow-50 rounded-lg border">
-                        <input
-                          type="checkbox"
-                          checked={false}
-                          onChange={() => toggleSubtopicCompletion(task.id)}
-                          className="mr-3"
-                        />
-                        <span className="font-medium">{task.title}</span>
-                      </div>
-                    ))}
-                    {getPendingTasks().length === 0 && (
-                      <p className="text-gray-500 text-center py-4">All tasks completed! 🎉</p>
-                    )}
-                  </div>
-                </div>
-
-                <div className={`${isMobile ? 'hidden' : 'block'}`}>
-                  <h3 className="font-bold mb-2">Materials & Resources</h3>
+                  <h3 className="font-bold mb-2">Study Materials</h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                    {topics.find(t => t.id === activeTopic)?.materials.map(material => (
+                    {topics.find(t => t.id === activeTopic)?.materials?.map(material => (
                       <div key={material.id} className="border rounded-lg p-3 flex items-center">
                         <div className="mr-3">
-                          {material.type === 'pdf' && (
-                            <div className="bg-red-100 text-red-800 rounded w-10 h-10 flex items-center justify-center">
+                          {material.material_type === 'pdf' && (
+                            <div className="bg-red-100 text-red-800 rounded w-10 h-10 flex items-center justify-center text-xs">
                               PDF
                             </div>
                           )}
-                          {material.type === 'doc' && (
-                            <div className="bg-blue-100 text-blue-800 rounded w-10 h-10 flex items-center justify-center">
+                          {material.material_type === 'doc' && (
+                            <div className="bg-blue-100 text-blue-800 rounded w-10 h-10 flex items-center justify-center text-xs">
                               DOC
                             </div>
                           )}
-                          {material.type === 'image' && (
-                            <div className="bg-green-100 text-green-800 rounded w-10 h-10 flex items-center justify-center">
+                          {material.material_type === 'image' && (
+                            <div className="bg-green-100 text-green-800 rounded w-10 h-10 flex items-center justify-center text-xs">
                               IMG
                             </div>
                           )}
-                          {material.type === 'video' && (
-                            <div className="bg-yellow-100 text-yellow-800 rounded w-10 h-10 flex items-center justify-center">
+                          {material.material_type === 'video' && (
+                            <div className="bg-yellow-100 text-yellow-800 rounded w-10 h-10 flex items-center justify-center text-xs">
                               VID
                             </div>
                           )}
                         </div>
                         <div className="flex-1">
                           <p className="font-medium truncate">{material.title}</p>
-                          <p className="text-sm text-gray-500 capitalize">{material.type}</p>
+                          <p className="text-sm text-gray-500 capitalize">{material.material_type}</p>
                         </div>
-                        <button className="text-gray-400 hover:text-red-500">
-                          <HiOutlineTrash />
+                      </div>
+                    )) || []}
+                    {(!topics.find(t => t.id === activeTopic)?.materials?.length) && (
+                      <div className="col-span-full text-center py-8 text-gray-500">
+                        <p>No materials added yet</p>
+                        <button 
+                          className="mt-2 text-blue-600 hover:text-blue-800"
+                          onClick={() => setShowAddMaterial(true)}
+                        >
+                          Add your first material
                         </button>
                       </div>
-                    ))}
+                    )}
                   </div>
                   
-                  <button 
-                    className="flex items-center text-blue-600"
-                    onClick={() => setShowAddMaterial(true)}
-                  >
-                    <HiOutlineDocumentAdd className="mr-1" />
-                    Add Material
-                  </button>
+                  {showAddMaterial && (
+                    <div className="border rounded-lg p-4 bg-blue-50 mb-4">
+                      <h4 className="font-medium mb-3">Add New Material</h4>
+                      <div className="flex gap-2 mb-3">
+                        <input
+                          type="text"
+                          placeholder="Material title..."
+                          value={newMaterial.title}
+                          onChange={(e) => setNewMaterial({ ...newMaterial, title: e.target.value })}
+                          className="flex-1 px-3 py-2 border rounded-lg"
+                        />
+                        <select
+                          value={newMaterial.type}
+                          onChange={(e) => setNewMaterial({ ...newMaterial, type: e.target.value })}
+                          className="px-3 py-2 border rounded-lg"
+                        >
+                          <option value="pdf">PDF</option>
+                          <option value="doc">Document</option>
+                          <option value="image">Image</option>
+                          <option value="video">Video</option>
+                        </select>
+                      </div>
+                      <div className="flex gap-2">
+                        <button 
+                          className="px-4 py-2 bg-blue-600 text-white rounded-lg"
+                          onClick={addMaterial}
+                        >
+                          Add
+                        </button>
+                        <button 
+                          className="px-4 py-2 border rounded-lg"
+                          onClick={() => setShowAddMaterial(false)}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div>
-                  <h3 className="font-bold mb-2">Class Schedule</h3>
+                  <h3 className="font-bold mb-2">Topic Information</h3>
                   <div className="border rounded-lg p-4 bg-gray-50">
-                    {topics.find(t => t.id === activeTopic)?.schedule?.image ? (
-                      <div className="mb-3">
-                        <img 
-                          src={topics.find(t => t.id === activeTopic).schedule.image} 
-                          alt="Schedule" 
-                          className="max-w-full h-auto rounded-lg border"
-                        />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                        <p className="text-gray-900">{topics.find(t => t.id === activeTopic)?.title}</p>
                       </div>
-                    ) : (
-                      <div className="border-2 border-dashed rounded-lg p-8 text-center mb-4">
-                        <p className="text-gray-500">No schedule image uploaded</p>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                        <p className="text-gray-900">{topics.find(t => t.id === activeTopic)?.category || 'Not specified'}</p>
                       </div>
-                    )}
-                    
-                    <div className="mb-3">
-                      <p className="font-medium">Schedule Details:</p>
-                      <p className="text-gray-700">
-                        {topics.find(t => t.id === activeTopic)?.schedule?.description || 
-                         "No schedule description added"}
-                      </p>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Difficulty</label>
+                        <p className="text-gray-900 capitalize">{topics.find(t => t.id === activeTopic)?.difficulty_level || 'Not specified'}</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Last Updated</label>
+                        <p className="text-gray-900">{formatDate(topics.find(t => t.id === activeTopic)?.updated_at)}</p>
+                      </div>
                     </div>
                     
-                    <button 
-                      className="text-blue-600"
-                      onClick={() => {
-                        const topic = topics.find(t => t.id === activeTopic);
-                        setScheduleImage(topic?.schedule?.image || null);
-                        setScheduleDescription(topic?.schedule?.description || '');
-                        setShowScheduleModal(true);
-                      }}
-                    >
-                      {topics.find(t => t.id === activeTopic)?.schedule?.image ? 
-                        "Edit Schedule" : "Add Schedule"}
-                    </button>
+                    <div className="mt-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                      <p className="text-gray-900">{topics.find(t => t.id === activeTopic)?.description || 'No description available'}</p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -524,20 +607,18 @@ export default function TopicsPanel({ onAiRequest, onShareContent }) {
           </div>
         </div>
       </div>
-      
-      <dialog id="topic-modal" className="rounded-lg shadow-xl p-0 w-full max-w-md">
-        <div className="p-6">
-          <h3 className="text-lg font-bold mb-4">Create New Topic</h3>
-          <div className="mb-4">
-            <label className="block text-sm font-medium mb-1">Topic Name</label>
-            <input
-              type="text"
-              value={newTopic}
-              onChange={(e) => setNewTopic(e.target.value)}
-              placeholder="Enter topic name"
-              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
+
+      {/* New Topic Modal */}
+      <dialog id="topic-modal" className="modal">
+        <div className="modal-box">
+          <h3 className="font-bold text-lg mb-4">Create New Topic</h3>
+          <input
+            type="text"
+            placeholder="Enter topic title..."
+            value={newTopic}
+            onChange={(e) => setNewTopic(e.target.value)}
+            className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
+          />
           <div className="flex justify-end space-x-2">
             <button 
               className="px-4 py-2 border rounded-lg"
@@ -546,156 +627,16 @@ export default function TopicsPanel({ onAiRequest, onShareContent }) {
               Cancel
             </button>
             <button 
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg"
+              className={`px-4 py-2 bg-blue-600 text-white rounded-lg ${loading ? 'opacity-50' : ''}`}
               onClick={addTopic}
+              disabled={loading}
             >
-              Create
+              {loading ? 'Creating...' : 'Create'}
             </button>
           </div>
         </div>
+        <div className="modal-backdrop" onClick={() => document.getElementById('topic-modal').close()}></div>
       </dialog>
-      
-      <dialog id="subtopic-modal" className="rounded-lg shadow-xl p-0 w-full max-w-md">
-        <div className="p-6">
-          <h3 className="text-lg font-bold mb-4">Add New Subtopic</h3>
-          <div className="mb-4">
-            <label className="block text-sm font-medium mb-1">Subtopic Name</label>
-            <input
-              type="text"
-              placeholder="Enter subtopic name"
-              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <div className="flex justify-end space-x-2">
-            <button 
-              className="px-4 py-2 border rounded-lg"
-              onClick={() => document.getElementById('subtopic-modal').close()}
-            >
-              Cancel
-            </button>
-            <button 
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg"
-              onClick={() => document.getElementById('subtopic-modal').close()}
-            >
-              Add
-            </button>
-          </div>
-        </div>
-      </dialog>
-      
-      {showAddMaterial && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
-            <h3 className="text-lg font-bold mb-4">Add New Material</h3>
-            <div className="mb-4">
-              <label className="block text-sm font-medium mb-1">Material Title</label>
-              <input
-                type="text"
-                value={newMaterial.title}
-                onChange={(e) => setNewMaterial({...newMaterial, title: e.target.value})}
-                placeholder="Enter material title"
-                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div className="mb-4">
-              <label className="block text-sm font-medium mb-1">Type</label>
-              <select
-                value={newMaterial.type}
-                onChange={(e) => setNewMaterial({...newMaterial, type: e.target.value})}
-                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="pdf">PDF Document</option>
-                <option value="doc">Word Document</option>
-                <option value="image">Image</option>
-                <option value="video">Video</option>
-                <option value="link">Web Link</option>
-              </select>
-            </div>
-            <div className="flex justify-end space-x-2">
-              <button 
-                className="px-4 py-2 border rounded-lg"
-                onClick={() => setShowAddMaterial(false)}
-              >
-                Cancel
-              </button>
-              <button 
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg"
-                onClick={addMaterial}
-              >
-                Add Material
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      
-      {showScheduleModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
-            <h3 className="text-lg font-bold mb-4">Update Schedule</h3>
-            
-            <div className="mb-4">
-              <label className="block text-sm font-medium mb-1">Upload Schedule Image</label>
-              <div className="border-2 border-dashed rounded-lg p-4 text-center">
-                {scheduleImage ? (
-                  <div>
-                    <img 
-                      src={scheduleImage} 
-                      alt="Schedule" 
-                      className="max-w-full h-32 mx-auto mb-2"
-                    />
-                    <button 
-                      className="text-blue-600 text-sm"
-                      onClick={() => setScheduleImage(null)}
-                    >
-                      Remove Image
-                    </button>
-                  </div>
-                ) : (
-                  <div>
-                    <p className="text-gray-500 mb-2">Drag & drop or click to upload</p>
-                    <label className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg cursor-pointer">
-                      Choose File
-                      <input 
-                        type="file" 
-                        className="hidden" 
-                        accept="image/*"
-                        onChange={handleImageUpload}
-                      />
-                    </label>
-                  </div>
-                )}
-              </div>
-            </div>
-            
-            <div className="mb-4">
-              <label className="block text-sm font-medium mb-1">Schedule Description</label>
-              <textarea
-                value={scheduleDescription}
-                onChange={(e) => setScheduleDescription(e.target.value)}
-                placeholder="Describe your schedule (e.g., Monday 9-11 AM, Wednesday lab sessions)"
-                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                rows={3}
-              />
-            </div>
-            
-            <div className="flex justify-end space-x-2">
-              <button 
-                className="px-4 py-2 border rounded-lg"
-                onClick={() => setShowScheduleModal(false)}
-              >
-                Cancel
-              </button>
-              <button 
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg"
-                onClick={handleScheduleUpdate}
-              >
-                Save Schedule
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

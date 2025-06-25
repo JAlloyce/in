@@ -5,6 +5,7 @@ import {
   HiX, HiLightBulb, HiPaperAirplane, HiArrowDown,
   HiPlus, HiUsers, HiEye, HiChat, HiDocumentText, HiMail
 } from "react-icons/hi";
+import { jobs, auth, companies } from '../lib/supabase';
 
 export default function Jobs() {
   const [filters, setFilters] = useState({
@@ -28,40 +29,7 @@ export default function Jobs() {
   const [showPostJobModal, setShowPostJobModal] = useState(false);
   const [showApplicantsModal, setShowApplicantsModal] = useState(false);
   const [selectedApplicant, setSelectedApplicant] = useState(null);
-  const [postedJobs, setPostedJobs] = useState([
-    {
-      id: 101,
-      title: "React Developer",
-      company: "Your Company",
-      location: "Remote",
-      salary: "$80,000 - $100,000",
-      type: "Full-time",
-      experience: "3+ years",
-      description: "Looking for a skilled React developer to join our team.",
-      posted: "1 day ago",
-      applicants: 12,
-      applications: [
-        {
-          id: 1,
-          name: "Alice Johnson",
-          email: "alice@example.com",
-          experience: "4 years",
-          resume: "alice_resume.pdf",
-          coverLetter: "I'm excited about this opportunity...",
-          appliedDate: "2 hours ago"
-        },
-        {
-          id: 2,
-          name: "Bob Smith",
-          email: "bob@example.com",
-          experience: "5 years",
-          resume: "bob_resume.pdf",
-          coverLetter: "My experience in React development...",
-          appliedDate: "1 day ago"
-        }
-      ]
-    }
-  ]);
+  const [postedJobs, setPostedJobs] = useState([]);
   const [jobForm, setJobForm] = useState({
     title: "",
     company: "",
@@ -76,107 +44,93 @@ export default function Jobs() {
     benefits: ""
   });
 
-  const jobListings = [
-    {
-      id: 1,
-      title: "Senior Frontend Developer",
-      company: "TechCorp",
-      location: "San Francisco, CA",
-      salary: "$120,000 - $150,000",
-      type: "Full-time",
-      experience: "5+ years",
-      description: "We're looking for an experienced frontend developer to join our team. You'll work with React, TypeScript, and modern web technologies to build our customer-facing applications.",
-      responsibilities: [
-        "Develop and maintain responsive web applications",
-        "Collaborate with UX designers to implement pixel-perfect designs",
-        "Optimize applications for maximum speed and scalability",
-        "Write unit and integration tests",
-        "Participate in code reviews"
-      ],
-      requirements: [
-        "5+ years of experience with JavaScript/Typescript",
-        "Expertise in React.js and state management",
-        "Experience with CSS preprocessors and CSS-in-JS",
-        "Familiarity with RESTful APIs and GraphQL",
-        "Knowledge of modern build pipelines and tools"
-      ],
-      benefits: [
-        "Health insurance",
-        "401(k) matching",
-        "Flexible work hours",
-        "Remote work options",
-        "Professional development budget"
-      ],
-      posted: "2 days ago",
-      applicants: 24,
-    },
-    {
-      id: 2,
-      title: "UX/UI Designer",
-      company: "DesignHub",
-      location: "Remote",
-      salary: "$90,000 - $120,000",
-      type: "Full-time",
-      experience: "3+ years",
-      description: "Join our design team to create beautiful and intuitive user experiences for our SaaS products. You'll collaborate with product managers and engineers to bring designs to life.",
-      responsibilities: [
-        "Create wireframes, prototypes, and high-fidelity designs",
-        "Conduct user research and usability testing",
-        "Develop and maintain design systems",
-        "Collaborate with developers to ensure proper implementation",
-        "Present design solutions to stakeholders"
-      ],
-      requirements: [
-        "3+ years of UI/UX design experience",
-        "Proficiency in Figma, Sketch, or Adobe XD",
-        "Strong portfolio demonstrating design process",
-        "Understanding of user-centered design principles",
-        "Experience with design systems and component libraries"
-      ],
-      benefits: [
-        "Unlimited PTO",
-        "Home office stipend",
-        "Health and wellness benefits",
-        "Flexible schedule",
-        "Professional development opportunities"
-      ],
-      posted: "1 week ago",
-      applicants: 37,
-    },
-    {
-      id: 3,
-      title: "Data Engineer",
-      company: "DataSystems",
-      location: "New York, NY",
-      salary: "$130,000 - $160,000",
-      type: "Full-time",
-      experience: "4+ years",
-      description: "Design and implement scalable data pipelines and infrastructure to support our analytics platform. Work with large datasets and optimize data processing.",
-      responsibilities: [
-        "Design and build scalable data pipelines",
-        "Implement data models and database schemas",
-        "Optimize data storage and retrieval processes",
-        "Monitor and troubleshoot data pipeline issues",
-        "Collaborate with data scientists and analysts"
-      ],
-      requirements: [
-        "4+ years in data engineering roles",
-        "Expertise in SQL and NoSQL databases",
-        "Experience with big data technologies (Spark, Hadoop)",
-        "Proficiency in Python, Java, or Scala",
-        "Knowledge of cloud data services (AWS, GCP)"
-      ],
-      benefits: [
-        "Stock options",
-        "Health insurance",
-        "Remote work flexibility",
-        "Learning stipend",
-        "Flexible hours"
-      ],
-      posted: "3 days ago",
-      applicants: 18,
+  // Real data states
+  const [user, setUser] = useState(null);
+  const [jobListings, setJobListings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [appliedJobs, setAppliedJobs] = useState([]);
+
+  // Load user and jobs data
+  useEffect(() => {
+    initializeJobs();
+  }, []);
+
+  const initializeJobs = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Get current user
+      const { session } = await auth.getSession();
+      if (session?.user) {
+        setUser(session.user);
+      }
+
+      // Load jobs
+      await loadJobs();
+
+    } catch (err) {
+      console.error('Error loading jobs:', err);
+      setError('Failed to load jobs data');
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
+
+  const loadJobs = async () => {
+    const { data: jobsData, error: jobsError } = await jobs.search(
+      searchQuery, 
+      filters.location, 
+      filters.type, 
+      50
+    );
+    
+    if (jobsError) {
+      console.error('Error loading jobs:', jobsError);
+      return;
+    }
+
+    // Transform jobs data to match UI format
+    const transformedJobs = jobsData.map(job => ({
+      id: job.id,
+      title: job.title,
+      company: job.company?.name || 'Company',
+      location: job.location,
+      salary: job.salary_range || `$${job.salary_min || 'N/A'} - $${job.salary_max || 'N/A'}`,
+      type: job.job_type || 'Full-time',
+      experience: job.experience_level || 'Not specified',
+      description: job.description,
+      responsibilities: job.responsibilities?.split('\n') || [job.description],
+      requirements: job.requirements?.split('\n') || ['Experience in relevant field'],
+      benefits: job.benefits?.split('\n') || ['Competitive salary', 'Health insurance'],
+      posted: formatTimestamp(job.created_at),
+      applicants: job.application_count || 0,
+      company_logo: job.company?.logo_url
+    }));
+
+    setJobListings(transformedJobs);
+  };
+
+  // Reload jobs when filters change
+  useEffect(() => {
+    if (!loading) {
+      loadJobs();
+    }
+  }, [filters, searchQuery]);
+
+  const formatTimestamp = (timestamp) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffInDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
+    
+    if (diffInDays === 0) return 'Today';
+    if (diffInDays === 1) return '1 day ago';
+    if (diffInDays < 7) return `${diffInDays} days ago`;
+    if (diffInDays < 30) return `${Math.floor(diffInDays / 7)} week${Math.floor(diffInDays / 7) > 1 ? 's' : ''} ago`;
+    return `${Math.floor(diffInDays / 30)} month${Math.floor(diffInDays / 30) > 1 ? 's' : ''} ago`;
+  };
 
   // Handle job selection and open modal
   const handleJobSelect = (job) => {
@@ -196,9 +150,30 @@ export default function Jobs() {
   };
 
   // Handle application submission
-  const handleSubmitApplication = () => {
-    alert(`Application submitted for ${selectedJob.title} at ${selectedJob.company}!`);
-    handleCloseModal();
+  const handleSubmitApplication = async () => {
+    if (!user) {
+      alert('Please log in to apply for jobs');
+      return;
+    }
+
+    if (!selectedJob) return;
+
+    try {
+      const { error } = await jobs.apply(selectedJob.id, user.id, resume);
+      if (error) {
+        console.error('Error applying for job:', error);
+        alert('Failed to submit application');
+        return;
+      }
+
+      // Add to applied jobs
+      setAppliedJobs(prev => [...prev, selectedJob.id]);
+      alert(`Application submitted for ${selectedJob.title} at ${selectedJob.company}!`);
+      handleCloseModal();
+    } catch (err) {
+      console.error('Error applying for job:', err);
+      alert('Failed to submit application');
+    }
   };
 
   // Handle AI message submission
@@ -277,38 +252,67 @@ export default function Jobs() {
   };
 
   // Job posting handlers
-  const handlePostJob = () => {
+  const handlePostJob = async () => {
     if (!jobForm.title || !jobForm.description) {
       alert("Please fill in all required fields");
       return;
     }
+
+    if (!user) {
+      alert('Please log in to post jobs');
+      return;
+    }
     
-    const newJob = {
-      id: Date.now(),
-      ...jobForm,
-      salary: `$${jobForm.salaryMin} - $${jobForm.salaryMax}`,
-      company: jobForm.company || "Your Company",
-      posted: "Just now",
-      applicants: 0,
-      applications: []
-    };
-    
-    setPostedJobs(prev => [newJob, ...prev]);
-    setJobForm({
-      title: "",
-      company: "",
-      location: "",
-      salaryMin: "",
-      salaryMax: "",
-      type: "Full-time",
-      experience: "",
-      description: "",
-      responsibilities: "",
-      requirements: "",
-      benefits: ""
-    });
-    setShowPostJobModal(false);
-    alert("Job posted successfully!");
+    try {
+      // Create job in database
+      const newJobData = {
+        title: jobForm.title,
+        description: jobForm.description,
+        location: jobForm.location,
+        job_type: jobForm.type,
+        experience_level: jobForm.experience,
+        salary_min: parseInt(jobForm.salaryMin) || null,
+        salary_max: parseInt(jobForm.salaryMax) || null,
+        salary_range: jobForm.salaryMin && jobForm.salaryMax ? `$${jobForm.salaryMin} - $${jobForm.salaryMax}` : null,
+        requirements: jobForm.requirements,
+        benefits: jobForm.benefits,
+        responsibilities: jobForm.responsibilities,
+        company_id: 1, // Default company - in real app, would be user's company
+        posted_by: user.id,
+        is_active: true
+      };
+
+      // For now, just add to local state since we don't have a complete job posting API
+      const newJob = {
+        id: Date.now(),
+        ...jobForm,
+        salary: `$${jobForm.salaryMin} - $${jobForm.salaryMax}`,
+        company: jobForm.company || "Your Company",
+        posted: "Just now",
+        applicants: 0,
+        applications: []
+      };
+      
+      setPostedJobs(prev => [newJob, ...prev]);
+      setJobForm({
+        title: "",
+        company: "",
+        location: "",
+        salaryMin: "",
+        salaryMax: "",
+        type: "Full-time",
+        experience: "",
+        description: "",
+        responsibilities: "",
+        requirements: "",
+        benefits: ""
+      });
+      setShowPostJobModal(false);
+      alert("Job posted successfully!");
+    } catch (err) {
+      console.error('Error posting job:', err);
+      alert('Failed to post job');
+    }
   };
 
   const handleViewApplicants = (job) => {
@@ -319,6 +323,39 @@ export default function Jobs() {
   const handleContactApplicant = (applicant) => {
     alert(`Redirecting to message ${applicant.name}...`);
   };
+
+  if (loading) {
+    return (
+      <div className="grid grid-cols-1 bg-pink-50 min-h-screen p-4 rounded-lg">
+        <div className="bg-white rounded-lg shadow p-6 mb-6">
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <div className="w-8 h-8 border-2 border-pink-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading job opportunities...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="grid grid-cols-1 bg-pink-50 min-h-screen p-4 rounded-lg">
+        <div className="bg-white rounded-lg shadow p-6 mb-6">
+          <div className="text-center py-12">
+            <p className="text-red-600 mb-4">{error}</p>
+            <button 
+              onClick={initializeJobs}
+              className="px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="grid grid-cols-1 bg-pink-50 min-h-screen p-4 rounded-lg">
@@ -390,6 +427,14 @@ export default function Jobs() {
           <h1 className="text-2xl font-bold">Job Opportunities</h1>
           
           <div className="flex flex-wrap gap-3">
+            <input
+              type="text"
+              placeholder="Search jobs..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+            />
+            
             <div className="relative">
               <select
                 value={filters.location}
@@ -398,8 +443,9 @@ export default function Jobs() {
               >
                 <option value="">Location</option>
                 <option value="remote">Remote</option>
-                <option value="sf">San Francisco</option>
-                <option value="ny">New York</option>
+                <option value="san francisco">San Francisco</option>
+                <option value="new york">New York</option>
+                <option value="seattle">Seattle</option>
               </select>
               <HiChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none" />
             </div>
@@ -414,6 +460,7 @@ export default function Jobs() {
                 <option value="full-time">Full-time</option>
                 <option value="part-time">Part-time</option>
                 <option value="contract">Contract</option>
+                <option value="internship">Internship</option>
               </select>
               <HiChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none" />
             </div>
@@ -435,62 +482,93 @@ export default function Jobs() {
         </div>
         
         <div className="space-y-4">
-          {jobListings.map(job => (
-            <div 
-              key={job.id} 
-              className="border rounded-lg p-5 hover:shadow-md transition-shadow cursor-pointer"
-              onClick={() => handleJobSelect(job)}
-            >
-              <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4">
-                <div className="flex-1">
-                  <div className="flex items-start gap-4">
-                    <div className="w-14 h-14 bg-gray-200 rounded-lg flex-shrink-0"></div>
-                    <div>
-                      <h2 className="text-xl font-bold text-gray-900">{job.title}</h2>
-                      <p className="text-lg text-gray-600">{job.company}</p>
+          {jobListings.length > 0 ? (
+            jobListings.map(job => (
+              <div 
+                key={job.id} 
+                className="border rounded-lg p-5 hover:shadow-md transition-shadow cursor-pointer"
+                onClick={() => handleJobSelect(job)}
+              >
+                <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4">
+                  <div className="flex-1">
+                    <div className="flex items-start gap-4">
+                      <div className="w-14 h-14 bg-gray-200 rounded-lg flex-shrink-0 overflow-hidden">
+                        {job.company_logo ? (
+                          <img 
+                            src={job.company_logo} 
+                            alt={job.company}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gray-300 flex items-center justify-center">
+                            <span className="text-gray-600 font-bold text-lg">
+                              {job.company.charAt(0).toUpperCase()}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                        <h2 className="text-xl font-bold text-gray-900">{job.title}</h2>
+                        <p className="text-lg text-gray-600">{job.company}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex flex-wrap gap-3 mt-3">
+                      <div className="flex items-center text-sm text-gray-500">
+                        <HiLocationMarker className="mr-1 w-4 h-4" />
+                        {job.location}
+                      </div>
+                      <div className="flex items-center text-sm text-gray-500">
+                        <HiCurrencyDollar className="mr-1 w-4 h-4" />
+                        {job.salary}
+                      </div>
+                      <div className="flex items-center text-sm text-gray-500">
+                        <HiBriefcase className="mr-1 w-4 h-4" />
+                        {job.type}
+                      </div>
+                      <div className="flex items-center text-sm text-gray-500">
+                        <HiClock className="mr-1 w-4 h-4" />
+                        {job.experience}
+                      </div>
                     </div>
                   </div>
                   
-                  <div className="flex flex-wrap gap-3 mt-3">
-                    <div className="flex items-center text-sm text-gray-500">
-                      <HiLocationMarker className="mr-1 w-4 h-4" />
-                      {job.location}
-                    </div>
-                    <div className="flex items-center text-sm text-gray-500">
-                      <HiCurrencyDollar className="mr-1 w-4 h-4" />
-                      {job.salary}
-                    </div>
-                    <div className="flex items-center text-sm text-gray-500">
-                      <HiBriefcase className="mr-1 w-4 h-4" />
-                      {job.type}
-                    </div>
-                    <div className="flex items-center text-sm text-gray-500">
-                      <HiClock className="mr-1 w-4 h-4" />
-                      {job.experience}
-                    </div>
+                  <div className="text-right">
+                    <span className="text-sm text-gray-500">{job.posted}</span>
+                    <p className="text-sm text-gray-500 mt-1">{job.applicants} applicants</p>
+                    {appliedJobs.includes(job.id) && (
+                      <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full mt-1 inline-block">
+                        Applied
+                      </span>
+                    )}
                   </div>
                 </div>
                 
-                <div className="text-right">
-                  <span className="text-sm text-gray-500">{job.posted}</span>
-                  <p className="text-sm text-gray-500 mt-1">{job.applicants} applicants</p>
+                <p className="mt-4 text-gray-700 line-clamp-2">{job.description}</p>
+                
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {job.benefits.slice(0, 3).map((benefit, index) => (
+                    <span 
+                      key={index} 
+                      className="bg-blue-50 text-blue-700 text-xs px-2 py-1 rounded"
+                    >
+                      {benefit}
+                    </span>
+                  ))}
                 </div>
               </div>
-              
-              <p className="mt-4 text-gray-700 line-clamp-2">{job.description}</p>
-              
-              <div className="mt-4 flex flex-wrap gap-2">
-                {job.benefits.slice(0, 3).map((benefit, index) => (
-                  <span 
-                    key={index} 
-                    className="bg-blue-50 text-blue-700 text-xs px-2 py-1 rounded"
-                  >
-                    {benefit}
-                  </span>
-                ))}
-              </div>
+            ))
+          ) : (
+            <div className="text-center py-8 bg-gray-50 rounded-lg">
+              <HiBriefcase className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+              <h3 className="text-lg font-medium text-gray-900">No jobs found</h3>
+              <p className="text-gray-500">
+                {searchQuery || Object.values(filters).some(f => f) 
+                  ? "Try adjusting your search criteria" 
+                  : "Check back later for new opportunities"}
+              </p>
             </div>
-          ))}
+          )}
         </div>
       </div>
       

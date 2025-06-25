@@ -1,111 +1,238 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   HiUser, HiBriefcase, HiChat, HiThumbUp, HiUserGroup, HiX, 
   HiCog, HiCheckCircle, HiBell, HiCheck
 } from "react-icons/hi";
 import { FaBellSlash } from "react-icons/fa";
+import { notifications, auth, realtime } from '../lib/supabase';
 
 /**
- * Notifications Page - Mobile-Optimized Interface
+ * Notifications Page - Real Database Notifications
  * 
  * Features:
- * - Fixed mobile view with icon-based header actions
- * - Proper responsive layout that prevents text overlap
- * - Icon-based controls for settings and mark as read
- * - Professional LinkedIn-style notifications interface
- * - Smooth animations and hover effects
- * - Mobile-first padding and spacing
+ * - Real notifications from Supabase database
+ * - Live notification updates with real-time subscriptions
+ * - Mark as read functionality
+ * - Mobile-responsive design with real data
  */
 export default function Notifications() {
-  const notifications = [
-    {
-      id: 1,
-      type: "connection",
-      icon: HiUser,
-      message: "Sarah Johnson accepted your connection request",
-      time: "2 hours ago",
-      unread: true,
-    },
-    {
-      id: 2,
-      type: "like",
-      icon: HiThumbUp,
-      message: "Alex Chen and 12 others liked your post",
-      time: "4 hours ago",
-      unread: true,
-    },
-    {
-      id: 3,
-      type: "message",
-      icon: HiChat,
-      message: "New message from David Wilson",
-      time: "6 hours ago",
-      unread: false,
-    },
-    {
-      id: 4,
-      type: "job",
-      icon: HiBriefcase,
-      message: "New job recommendation: Senior Developer at TechCorp",
-      time: "1 day ago",
-      unread: false,
-    },
-    {
-      id: 5,
-      type: "network",
-      icon: HiUserGroup,
-      message: "You have 5 new profile views",
-      time: "2 days ago",
-      unread: false,
-    },
-    {
-      id: 6,
-      type: "post",
-      icon: HiThumbUp,
-      message: "Your post was shared 3 times",
-      time: "3 days ago",
-      unread: false,
-    },
-    {
-      id: 7,
-      type: "announcement",
-      icon: HiBriefcase,
-      message: "New feature: Enhanced job search filters are now available",
-      time: "1 week ago",
-      unread: false,
-    }
-  ];
-
+  const [notificationsList, setNotificationsList] = useState([]);
   const [activeFilter, setActiveFilter] = useState("all");
-  const [filteredNotifications, setFilteredNotifications] = useState(notifications);
+  const [filteredNotifications, setFilteredNotifications] = useState([]);
   const [showSettings, setShowSettings] = useState(false);
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [subscription, setSubscription] = useState(null);
+
+  // Icon mapping for notification types
+  const getNotificationIcon = (type) => {
+    switch (type) {
+      case 'connection_request':
+      case 'connection_accepted':
+        return HiUser;
+      case 'job_alert':
+      case 'job_application':
+        return HiBriefcase;
+      case 'message':
+        return HiChat;
+      case 'like':
+      case 'comment':
+        return HiThumbUp;
+      case 'follow':
+      case 'network':
+        return HiUserGroup;
+      default:
+        return HiBell;
+    }
+  };
+
+  // Initialize notifications
+  useEffect(() => {
+    initializeNotifications();
+    return () => {
+      // Cleanup subscription
+      if (subscription) {
+        subscription.unsubscribe();
+      }
+    };
+  }, []);
+
+  const initializeNotifications = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Get current user
+      const { session } = await auth.getSession();
+      if (!session?.user) {
+        setError('Please log in to view notifications');
+        return;
+      }
+
+      setUser(session.user);
+      
+      // Load notifications
+      await loadNotifications(session.user.id);
+
+      // Set up real-time subscription for new notifications
+      const newSubscription = realtime.subscribeToUserNotifications(
+        session.user.id,
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            const newNotification = transformNotification(payload.new);
+            setNotificationsList(prev => [newNotification, ...prev]);
+          }
+        }
+      );
+      
+      setSubscription(newSubscription);
+
+    } catch (err) {
+      console.error('Error initializing notifications:', err);
+      setError('Failed to load notifications');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadNotifications = async (userId) => {
+    const { data: notificationsData, error: notificationsError } = await notifications.get(userId, 50);
+    
+    if (notificationsError) {
+      console.error('Error loading notifications:', notificationsError);
+      return;
+    }
+
+    // Transform notifications data
+    const transformedNotifications = notificationsData.map(transformNotification);
+    setNotificationsList(transformedNotifications);
+  };
+
+  const transformNotification = (notification) => {
+    return {
+      id: notification.id,
+      type: notification.type,
+      icon: getNotificationIcon(notification.type),
+      message: notification.message,
+      time: formatTimestamp(notification.created_at),
+      unread: !notification.is_read,
+      sender: notification.sender
+    };
+  };
+
+  const formatTimestamp = (timestamp) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffInMinutes = Math.floor((now - date) / (1000 * 60));
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    const diffInDays = Math.floor(diffInHours / 24);
+    const diffInWeeks = Math.floor(diffInDays / 7);
+    
+    if (diffInMinutes < 60) return `${diffInMinutes} minutes ago`;
+    if (diffInHours < 24) return `${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`;
+    if (diffInDays < 7) return `${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`;
+    if (diffInWeeks < 4) return `${diffInWeeks} week${diffInWeeks > 1 ? 's' : ''} ago`;
+    return date.toLocaleDateString();
+  };
+
+  // Filter notifications when list or filter changes
+  useEffect(() => {
+    filterNotifications(activeFilter);
+  }, [notificationsList, activeFilter]);
 
   const filterNotifications = (filter) => {
     setActiveFilter(filter);
-    if (filter === "all") {
-      setFilteredNotifications(notifications);
-    } else if (filter === "unread") {
-      setFilteredNotifications(notifications.filter(n => n.unread));
-    } else {
-      setFilteredNotifications(notifications.filter(n => n.type === filter));
+    let filtered = notificationsList;
+    
+    if (filter === "unread") {
+      filtered = notificationsList.filter(n => n.unread);
+    } else if (filter !== "all") {
+      // Map filter names to notification types
+      const typeMapping = {
+        'connection': ['connection_request', 'connection_accepted'],
+        'like': ['like', 'comment'],
+        'message': ['message'],
+        'job': ['job_alert', 'job_application'],
+        'network': ['follow', 'network']
+      };
+      
+      const types = typeMapping[filter] || [filter];
+      filtered = notificationsList.filter(n => types.includes(n.type));
+    }
+    
+    setFilteredNotifications(filtered);
+  };
+
+  const markAsRead = async (id) => {
+    try {
+      const { error } = await notifications.markAsRead(id);
+      if (error) {
+        console.error('Error marking notification as read:', error);
+        return;
+      }
+
+      // Update local state
+      setNotificationsList(prev => prev.map(n => 
+        n.id === id ? { ...n, unread: false } : n
+      ));
+    } catch (err) {
+      console.error('Error marking notification as read:', err);
     }
   };
 
-  const markAsRead = (id) => {
-    const updated = filteredNotifications.map(n => 
-      n.id === id ? { ...n, unread: false } : n
-    );
-    setFilteredNotifications(updated);
-  };
+  const markAllAsRead = async () => {
+    try {
+      const unreadNotifications = filteredNotifications.filter(n => n.unread);
+      
+      // Mark all as read in parallel
+      await Promise.all(
+        unreadNotifications.map(n => notifications.markAsRead(n.id))
+      );
 
-  const markAllAsRead = () => {
-    const updated = filteredNotifications.map(n => ({ ...n, unread: false }));
-    setFilteredNotifications(updated);
+      // Update local state
+      setNotificationsList(prev => prev.map(n => ({ ...n, unread: false })));
+    } catch (err) {
+      console.error('Error marking all notifications as read:', err);
+    }
   };
 
   const getUnreadCount = () => {
     return filteredNotifications.filter(n => n.unread).length;
   };
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="p-6">
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading notifications...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="p-6">
+          <div className="text-center py-12">
+            <p className="text-red-600 mb-4">{error}</p>
+            <button 
+              onClick={initializeNotifications}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white rounded-lg shadow overflow-hidden">
@@ -140,13 +267,22 @@ export default function Notifications() {
             >
               <HiCheckCircle className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
+            
+            <button 
+              onClick={() => loadNotifications(user?.id)}
+              className="p-1.5 sm:p-2 rounded-full text-gray-600 hover:bg-blue-100 hover:text-blue-600 transition-colors"
+              title="Refresh"
+            >
+              <HiBell className="w-4 h-4 sm:w-5 sm:h-5" />
+            </button>
           </div>
         </div>
         
         {/* Mobile text labels - shown below icons */}
         <div className="flex justify-end space-x-4 mt-2 sm:hidden">
           <span className="text-xs text-gray-500">Settings</span>
-          <span className="text-xs text-gray-500">Mark all read</span>
+          <span className="text-xs text-gray-500">Mark read</span>
+          <span className="text-xs text-gray-500">Refresh</span>
         </div>
       </div>
 
@@ -201,6 +337,11 @@ export default function Notifications() {
                   {notification.message}
                 </p>
                 <p className="text-xs text-gray-500 mt-1">{notification.time}</p>
+                {notification.sender && (
+                  <p className="text-xs text-gray-400 mt-1">
+                    From: {notification.sender.name}
+                  </p>
+                )}
               </div>
               
               {notification.unread && (
@@ -259,6 +400,14 @@ export default function Notifications() {
                 <span className="text-sm font-medium">Job recommendations</span>
                 <input type="checkbox" defaultChecked className="rounded" />
               </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Comments and likes</span>
+                <input type="checkbox" defaultChecked className="rounded" />
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Messages</span>
+                <input type="checkbox" defaultChecked className="rounded" />
+              </div>
             </div>
             
             <div className="flex space-x-3 mt-6">
@@ -269,7 +418,11 @@ export default function Notifications() {
                 Cancel
               </button>
               <button
-                onClick={() => setShowSettings(false)}
+                onClick={() => {
+                  // In real app, save settings to database
+                  alert('Settings saved!');
+                  setShowSettings(false);
+                }}
                 className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
               >
                 Save

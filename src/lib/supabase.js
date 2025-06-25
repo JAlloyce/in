@@ -15,7 +15,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
   realtime: {
     params: {
-      eventsPerSecond: 2
+      eventsPerSecond: 10
     }
   }
 })
@@ -285,53 +285,301 @@ export const notifications = {
   }
 }
 
-// Real-time subscriptions
+// Network/Connections helpers
+export const connections = {
+  getConnections: async (userId) => {
+    const { data, error } = await supabase
+      .from('connections')
+      .select(`
+        *,
+        requester:profiles!connections_requester_id_fkey (id, name, avatar_url, headline),
+        receiver:profiles!connections_receiver_id_fkey (id, name, avatar_url, headline)
+      `)
+      .or(`requester_id.eq.${userId},receiver_id.eq.${userId}`)
+      .eq('status', 'accepted')
+      .order('created_at', { ascending: false })
+    return { data, error }
+  },
+
+  getSuggestions: async (userId, limit = 10) => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, name, avatar_url, headline')
+      .neq('id', userId)
+      .limit(limit)
+    return { data, error }
+  },
+
+  sendRequest: async (requesterId, receiverId) => {
+    const { data, error } = await supabase
+      .from('connections')
+      .insert({
+        requester_id: requesterId,
+        receiver_id: receiverId,
+        status: 'pending'
+      })
+      .select()
+      .single()
+    return { data, error }
+  },
+
+  acceptRequest: async (connectionId) => {
+    const { data, error } = await supabase
+      .from('connections')
+      .update({ status: 'accepted' })
+      .eq('id', connectionId)
+      .select()
+      .single()
+    return { data, error }
+  },
+
+  removeConnection: async (connectionId) => {
+    const { data, error } = await supabase
+      .from('connections')
+      .delete()
+      .eq('id', connectionId)
+    return { data, error }
+  }
+}
+
+// Communities helpers
+export const communities = {
+  getJoined: async (userId) => {
+    const { data, error } = await supabase
+      .from('community_members')
+      .select(`
+        *,
+        community:communities!community_members_community_id_fkey (
+          id, name, description, member_count, created_at
+        )
+      `)
+      .eq('user_id', userId)
+      .order('joined_at', { ascending: false })
+    return { data, error }
+  },
+
+  getSuggested: async (limit = 10) => {
+    const { data, error } = await supabase
+      .from('communities')
+      .select('id, name, description, member_count')
+      .eq('is_active', true)
+      .order('member_count', { ascending: false })
+      .limit(limit)
+    return { data, error }
+  },
+
+  create: async (community, userId) => {
+    const { data, error } = await supabase
+      .from('communities')
+      .insert({
+        ...community,
+        admin_id: userId
+      })
+      .select()
+      .single()
+    return { data, error }
+  },
+
+  join: async (communityId, userId) => {
+    const { data, error } = await supabase
+      .from('community_members')
+      .insert({
+        community_id: communityId,
+        user_id: userId
+      })
+      .select()
+      .single()
+    return { data, error }
+  }
+}
+
+// Companies/Pages helpers
+export const companies = {
+  getFollowed: async (userId) => {
+    // This would need a company_followers table in a real implementation
+    const { data, error } = await supabase
+      .from('companies')
+      .select('*')
+      .limit(10)
+    return { data, error }
+  },
+
+  getSuggested: async (limit = 10) => {
+    const { data, error } = await supabase
+      .from('companies')
+      .select('*')
+      .limit(limit)
+    return { data, error }
+  },
+
+  create: async (company) => {
+    const { data, error } = await supabase
+      .from('companies')
+      .insert(company)
+      .select()
+      .single()
+    return { data, error }
+  }
+}
+
+// Workspace helpers  
+export const workspace = {
+  getTopics: async (userId) => {
+    const { data, error } = await supabase
+      .from('workspace_topics')
+      .select('*')
+      .eq('user_id', userId)
+      .order('updated_at', { ascending: false })
+    return { data, error }
+  },
+
+  createTopic: async (topic, userId) => {
+    const { data, error } = await supabase
+      .from('workspace_topics')
+      .insert({
+        ...topic,
+        user_id: userId
+      })
+      .select()
+      .single()
+    return { data, error }
+  },
+
+  getTasks: async (userId) => {
+    const { data, error } = await supabase
+      .from('workspace_tasks')
+      .select(`
+        *,
+        topic:workspace_topics!workspace_tasks_topic_id_fkey (
+          id, title
+        )
+      `)
+      .eq('user_id', userId)
+      .order('due_date', { ascending: true })
+    return { data, error }
+  },
+
+  createTask: async (task, userId) => {
+    const { data, error } = await supabase
+      .from('workspace_tasks')
+      .insert({
+        ...task,
+        user_id: userId
+      })
+      .select()
+      .single()
+    return { data, error }
+  },
+
+  updateTask: async (taskId, updates) => {
+    const { data, error } = await supabase
+      .from('workspace_tasks')
+      .update(updates)
+      .eq('id', taskId)
+      .select()
+      .single()
+    return { data, error }
+  },
+
+  getMaterials: async (topicId) => {
+    const { data, error } = await supabase
+      .from('workspace_materials')
+      .select('*')
+      .eq('topic_id', topicId)
+      .order('created_at', { ascending: false })
+    return { data, error }
+  },
+
+  createMaterial: async (material) => {
+    const { data, error } = await supabase
+      .from('workspace_materials')
+      .insert(material)
+      .select()
+      .single()
+    return { data, error }
+  }
+}
+
+// Real-time subscriptions with error handling
 export const realtime = {
   subscribeToUserNotifications: (userId, callback) => {
-    return supabase
-      .channel('user-notifications')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'notifications',
-          filter: `recipient_id=eq.${userId}`
-        },
-        callback
-      )
-      .subscribe()
+    try {
+      return supabase
+        .channel('user-notifications')
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'notifications',
+            filter: `recipient_id=eq.${userId}`
+          },
+          callback
+        )
+        .subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            console.log('✅ Subscribed to notifications')
+          } else if (status === 'CHANNEL_ERROR') {
+            console.warn('⚠️ Notification subscription error')
+          }
+        })
+    } catch (error) {
+      console.warn('⚠️ Realtime notifications disabled:', error.message)
+      return { unsubscribe: () => {} }
+    }
   },
 
   subscribeToConversation: (conversationId, callback) => {
-    return supabase
-      .channel(`conversation-${conversationId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-          filter: `conversation_id=eq.${conversationId}`
-        },
-        callback
-      )
-      .subscribe()
+    try {
+      return supabase
+        .channel(`conversation-${conversationId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'messages',
+            filter: `conversation_id=eq.${conversationId}`
+          },
+          callback
+        )
+        .subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            console.log('✅ Subscribed to conversation')
+          } else if (status === 'CHANNEL_ERROR') {
+            console.warn('⚠️ Conversation subscription error')
+          }
+        })
+    } catch (error) {
+      console.warn('⚠️ Realtime messaging disabled:', error.message)
+      return { unsubscribe: () => {} }
+    }
   },
 
   subscribeToFeed: (callback) => {
-    return supabase
-      .channel('feed-updates')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'posts'
-        },
-        callback
-      )
-      .subscribe()
+    try {
+      return supabase
+        .channel('feed-updates')
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'posts'
+          },
+          callback
+        )
+        .subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            console.log('✅ Subscribed to feed updates')
+          } else if (status === 'CHANNEL_ERROR') {
+            console.warn('⚠️ Feed subscription error')
+          }
+        })
+    } catch (error) {
+      console.warn('⚠️ Realtime feed disabled:', error.message)
+      return { unsubscribe: () => {} }
+    }
   }
 }
 

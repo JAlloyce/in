@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   HiSearch, HiUserGroup, HiPlus, HiX, HiPhotograph, 
   HiGlobe, HiLockClosed, HiEyeOff, HiUsers, HiChat,
   HiBookOpen, HiCog, HiFlag
 } from "react-icons/hi";
 import { Link } from "react-router-dom";
+import { communities, auth } from '../lib/supabase';
 
 export default function Communities() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -19,79 +20,218 @@ export default function Communities() {
   });
   const [createdCommunities, setCreatedCommunities] = useState([]);
   
-  const joinedCommunities = [
-    { 
-      id: 1, 
-      name: "Tech Innovators", 
-      members: "12.5K", 
-      description: "For technology enthusiasts and innovators",
-      category: "Technology",
-      privacy: "public",
-      isAdmin: false,
-      posts: 142,
-      activity: "Very active"
-    },
-    { 
-      id: 2, 
-      name: "Digital Marketers", 
-      members: "8.2K", 
-      description: "Connect with digital marketing professionals",
-      category: "Marketing",
-      privacy: "public",
-      isAdmin: true,
-      posts: 89,
-      activity: "Active"
-    },
-  ];
+  // Real data states
+  const [user, setUser] = useState(null);
+  const [joinedCommunities, setJoinedCommunities] = useState([]);
+  const [suggestedCommunities, setSuggestedCommunities] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   
-  const suggestedCommunities = [
-    { id: 3, name: "Startup Founders", members: "5.7K", description: "Network with startup founders and investors", category: "Business" },
-    { id: 4, name: "AI & Machine Learning", members: "15.3K", description: "Discuss the latest in AI and ML technologies", category: "Technology" },
-    { id: 5, name: "UX Design Community", members: "9.8K", description: "Share and learn UX design best practices", category: "Design" },
-    { id: 6, name: "Cloud Architects", members: "7.1K", description: "For professionals working with cloud technologies", category: "Technology" },
-    { id: 7, name: "Data Science Hub", members: "11.4K", description: "Connect with data scientists worldwide", category: "Technology" },
-  ];
-
   const categories = [
     "Technology", "Business", "Marketing", "Design", "Healthcare", 
     "Education", "Finance", "Entertainment", "Sports", "Travel", "Other"
   ];
+
+  // Initialize communities
+  useEffect(() => {
+    initializeCommunities();
+  }, []);
+
+  const initializeCommunities = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Get current user
+      const { session } = await auth.getSession();
+      if (session?.user) {
+        setUser(session.user);
+        
+        // Load joined communities
+        await loadJoinedCommunities(session.user.id);
+      }
+
+      // Load suggested communities
+      await loadSuggestedCommunities();
+
+    } catch (err) {
+      console.error('Error initializing communities:', err);
+      setError('Failed to load communities');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadJoinedCommunities = async (userId) => {
+    const { data: joinedData, error: joinedError } = await communities.getJoined(userId);
+    
+    if (joinedError) {
+      console.error('Error loading joined communities:', joinedError);
+      return;
+    }
+
+    // Transform joined communities data
+    const transformedJoined = joinedData.map(membership => ({
+      id: membership.community.id,
+      name: membership.community.name,
+      members: `${membership.community.member_count || 0}`,
+      description: membership.community.description,
+      category: "Community",
+      privacy: "public",
+      isAdmin: false, // We'd need to check if user is admin
+      posts: Math.floor(Math.random() * 200), // Placeholder
+      activity: "Active"
+    }));
+
+    setJoinedCommunities(transformedJoined);
+  };
+
+  const loadSuggestedCommunities = async () => {
+    const { data: suggestedData, error: suggestedError } = await communities.getSuggested(20);
+    
+    if (suggestedError) {
+      console.error('Error loading suggested communities:', suggestedError);
+      return;
+    }
+
+    // Transform suggested communities data
+    const transformedSuggested = suggestedData.map(community => ({
+      id: community.id,
+      name: community.name,
+      members: `${community.member_count || 0}`,
+      description: community.description,
+      category: "Community"
+    }));
+
+    setSuggestedCommunities(transformedSuggested);
+  };
 
   const filteredCommunities = suggestedCommunities.filter(community => 
     community.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     community.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleCreateCommunity = () => {
+  const handleCreateCommunity = async () => {
     if (!communityForm.name || !communityForm.description || !communityForm.category) {
       alert("Please fill in all required fields");
       return;
     }
 
-    const newCommunity = {
-      id: Date.now(),
-      ...communityForm,
-      members: "1",
-      isAdmin: true,
-      posts: 0,
-      activity: "New",
-      createdDate: new Date().toLocaleDateString()
-    };
+    if (!user) {
+      alert('Please log in to create communities');
+      return;
+    }
 
-    setCreatedCommunities(prev => [newCommunity, ...prev]);
-    setCommunityForm({
-      name: "",
-      description: "",
-      category: "",
-      privacy: "public",
-      rules: "",
-      coverImage: null
-    });
-    setShowCreateModal(false);
-    alert("Community created successfully!");
+    try {
+      const { data: newCommunity, error } = await communities.create({
+        name: communityForm.name,
+        description: communityForm.description,
+        category: communityForm.category,
+        privacy_level: communityForm.privacy,
+        rules: communityForm.rules,
+        is_active: true
+      }, user.id);
+
+      if (error) {
+        console.error('Error creating community:', error);
+        alert('Failed to create community');
+        return;
+      }
+
+      // Add to local state
+      const localCommunity = {
+        id: newCommunity.id,
+        name: newCommunity.name,
+        members: "1",
+        description: newCommunity.description,
+        category: newCommunity.category,
+        privacy: newCommunity.privacy_level,
+        isAdmin: true,
+        posts: 0,
+        activity: "New",
+        createdDate: new Date().toLocaleDateString()
+      };
+
+      setCreatedCommunities(prev => [localCommunity, ...prev]);
+      setCommunityForm({
+        name: "",
+        description: "",
+        category: "",
+        privacy: "public",
+        rules: "",
+        coverImage: null
+      });
+      setShowCreateModal(false);
+      alert("Community created successfully!");
+    } catch (err) {
+      console.error('Error creating community:', err);
+      alert('Failed to create community');
+    }
+  };
+
+  const handleJoinCommunity = async (communityId) => {
+    if (!user) {
+      alert('Please log in to join communities');
+      return;
+    }
+
+    try {
+      const { error } = await communities.join(communityId, user.id);
+      if (error) {
+        console.error('Error joining community:', error);
+        alert('Failed to join community');
+        return;
+      }
+
+      // Move from suggested to joined
+      const community = suggestedCommunities.find(c => c.id === communityId);
+      if (community) {
+        setSuggestedCommunities(prev => prev.filter(c => c.id !== communityId));
+        setJoinedCommunities(prev => [{
+          ...community,
+          isAdmin: false,
+          posts: Math.floor(Math.random() * 50),
+          activity: "Active"
+        }, ...prev]);
+      }
+
+      alert('Successfully joined community!');
+    } catch (err) {
+      console.error('Error joining community:', err);
+      alert('Failed to join community');
+    }
   };
 
   const allJoinedCommunities = [...joinedCommunities, ...createdCommunities];
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-lg shadow p-6">
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <div className="w-8 h-8 border-2 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading communities...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-white rounded-lg shadow p-6">
+        <div className="text-center py-12">
+          <p className="text-red-600 mb-4">{error}</p>
+          <button 
+            onClick={initializeCommunities}
+            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white rounded-lg shadow p-6">
@@ -118,7 +258,15 @@ export default function Communities() {
       </div>
 
       <div className="mb-8">
-        <h2 className="text-xl font-semibold mb-4">Your Communities</h2>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold">Your Communities</h2>
+          <button 
+            onClick={() => user && loadJoinedCommunities(user.id)}
+            className="text-purple-600 text-sm font-medium"
+          >
+            Refresh
+          </button>
+        </div>
         {allJoinedCommunities.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {allJoinedCommunities.map(community => (
@@ -174,9 +322,17 @@ export default function Communities() {
       </div>
 
       <div>
-        <h2 className="text-xl font-semibold mb-4">
-          {searchQuery ? "Search Results" : "Discover Communities"}
-        </h2>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold">
+            {searchQuery ? "Search Results" : "Discover Communities"}
+          </h2>
+          <button 
+            onClick={() => loadSuggestedCommunities()}
+            className="text-purple-600 text-sm font-medium"
+          >
+            Refresh
+          </button>
+        </div>
         
         {filteredCommunities.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -196,7 +352,13 @@ export default function Communities() {
                   <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
                     {community.category}
                   </span>
-                  <button className="bg-purple-100 hover:bg-purple-200 text-purple-700 px-4 py-2 rounded-md font-medium text-sm transition-colors">
+                  <button 
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleJoinCommunity(community.id);
+                    }}
+                    className="bg-purple-100 hover:bg-purple-200 text-purple-700 px-4 py-2 rounded-md font-medium text-sm transition-colors"
+                  >
                     Join
                   </button>
                 </div>

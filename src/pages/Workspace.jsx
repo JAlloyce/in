@@ -4,6 +4,7 @@ import TopicsPanel from '../components/workspace/TopicsPanel';
 import CalendarPanel from '../components/workspace/CalendarPanel';
 import TasksPanel from '../components/workspace/TasksPanel';
 import AIChatPanel from '../components/workspace/AIChatPanel';
+import { workspace, auth } from '../lib/supabase';
 
 export default function Workspace() {
   const [activePanel, setActivePanel] = useState('topics');
@@ -13,6 +14,14 @@ export default function Workspace() {
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
+  // Real data states
+  const [user, setUser] = useState(null);
+  const [topics, setTopics] = useState([]);
+  const [tasks, setTasks] = useState([]);
+  const [materials, setMaterials] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
   // Detect mobile screens
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 1024);
@@ -20,6 +29,61 @@ export default function Workspace() {
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
+
+  // Initialize workspace
+  useEffect(() => {
+    initializeWorkspace();
+  }, []);
+
+  const initializeWorkspace = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Get current user
+      const { session } = await auth.getSession();
+      if (!session?.user) {
+        setError('Please log in to access workspace');
+        return;
+      }
+
+      setUser(session.user);
+      
+      // Load workspace data
+      await Promise.all([
+        loadTopics(session.user.id),
+        loadTasks(session.user.id)
+      ]);
+
+    } catch (err) {
+      console.error('Error initializing workspace:', err);
+      setError('Failed to load workspace');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadTopics = async (userId) => {
+    const { data: topicsData, error: topicsError } = await workspace.getTopics(userId);
+    
+    if (topicsError) {
+      console.error('Error loading topics:', topicsError);
+      return;
+    }
+
+    setTopics(topicsData || []);
+  };
+
+  const loadTasks = async (userId) => {
+    const { data: tasksData, error: tasksError } = await workspace.getTasks(userId);
+    
+    if (tasksError) {
+      console.error('Error loading tasks:', tasksError);
+      return;
+    }
+
+    setTasks(tasksData || []);
+  };
 
   const handleAiRequest = (prompt) => {
     setAiLoading(true);
@@ -46,6 +110,35 @@ export default function Workspace() {
     // In a real app, this would generate a shareable link
     alert(`"${content.title}" has been shared! Share link: https://studyspace.ai/share/${content.id}`);
   };
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-lg shadow p-6">
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading workspace...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-white rounded-lg shadow p-6">
+        <div className="text-center py-12">
+          <p className="text-red-600 mb-4">{error}</p>
+          <button 
+            onClick={initializeWorkspace}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
@@ -111,17 +204,22 @@ export default function Workspace() {
         <div className="flex-1 flex flex-col min-w-0">
           {activePanel === 'topics' && (
             <TopicsPanel 
+              topics={topics}
               onAiRequest={handleAiRequest} 
               onShareContent={handleShareContent}
             />
           )}
           {activePanel === 'calendar' && (
             <CalendarPanel 
+              tasks={tasks}
+              topics={topics}
               onShareContent={handleShareContent}
             />
           )}
           {activePanel === 'tasks' && (
             <TasksPanel 
+              tasks={tasks}
+              topics={topics}
               onShareContent={handleShareContent}
             />
           )}
