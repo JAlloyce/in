@@ -85,24 +85,43 @@ export default function Workspace() {
     setTasks(tasksData || []);
   };
 
-  const handleAiRequest = (prompt) => {
+  const handleAiRequest = async (prompt) => {
     setAiLoading(true);
     setAiResponse('');
     
-    // Simulate AI processing
-    setTimeout(() => {
-      const responses = [
-        "Based on your study schedule, I recommend focusing on Calculus next. You have an exam in 2 weeks, and you've only covered 40% of the material.",
-        "I've organized your Physics notes into these subtopics: 1. Newtonian Mechanics 2. Thermodynamics 3. Electromagnetism. Would you like me to create study materials for any of these?",
-        "Your biology task is behind schedule. I suggest allocating 90 minutes today to complete the cell structure exercises. I can generate practice questions if you'd like.",
-        "I've analyzed your schedule and found that Wednesday afternoons are consistently free. This would be an ideal time for deep focus sessions on advanced topics.",
-        "Your task completion rate for Math is 75%, which is above average. For Chemistry, it's 50%. Would you like me to suggest a revised study plan to improve chemistry performance?",
-        "I've generated 5 practice questions for Derivatives based on your lecture notes. Would you like me to add them to your Calculus topic?"
-      ];
+    try {
+      // Analyze the prompt and provide contextual responses based on user data
+      let response = ""
+      const promptLower = prompt?.toLowerCase() || ""
       
-      setAiResponse(responses[Math.floor(Math.random() * responses.length)]);
+      if (promptLower.includes('schedule') || promptLower.includes('time')) {
+        const upcomingTasks = tasks.filter(task => task.status !== 'completed').length
+        response = `Based on your current workload (${upcomingTasks} pending tasks), I recommend scheduling focused study sessions during your less busy periods. Consider time-blocking for deep work on your most challenging topics.`
+      } else if (promptLower.includes('topic') || promptLower.includes('subject')) {
+        const topicsCount = topics.length
+        response = `You have ${topicsCount} topics in your workspace. I suggest prioritizing topics with upcoming deadlines or those you find most challenging. Would you like me to help organize your study materials for any specific topic?`
+      } else if (promptLower.includes('task') || promptLower.includes('assignment')) {
+        const completedTasks = tasks.filter(task => task.status === 'completed').length
+        const pendingTasks = tasks.filter(task => task.status !== 'completed').length
+        const completionRate = tasks.length > 0 ? Math.round((completedTasks / tasks.length) * 100) : 0
+        response = `Your task completion rate is ${completionRate}%. You have ${pendingTasks} pending tasks. I recommend breaking down larger tasks into smaller, manageable chunks to improve your completion rate.`
+      } else if (promptLower.includes('study') || promptLower.includes('learn')) {
+        response = "For effective studying, I recommend the Pomodoro Technique (25-minute focused sessions with 5-minute breaks). This works well with spaced repetition for long-term retention. Would you like me to help create a study schedule?"
+      } else {
+        response = "I'm here to help you organize your learning journey. I can assist with scheduling, task management, study strategies, and organizing your topics. What specific area would you like help with?"
+      }
+      
+      // Simulate AI processing delay
+      setTimeout(() => {
+        setAiResponse(response);
+        setAiLoading(false);
+      }, 1500);
+      
+    } catch (error) {
+      console.error('Error processing AI request:', error);
+      setAiResponse('Sorry, I encountered an error processing your request. Please try again.');
       setAiLoading(false);
-    }, 1500);
+    }
   };
 
   const handleShareContent = (content) => {

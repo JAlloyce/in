@@ -79,7 +79,7 @@ export default function Communities() {
       category: "Community",
       privacy: "public",
       isAdmin: false, // We'd need to check if user is admin
-      posts: Math.floor(Math.random() * 200), // Placeholder
+      posts: community.posts_count || 0,
       activity: "Active"
     }));
 
@@ -190,7 +190,7 @@ export default function Communities() {
         setJoinedCommunities(prev => [{
           ...community,
           isAdmin: false,
-          posts: Math.floor(Math.random() * 50),
+          posts: community.posts_count || 0,
           activity: "Active"
         }, ...prev]);
       }

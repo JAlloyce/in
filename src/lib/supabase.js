@@ -206,6 +206,49 @@ export const posts = {
 
     const { data, error } = await query
     return { data, error }
+  },
+
+  save: async (postId, userId) => {
+    const { data, error } = await supabase
+      .from('saved_posts')
+      .insert({
+        post_id: postId,
+        user_id: userId
+      })
+      .select()
+      .single()
+    return { data, error }
+  },
+
+  unsave: async (postId, userId) => {
+    const { data, error } = await supabase
+      .from('saved_posts')
+      .delete()
+      .eq('post_id', postId)
+      .eq('user_id', userId)
+    return { data, error }
+  },
+
+  getSaved: async (userId, limit = 20) => {
+    const { data, error } = await supabase
+      .from('saved_posts')
+      .select(`
+        *,
+        post:posts!saved_posts_post_id_fkey (
+          id,
+          content,
+          created_at,
+          likes_count,
+          comments_count,
+          author:profiles!posts_created_by_fkey (
+            id, name, avatar_url, headline
+          )
+        )
+      `)
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(limit)
+    return { data, error }
   }
 }
 

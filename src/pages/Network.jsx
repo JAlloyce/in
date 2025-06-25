@@ -97,7 +97,7 @@ export default function Network() {
       name: profile.name,
       title: profile.headline || 'Professional',
       avatar_url: profile.avatar_url,
-      mutualConnections: Math.floor(Math.random() * 20) // Placeholder for mutual connections count
+              mutualConnections: suggestion.mutual_connections_count || 0
     }));
 
     setSuggestions(transformedSuggestions);

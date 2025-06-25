@@ -78,9 +78,9 @@ export default function Home() {
           },
           content: post.content,
           timestamp: formatTimestamp(post.created_at),
-          likes: Math.floor(Math.random() * 50), // Mock data for now
-          comments: Math.floor(Math.random() * 20),
-          shares: Math.floor(Math.random() * 10),
+          likes: post.likes_count || 0,
+          comments: post.comments_count || 0,
+          shares: post.shares_count || 0,
           media_urls: [],
           user_liked: false,
           source_id: post.source_id,
@@ -150,21 +150,44 @@ export default function Home() {
     }))
   }
 
-  const handleAiAnalysis = (post) => {
-    // Simulate AI analysis for now
-    const analyses = [
-      "This post demonstrates strong professional engagement and authentic storytelling. The personal experience shared could resonate well with your network.",
-      "The content shows thought leadership in the tech space. Consider adding specific metrics or data points to increase credibility.",
-      "This post effectively combines personal achievement with team recognition, which tends to perform well on LinkedIn.",
-      "The narrative structure is compelling. The emotional hook at the beginning draws readers in effectively.",
-      "This content aligns well with current industry trends. Consider cross-posting to relevant professional groups."
-    ]
-    
-    const randomAnalysis = analyses[Math.floor(Math.random() * analyses.length)]
-    setAiAnalysis(prev => ({
-      ...prev,
-      [post.id]: randomAnalysis
-    }))
+  const handleAiAnalysis = async (post) => {
+    try {
+      // Set loading state
+      setAiAnalysis(prev => ({
+        ...prev,
+        [post.id]: 'Analyzing post...'
+      }))
+
+      // In a real implementation, this would call an AI service
+      // For now, we'll use a simple analysis based on post content
+      let analysis = "This post shows professional engagement. "
+      
+      const content = post.content.toLowerCase()
+      if (content.includes('achievement') || content.includes('success')) {
+        analysis += "The achievement-focused content tends to perform well and inspire others."
+      } else if (content.includes('team') || content.includes('collaboration')) {
+        analysis += "Team-oriented content demonstrates leadership and collaborative skills."
+      } else if (content.includes('excited') || content.includes('thrilled')) {
+        analysis += "The positive tone and enthusiasm can help increase engagement."
+      } else {
+        analysis += "Consider adding more specific details or personal insights to increase engagement."
+      }
+
+      // Simulate API delay
+      setTimeout(() => {
+        setAiAnalysis(prev => ({
+          ...prev,
+          [post.id]: analysis
+        }))
+      }, 1500)
+      
+    } catch (err) {
+      console.error('Error analyzing post:', err)
+      setAiAnalysis(prev => ({
+        ...prev,
+        [post.id]: 'Unable to analyze this post at the moment.'
+      }))
+    }
   }
 
   const handlePostCreated = (newPost) => {

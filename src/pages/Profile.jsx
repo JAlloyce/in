@@ -128,7 +128,7 @@ export default function Profile({ isEditable = true, userData }) {
           bio: profile?.bio || 'No bio available yet. Update your profile to tell others about yourself!',
           website: profile?.website || '',
           connections: connectionsData?.length || 0,
-          followers: Math.floor(Math.random() * 500) + 50, // Mock data for now
+          followers: profileData.followers_count || 0,
           // Default experience data - would be from a separate table in full implementation
           experience: [
             {
@@ -165,7 +165,7 @@ export default function Profile({ isEditable = true, userData }) {
           timestamp: new Date(post.created_at).toLocaleDateString(),
           likes: post.likes_count?.[0]?.count || 0,
           comments: post.comments_count?.[0]?.count || 0,
-          shares: Math.floor(Math.random() * 10), // Mock data
+                      shares: post.shares_count || 0,
           type: "user",
           source: null,
           isEdited: false,
