@@ -240,7 +240,7 @@ export const posts = {
           created_at,
           likes_count,
           comments_count,
-          author:profiles!posts_created_by_fkey (
+          author:profiles!posts_author_id_fkey (
             id, name, avatar_url, headline
           )
         )
@@ -248,6 +248,46 @@ export const posts = {
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
       .limit(limit)
+    return { data, error }
+  }
+}
+
+// Comments helpers
+export const comments = {
+  getByPost: async (postId) => {
+    const { data, error } = await supabase
+      .from('comments')
+      .select(`
+        *,
+        user:profiles!comments_user_id_fkey (
+          id, name, avatar_url, headline
+        )
+      `)
+      .eq('post_id', postId)
+      .order('created_at', { ascending: true })
+    return { data, error }
+  },
+
+  create: async (comment) => {
+    const { data, error } = await supabase
+      .from('comments')
+      .insert(comment)
+      .select(`
+        *,
+        user:profiles!comments_user_id_fkey (
+          id, name, avatar_url, headline
+        )
+      `)
+      .single()
+    return { data, error }
+  },
+
+  delete: async (commentId, userId) => {
+    const { data, error } = await supabase
+      .from('comments')
+      .delete()
+      .eq('id', commentId)
+      .eq('user_id', userId)
     return { data, error }
   }
 }
