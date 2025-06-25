@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom"
 import { useAuth } from "./context/AuthContext"
 import Navbar from "./components/layout/Navbar"
 import Sidebar from "./components/layout/Sidebar"
+import NewsWidget from "./components/layout/NewsWidget"
 import Home from "./pages/Home"
 import Profile from "./pages/Profile"
 import Network from "./pages/Network"
@@ -98,22 +99,7 @@ function AppContent() {
         
         {!isWorkspace && isAuthenticated && (
         <div className="lg:col-span-1">
-          <div className="bg-white rounded-lg shadow p-3 sm:p-4 sticky top-20 sm:top-24">
-            <h3 className="font-semibold mb-3 sm:mb-4 text-sm sm:text-base">LinkedIn News</h3>
-            <div className="space-y-2 sm:space-y-3">
-              {[
-                "Tech layoffs continue",
-                "AI adoption in workplace",
-                "Remote work trends",
-                "Startup funding news",
-              ].map((news, index) => (
-                <div key={index} className="text-xs sm:text-sm">
-                  <p className="font-medium text-gray-900">{news}</p>
-                  <p className="text-gray-500">2h ago • 1,234 readers</p>
-                </div>
-              ))}
-            </div>
-          </div>
+          <NewsWidget />
         </div>
       )}
     </div>

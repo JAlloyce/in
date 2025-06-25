@@ -1,5 +1,6 @@
 import { Link, useLocation } from "react-router-dom"
 import { HiUser, HiBookmark, HiClock, HiFlag, HiUserGroup, HiPlus } from "react-icons/hi"
+import { useAuth } from "../../context/AuthContext"
 
 /**
  * Sidebar Component - Professional Edition
@@ -13,6 +14,7 @@ import { HiUser, HiBookmark, HiClock, HiFlag, HiUserGroup, HiPlus } from "react-
  */
 export default function Sidebar() {
   const location = useLocation();
+  const { user, getUserDisplayName, getUserAvatarUrl } = useAuth();
   const isWorkspace = location.pathname.startsWith("/workspace");
   
   if (isWorkspace) return null; // Hide app sidebar when in workspace
@@ -31,9 +33,23 @@ export default function Sidebar() {
         <div className="relative">
           <div className="h-16 bg-gradient-to-r from-blue-500 to-blue-600 rounded-t-lg"></div>
           <div className="px-4 pb-4 -mt-8">
-            <div className="w-16 h-16 rounded-full bg-gray-300 border-4 border-white mb-2"></div>
-            <h3 className="font-bold text-gray-900">John Doe</h3>
-            <p className="text-sm text-gray-500 mb-3">Software Engineer at TechCorp</p>
+            <div className="w-16 h-16 rounded-full bg-gray-300 border-4 border-white mb-2 overflow-hidden">
+              {getUserAvatarUrl() ? (
+                <img 
+                  src={getUserAvatarUrl()} 
+                  alt={getUserDisplayName()}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full bg-gray-300 flex items-center justify-center text-gray-600 font-semibold text-lg">
+                  {getUserDisplayName().charAt(0).toUpperCase()}
+                </div>
+              )}
+            </div>
+            <h3 className="font-bold text-gray-900">{getUserDisplayName()}</h3>
+            <p className="text-sm text-gray-500 mb-3">
+              {user?.user_metadata?.headline || user?.user_metadata?.job_title || 'Professional at LinkedIn Clone'}
+            </p>
 
             <div className="border-t pt-3 space-y-1">
               <div className="flex justify-between text-sm">
