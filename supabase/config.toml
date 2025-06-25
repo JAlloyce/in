@@ -160,16 +160,6 @@ s3_secret_key = "env(S3_SECRET_KEY)"
 
 [edge_runtime]
 enabled = true
-# Port to use for the Edge Runtime.
-port = 54330
 
 [functions]
-# Enabled Edge Functions
-"get-feed" = { path = "./supabase/functions/get-feed" }
-"create-post" = { path = "./supabase/functions/create-post" }
-"toggle-like" = { path = "./supabase/functions/toggle-like" }
-"search-jobs" = { path = "./supabase/functions/search-jobs" }
-"job-recommendations" = { path = "./supabase/functions/job-recommendations" }
-"send-message" = { path = "./supabase/functions/send-message" }
-"get-notifications" = { path = "./supabase/functions/get-notifications" }
-"upload-file" = { path = "./supabase/functions/upload-file" }
+# Functions are automatically detected from the ./supabase/functions directory
