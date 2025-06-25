@@ -131,14 +131,7 @@ export default function PostActions({
           
           {/* Dropdown menu */}
           {showMoreMenu && (
-            <>
-              {/* Backdrop to close menu */}
-              <div 
-                className="fixed inset-0 z-10" 
-                onClick={() => setShowMoreMenu(false)}
-              />
-              
-              {/* Menu content */}
+            <div className="fixed inset-0 z-10" onClick={() => setShowMoreMenu(false)}>
               <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border z-20 py-1">
                 {/* AI Insight for mobile - only show in more menu on small screens */}
                 <div className="lg:hidden">
@@ -177,7 +170,7 @@ export default function PostActions({
                   </button>
                 ))}
               </div>
-            </>
+            </div>
           )}
         </div>
       </div>
