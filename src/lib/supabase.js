@@ -440,20 +440,19 @@ export const companies = {
       .select(`
         *,
         company:companies!company_followers_company_id_fkey (
-          id, name, category, logo_url, follower_count, 
-          description, website, location, verified
+          id, name, industry, logo_url, follower_count, 
+          description, website, location
         )
       `)
       .eq('user_id', userId)
-      .order('followed_at', { ascending: false })
+      .order('created_at', { ascending: false })
     return { data, error }
   },
 
   getSuggested: async (limit = 10) => {
     const { data, error } = await supabase
       .from('companies')
-      .select('id, name, category, logo_url, follower_count, description')
-      .eq('is_active', true)
+      .select('id, name, industry, logo_url, follower_count, description')
       .order('follower_count', { ascending: false })
       .limit(limit)
     return { data, error }
@@ -464,9 +463,7 @@ export const companies = {
       .from('companies')
       .insert({
         ...company,
-        owner_id: userId,
-        is_active: true,
-        follower_count: 0
+        created_by: userId
       })
       .select()
       .single()
@@ -497,16 +494,15 @@ export const companies = {
   search: async (query = '', category = '', limit = 20) => {
     let queryBuilder = supabase
       .from('companies')
-      .select('id, name, category, logo_url, follower_count, description, website, location')
-      .eq('is_active', true)
+      .select('id, name, industry, logo_url, follower_count, description, website, location')
       .order('follower_count', { ascending: false })
       .limit(limit)
 
     if (query) {
       queryBuilder = queryBuilder.or(`name.ilike.%${query}%,description.ilike.%${query}%`)
     }
-    if (category) {
-      queryBuilder = queryBuilder.eq('category', category)
+    if (category && category !== 'all') {
+      queryBuilder = queryBuilder.eq('industry', category)
     }
 
     const { data, error } = await queryBuilder
