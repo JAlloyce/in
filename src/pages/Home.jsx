@@ -392,9 +392,6 @@ export default function Home() {
 
   return (
     <div className="space-y-6">
-      {/* Debug Info */}
-      <AuthDebug />
-      
       {/* Post Creation Interface */}
       <CreatePost user={user} onPostCreated={handlePostCreated} />
       

@@ -32,8 +32,8 @@ export const AuthProvider = ({ children }) => {
           
           // Load user profile if session exists
           if (initialSession?.user) {
-            console.log('👤 AuthContext: Skipping profile loading for now...');
-            // await loadUserProfile(initialSession.user.id);
+            console.log('👤 AuthContext: Loading user profile...');
+            await loadUserProfile(initialSession.user.id);
           }
         }
       } catch (error) {
@@ -61,8 +61,8 @@ export const AuthProvider = ({ children }) => {
         setUser(session?.user || null);
         
         if (event === 'SIGNED_IN' && session?.user) {
-          console.log('👤 AuthContext: User signed in, skipping profile for now...');
-          // await loadUserProfile(session.user.id);
+          console.log('👤 AuthContext: User signed in, loading profile...');
+          await loadUserProfile(session.user.id);
         } else if (event === 'SIGNED_OUT') {
           console.log('👋 AuthContext: User signed out');
           setProfile(null);
