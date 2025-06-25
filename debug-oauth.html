@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OAuth Debug Tool</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #f5f5f5; }
+        .container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .button { background: #4285f4; color: white; padding: 12px 24px; border: none; border-radius: 4px; cursor: pointer; margin: 10px 0; }
+        .button:hover { background: #3367d6; }
+        .error { background: #fee; color: #c33; padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .success { background: #efe; color: #363; padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .info { background: #eef; color: #336; padding: 10px; margin: 10px 0; border-radius: 4px; }
+        pre { background: #f8f8f8; padding: 10px; border-radius: 4px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 OAuth Configuration Debug Tool</h1>
+        
+        <div class="info">
+            <strong>Project ID:</strong> nuntsizvwfmjzucuubcd<br>
+            <strong>Supabase URL:</strong> https://nuntsizvwfmjzucuubcd.supabase.co
+        </div>
+
+        <button class="button" onclick="checkOAuthSettings()">1. Check OAuth Settings</button>
+        <button class="button" onclick="testGoogleOAuth()">2. Test Google OAuth URL</button>
+        <button class="button" onclick="checkEnvironment()">3. Check Environment</button>
+        
+        <div id="results"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.min.js"></script>
+    <script>
+        const SUPABASE_URL = 'https://nuntsizvwfmjzucuubcd.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im51bnRzaXp2d2Ztanp1Y3V1YmNkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzY5MTg0MDIsImV4cCI6MjA1MjQ5NDQwMn0.5vFNALUgSkjkQbGXVP5xEJhGOqFY8z1N-TGzJ6OvVN8'; // This is public, it's safe to show
+
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        function log(message, type = 'info') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = type;
+            div.innerHTML = message;
+            results.appendChild(div);
+        }
+
+        function logCode(code) {
+            const results = document.getElementById('results');
+            const pre = document.createElement('pre');
+            pre.textContent = code;
+            results.appendChild(pre);
+        }
+
+        async function checkOAuthSettings() {
+            log('🔍 Checking OAuth configuration...', 'info');
+            
+            try {
+                // Try to get settings from Supabase Auth
+                const response = await fetch(`${SUPABASE_URL}/auth/v1/settings`, {
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                    }
+                });
+                
+                const settings = await response.json();
+                
+                if (response.ok) {
+                    log('✅ Successfully retrieved settings', 'success');
+                    logCode(JSON.stringify(settings, null, 2));
+                    
+                    if (settings.external && settings.external.google && settings.external.google.enabled) {
+                        log('✅ Google OAuth is ENABLED', 'success');
+                    } else {
+                        log('❌ Google OAuth is NOT ENABLED in Supabase dashboard', 'error');
+                    }
+                } else {
+                    log('❌ Failed to get settings: ' + JSON.stringify(settings), 'error');
+                }
+            } catch (error) {
+                log('❌ Error checking settings: ' + error.message, 'error');
+            }
+        }
+
+        async function testGoogleOAuth() {
+            log('🧪 Testing Google OAuth URL generation...', 'info');
+            
+            try {
+                const { data, error } = await supabase.auth.signInWithOAuth({
+                    provider: 'google',
+                    options: {
+                        redirectTo: `${window.location.origin}/auth/callback`,
+                        queryParams: {
+                            access_type: 'offline',
+                            prompt: 'consent',
+                        }
+                    }
+                });
+
+                if (error) {
+                    log('❌ OAuth Error: ' + error.message, 'error');
+                    logCode(JSON.stringify(error, null, 2));
+                } else {
+                    log('✅ OAuth URL generated successfully!', 'success');
+                    if (data.url) {
+                        log('🔗 OAuth URL: ' + data.url, 'info');
+                        log('Click <a href="' + data.url + '" target="_blank">here</a> to test the OAuth flow', 'info');
+                    }
+                    logCode(JSON.stringify(data, null, 2));
+                }
+            } catch (error) {
+                log('❌ Exception: ' + error.message, 'error');
+            }
+        }
+
+        function checkEnvironment() {
+            log('🌍 Environment Check:', 'info');
+            log('Current URL: ' + window.location.href, 'info');
+            log('Origin: ' + window.location.origin, 'info');
+            log('Supabase URL: ' + SUPABASE_URL, 'info');
+            log('Anon Key (first 50 chars): ' + SUPABASE_ANON_KEY.substring(0, 50) + '...', 'info');
+            
+            // Test basic Supabase connection
+            supabase.auth.getSession().then(({ data, error }) => {
+                if (error) {
+                    log('❌ Supabase connection error: ' + error.message, 'error');
+                } else {
+                    log('✅ Supabase connection successful', 'success');
+                }
+            });
+        }
+
+        // Auto-run environment check
+        setTimeout(checkEnvironment, 500);
+    </script>
+</body>
+</html>

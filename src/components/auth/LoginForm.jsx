@@ -5,33 +5,66 @@ import { FaGoogle, FaGithub, FaLinkedin } from 'react-icons/fa'
 export default function LoginForm({ onClose }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [debugInfo, setDebugInfo] = useState('')
 
   const handleOAuthLogin = async (provider) => {
     try {
       setLoading(true)
       setError('')
+      setDebugInfo('Starting OAuth flow...')
+      
+      console.log('🔍 OAuth Debug Info:')
+      console.log('Provider:', provider)
+      console.log('Current origin:', window.location.origin)
+      console.log('Redirect URL will be:', `${window.location.origin}/auth/callback`)
       
       let result
       if (provider === 'google') {
+        setDebugInfo('Calling auth.signInWithGoogle()...')
         result = await auth.signInWithGoogle()
       } else if (provider === 'github') {
+        setDebugInfo('Calling auth.signInWithGitHub()...')
         result = await auth.signInWithGitHub()
       }
 
+      console.log('🔍 OAuth Result:', result)
+
       if (result.error) {
-        setError(result.error.message)
+        console.error('❌ OAuth Error Details:', result.error)
+        setError(`OAuth Error: ${result.error.message}`)
+        setDebugInfo(`Error Code: ${result.error.code || 'N/A'}\nError Message: ${result.error.message}`)
+      } else {
+        console.log('✅ OAuth initiated successfully')
+        setDebugInfo('OAuth URL generated, redirecting...')
+        // On success, user will be redirected by OAuth flow
       }
-      // On success, user will be redirected by OAuth flow
     } catch (err) {
+      console.error('❌ Exception during OAuth:', err)
       setError('Authentication failed. Please try again.')
+      setDebugInfo(`Exception: ${err.message}\nStack: ${err.stack}`)
     } finally {
       setLoading(false)
     }
   }
 
+  const testSupabaseConnection = async () => {
+    try {
+      setDebugInfo('Testing Supabase connection...')
+      const { data, error } = await auth.getSession()
+      if (error) {
+        setDebugInfo(`Supabase connection failed: ${error.message}`)
+      } else {
+        setDebugInfo('Supabase connection successful!')
+        console.log('✅ Supabase session data:', data)
+      }
+    } catch (err) {
+      setDebugInfo(`Connection test failed: ${err.message}`)
+    }
+  }
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4">
+      <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
         <div className="text-center mb-6">
           <FaLinkedin className="text-blue-600 text-4xl mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Welcome Back</h2>
@@ -40,11 +73,26 @@ export default function LoginForm({ onClose }) {
 
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
-            {error}
+            <strong>Error:</strong> {error}
+          </div>
+        )}
+
+        {debugInfo && (
+          <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded mb-4 text-xs">
+            <strong>Debug Info:</strong>
+            <pre className="mt-2 whitespace-pre-wrap">{debugInfo}</pre>
           </div>
         )}
 
         <div className="space-y-4">
+          {/* Test Connection Button */}
+          <button
+            onClick={testSupabaseConnection}
+            className="w-full flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg text-gray-700 bg-gray-50 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
+          >
+            🔧 Test Supabase Connection
+          </button>
+
           {/* Google OAuth */}
           <button
             onClick={() => handleOAuthLogin('google')}
@@ -71,7 +119,7 @@ export default function LoginForm({ onClose }) {
             <div className="w-full border-t border-gray-300" />
           </div>
           <div className="relative flex justify-center text-sm">
-            <span className="px-2 bg-white text-gray-500">Professional Network</span>
+            <span className="px-2 bg-white text-gray-500">Debug Mode</span>
           </div>
         </div>
 
@@ -86,14 +134,7 @@ export default function LoginForm({ onClose }) {
 
         <div className="mt-6 text-xs text-gray-500 text-center">
           <p>
-            By signing in, you agree to LinkedIn's{' '}
-            <a href="#" className="text-blue-600 hover:underline">
-              User Agreement
-            </a>{' '}
-            and{' '}
-            <a href="#" className="text-blue-600 hover:underline">
-              Privacy Policy
-            </a>
+            Debug Mode Active - Check console for detailed logs
           </p>
         </div>
       </div>
