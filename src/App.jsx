@@ -14,7 +14,6 @@ import Pages from "./pages/Pages"
 import CompanyPage from "./pages/CompanyPage"
 import Workspace from "./pages/Workspace"
 import CommunityDetail from "./pages/CommunityDetail"
-import UserProfile from "./pages/UserProfile"
 
 /**
  * Main Application Component - Professional Edition
@@ -29,12 +28,8 @@ import UserProfile from "./pages/UserProfile"
 function App() {
   return (
     <BrowserRouter>
-      {/* Professional main container */}
-      <div className="min-h-screen bg-professional">
-        {/* Global navigation bar */}
+      <div className="min-h-screen bg-gray-50">
         <Navbar />
-        
-        {/* Content wrapper with LinkedIn-style max width */}
         <div className="max-w-7xl mx-auto px-4 py-6">
           <AppContent />
         </div>
@@ -54,38 +49,21 @@ function App() {
  */
 function AppContent() {
   const location = useLocation();
-  
-  // Special handling for workspace route - requires full-width layout
   const isWorkspace = location.pathname.startsWith("/workspace");
-  
-  // Authentication check using localStorage token
   const isLoggedIn = !!localStorage.getItem("token");
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 transition-all duration-300">
-      {/* Left Sidebar - Hidden on workspace and non-authenticated views */}
+    <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
       {!isWorkspace && isLoggedIn && (
         <div className="lg:col-span-1">
-          <div className="sticky top-24">
-            <Sidebar />
-          </div>
+          <Sidebar />
         </div>
       )}
       
-      {/* Main Content Area - Dynamic width based on context */}
-      <div className={`
-        transition-all duration-300
-        ${isWorkspace 
-          ? 'lg:col-span-4 workspace-full-view' 
-          : isLoggedIn 
-            ? 'lg:col-span-2' 
-            : 'lg:col-span-3 lg:col-start-2'
-        }
-      `}>
+      <div className={`${isWorkspace ? 'lg:col-span-4' : isLoggedIn ? 'lg:col-span-2' : 'lg:col-span-3 lg:col-start-2'}`}>
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/my-profile" element={<Profile />} />
-          <Route path="/profile/:userId" element={<UserProfile />} />
+          <Route path="/profile" element={<Profile />} />
           <Route path="/network" element={<Network />} />
           <Route path="/notifications" element={<Notifications />} />
           <Route path="/jobs" element={<Jobs />} />
@@ -100,38 +78,22 @@ function AppContent() {
         </Routes>
       </div>
       
-      {/* Right Sidebar - LinkedIn News Section */}
       {!isWorkspace && isLoggedIn && (
         <div className="lg:col-span-1">
-          <div className="sticky top-24">
-            {/* Professional News Feed */}
-            <div className="card-modern p-4 hover-lift">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold text-gray-900">LinkedIn News</h3>
-                <span className="text-xs text-gray-500">Updated</span>
-              </div>
-              
-              <div className="space-y-3">
-                {[
-                  { title: "Tech layoffs continue", readers: "12,345", time: "2h" },
-                  { title: "AI adoption in workplace", readers: "8,901", time: "4h" },
-                  { title: "Remote work trends", readers: "15,234", time: "6h" },
-                  { title: "Startup funding news", readers: "6,789", time: "8h" },
-                ].map((news, index) => (
-                  <div key={index} className="group cursor-pointer">
-                    <h4 className="font-medium text-gray-900 text-sm group-hover:text-blue-600 transition-colors">
-                      {news.title}
-                    </h4>
-                    <p className="text-gray-500 text-xs mt-1">
-                      {news.time} ago • {news.readers} readers
-                    </p>
-                  </div>
-                ))}
-              </div>
-              
-              <button className="mt-4 text-sm text-blue-600 hover:text-blue-700 font-medium">
-                Show more
-              </button>
+          <div className="bg-white rounded-lg shadow p-4 sticky top-24">
+            <h3 className="font-semibold mb-4">LinkedIn News</h3>
+            <div className="space-y-3">
+              {[
+                "Tech layoffs continue",
+                "AI adoption in workplace",
+                "Remote work trends",
+                "Startup funding news",
+              ].map((news, index) => (
+                <div key={index} className="text-sm">
+                  <p className="font-medium text-gray-900">{news}</p>
+                  <p className="text-gray-500">2h ago • 1,234 readers</p>
+                </div>
+              ))}
             </div>
           </div>
         </div>

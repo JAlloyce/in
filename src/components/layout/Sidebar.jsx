@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom"
-import { HiUser, HiBookmark, HiClock, HiFlag, HiUserGroup, HiPlus, HiEye, HiTrendingUp } from "react-icons/hi"
+import { HiUser, HiBookmark, HiClock, HiFlag, HiUserGroup, HiPlus } from "react-icons/hi"
 
 /**
  * Sidebar Component - Professional Edition
@@ -15,139 +15,58 @@ export default function Sidebar() {
   const location = useLocation();
   const isWorkspace = location.pathname.startsWith("/workspace");
   
-  // Get login status from localStorage
-  const isLoggedIn = !!localStorage.getItem("token");
-  
-  if (isWorkspace || !isLoggedIn) return null;
+  if (isWorkspace) return null; // Hide app sidebar when in workspace
 
   const menuItems = [
-    { 
-      icon: HiUser, 
-      text: "Your Profile", 
-      path: "/my-profile"
-    },
-    { 
-      icon: HiUserGroup, 
-      text: "Communities", 
-      path: "/communities"
-    },
-    { 
-      icon: HiBookmark, 
-      text: "Saved", 
-      path: "/saved"
-    },
-    { 
-      icon: HiClock, 
-      text: "Recent", 
-      path: "/recent"
-    },
-    { 
-      icon: HiFlag, 
-      text: "Pages", 
-      path: "/pages"
-    },
+    { icon: HiUser, text: "Your Profile", path: "/profile", color: "text-blue-500" },
+    { icon: HiUserGroup, text: "Communities", path: "/communities", color: "text-purple-500" },
+    { icon: HiBookmark, text: "Saved", path: "/saved", color: "text-pink-500" },
+    { icon: HiClock, text: "Recent", path: "/recent", color: "text-blue-500" },
+    { icon: HiFlag, text: "Pages", path: "/pages", color: "text-purple-500" },
   ]
 
   return (
-    <aside className="w-full space-y-4">
-      {/* Professional Profile Card */}
-      <div className="card-modern hover-lift p-0 overflow-hidden">
-        {/* LinkedIn-style header */}
-        <div className="relative h-16 bg-gradient-to-r from-blue-600 to-blue-700">
-          <div className="absolute inset-0 bg-gradient-to-r from-blue-600/90 to-blue-700/90"></div>
-        </div>
-        
-        <div className="px-4 pb-4 -mt-8 relative">
-          {/* Professional Avatar */}
-          <div className="relative mb-3">
-            <div className="w-16 h-16 rounded-full bg-white border-4 border-white shadow-lg flex items-center justify-center">
-              <div className="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center text-white font-semibold text-lg">
-                JD
-              </div>
-            </div>
-            
-            {/* Online status indicator */}
-            <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
-          </div>
+    <aside className="hidden md:block w-64 flex-shrink-0">
+      <div className="bg-white rounded-lg shadow sticky top-24">
+        <div className="relative">
+          <div className="h-16 bg-gradient-to-r from-blue-500 to-blue-600 rounded-t-lg"></div>
+          <div className="px-4 pb-4 -mt-8">
+            <div className="w-16 h-16 rounded-full bg-gray-300 border-4 border-white mb-2"></div>
+            <h3 className="font-bold text-gray-900">John Doe</h3>
+            <p className="text-sm text-gray-500 mb-3">Software Engineer at TechCorp</p>
 
-          {/* Professional Profile Info */}
-          <div className="text-center mb-4">
-            <h3 className="font-semibold text-lg text-gray-900 mb-1">John Doe</h3>
-            <p className="text-gray-600 text-sm mb-2">Software Engineer at TechCorp</p>
-            <p className="text-gray-500 text-xs">Building innovative solutions</p>
-          </div>
-
-          {/* Professional Statistics */}
-          <div className="space-y-2 pt-3 border-t border-gray-100">
-            <div className="flex justify-between items-center text-sm">
-              <div className="flex items-center gap-2 text-gray-600">
-                <HiEye className="w-4 h-4" />
-                <span>Profile views</span>
+            <div className="border-t pt-3 space-y-1">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">Profile viewers</span>
+                <span className="text-blue-600 font-medium">142</span>
               </div>
-              <span className="text-blue-600 font-semibold">142</span>
-            </div>
-            
-            <div className="flex justify-between items-center text-sm">
-              <div className="flex items-center gap-2 text-gray-600">
-                <HiTrendingUp className="w-4 h-4" />
-                <span>Post impressions</span>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">Post impressions</span>
+                <span className="text-blue-600 font-medium">1,204</span>
               </div>
-              <span className="text-blue-600 font-semibold">1,204</span>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Professional Navigation Menu */}
-      <div className="card-modern p-0 overflow-hidden">
-        <nav className="p-2">
-          <ul className="space-y-1">
+        <div className="border-t">
+          <ul className="p-4 space-y-2">
             {menuItems.map((item, index) => (
               <li key={index}>
                 <Link 
                   to={item.path}
-                  className="
-                    group flex items-center gap-3 p-3 rounded-lg
-                    transition-all duration-200
-                    text-gray-700 hover:bg-gray-50 hover:text-blue-600
-                  "
+                  className="flex items-center py-2 px-3 rounded hover:bg-gray-100 transition-colors group"
                 >
-                  <item.icon className="w-5 h-5 text-gray-500 group-hover:text-blue-600 transition-colors" />
-                  <span className="font-medium">{item.text}</span>
+                  <item.icon className={`w-5 h-5 mr-3 ${item.color} group-hover:${item.color}`} />
+                  <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900">{item.text}</span>
                 </Link>
               </li>
             ))}
           </ul>
-        </nav>
 
-        {/* Professional Discovery Section */}
-        <div className="p-4 border-t border-gray-100">
-          <button className="
-            group w-full flex items-center justify-center gap-2
-            p-3 rounded-lg
-            text-gray-600 hover:text-blue-600
-            border border-gray-200 hover:border-blue-300
-            hover:bg-blue-50
-            transition-all duration-200
-            font-medium text-sm
-          ">
-            <HiPlus className="w-4 h-4" />
-            <span>Discover more</span>
-          </button>
-        </div>
-      </div>
-
-      {/* LinkedIn Premium Suggestion */}
-      <div className="card-modern p-4 border border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50">
-        <div className="flex items-start gap-3">
-          <div className="w-8 h-8 bg-amber-500 rounded flex items-center justify-center flex-shrink-0">
-            <span className="text-white font-bold text-xs">P</span>
-          </div>
-          <div>
-            <h4 className="font-semibold text-gray-900 text-sm mb-1">Try Premium for free</h4>
-            <p className="text-gray-600 text-xs mb-2">See who's viewed your profile and access exclusive tools</p>
-            <button className="text-blue-600 text-xs font-semibold hover:underline">
-              Try for free
+          <div className="border-t px-4 py-3">
+            <button className="flex items-center text-sm font-medium text-gray-500 hover:text-gray-700 group">
+              <HiPlus className="w-4 h-4 mr-2 text-pink-500 group-hover:text-pink-600" />
+              Discover more
             </button>
           </div>
         </div>

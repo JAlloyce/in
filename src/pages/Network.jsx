@@ -31,7 +31,7 @@ export default function Network() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 bg-purple-50 min-h-screen p-4 rounded-lg">
       {/* Network Header */}
       <div className="bg-white rounded-lg shadow p-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">

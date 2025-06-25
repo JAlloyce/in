@@ -5,7 +5,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom"
 import { 
   HiSearch, HiHome, HiUserGroup, HiBriefcase, 
   HiChat, HiBell, HiViewGrid, HiCog, HiMenu, HiX, HiDotsHorizontal,
-  HiLogin, HiLogout, HiUserCircle, HiUser
+  HiLogin, HiLogout, HiUser, HiBookmark, HiFlag, HiUsers
 } from "react-icons/hi"
 import SettingsModal from "../settings/SettingsModal"
 
@@ -26,30 +26,27 @@ export default function Navbar() {
   const location = useLocation()
   const navigate = useNavigate()
   
-  // Professional navigation items
-  const navItems = isLoggedIn
-    ? [
-        { icon: HiHome, label: "Home", path: "/" },
-        { icon: HiUserGroup, label: "My Network", path: "/network" },
-        { icon: HiBriefcase, label: "Jobs", path: "/jobs" },
-        { icon: HiChat, label: "Messaging", path: "/messaging" },
-        { 
-          icon: HiBell, 
-          label: "Notifications", 
-          path: "/notifications",
-          badge: unreadNotifications
-        },
-        { icon: HiViewGrid, label: "Work", path: "/workspace" },
-      ]
-    : [
-        { icon: HiHome, label: "Home", path: "/" },
-        { icon: HiUserGroup, label: "Network", path: "/network" },
-        { icon: HiBriefcase, label: "Jobs", path: "/jobs" },
-      ]
+  // Navigation items with vibrant colors
+  const navItems = [
+    { icon: HiHome, label: "Home", path: "/", color: "text-blue-500" },
+    { icon: HiUserGroup, label: "Network", path: "/network", color: "text-purple-500" },
+    { icon: HiBriefcase, label: "Jobs", path: "/jobs", color: "text-pink-500" },
+    { icon: HiChat, label: "Messaging", path: "/messaging", color: "text-blue-500" },
+    { icon: HiBell, label: "Notifications", path: "/notifications", color: "text-purple-500" },
+    { icon: HiViewGrid, label: "Work", path: "/workspace", color: "text-pink-500" },
+    { icon: HiCog, label: "Settings", path: "#", action: () => setShowSettings(true), color: "text-blue-500" },
+  ]
+
+  // Additional items for mobile "More" dropdown
+  const moreItems = [
+    { icon: HiUsers, label: "Communities", path: "/communities", color: "text-purple-500" },
+    { icon: HiFlag, label: "Pages", path: "/pages", color: "text-pink-500" },
+    { icon: HiBookmark, label: "Saved", path: "/saved", color: "text-blue-500" },
+  ]
 
   const isActive = (path) => location.pathname === path
 
-  // Handle click outside to close dropdowns
+  // Handle click outside to close dropdown
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -124,196 +121,161 @@ export default function Navbar() {
 
   return (
     <>
-      {/* Professional Header */}
-      <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-gray-200 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 py-2">
-          <div className="flex items-center justify-between">
-            
-            {/* LinkedIn Logo */}
-            <div className="flex items-center mr-6">
-              <Link to="/" className="flex items-center group">
-                <div className="text-2xl font-bold text-blue-600 group-hover:text-blue-700 transition-colors">
-                  in
-                </div>
-              </Link>
-            </div>
+      <header className="sticky top-0 z-30 bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 py-2 flex items-center">
+          {/* Logo */}
+          <div className="flex items-center mr-3">
+            <div className="text-blue-600 text-2xl font-bold">in</div>
+          </div>
 
-            {/* Professional Search Bar */}
-            <div className="hidden md:block relative flex-1 max-w-md">
-              <div className="relative">
-                <HiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 w-4 h-4" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search"
-                  className="
-                    w-full pl-10 pr-4 py-2 
-                    bg-gray-100 hover:bg-gray-50
-                    border border-transparent hover:border-gray-300
-                    rounded-md
-                    text-gray-900 placeholder-gray-500
-                    focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200
-                    transition-all duration-200
-                  "
-                />
-              </div>
-            </div>
+          {/* Search - Hidden on mobile */}
+          <div className="hidden md:block relative flex-1 max-w-xs">
+            <HiSearch className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-gray-500 w-4 h-4" />
+            <input
+              type="text"
+              placeholder="Search"
+              className="pl-8 pr-3 py-1 bg-gray-100 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 w-full text-sm"
+            />
+          </div>
 
-            {/* Desktop Navigation */}
-            <nav className="hidden md:flex items-center space-x-2 ml-6">
-              {navItems.map((item) => (
-                <button
+          {/* Desktop Navigation */}
+          <nav className="hidden md:flex flex-1 justify-center">
+            <div className="flex space-x-6">
+              {navItems.slice(0, 6).map((item) => (
+                <Link
+                  to={item.path}
                   key={item.label}
-                  className={`
-                    group relative flex flex-col items-center p-3 rounded-lg
-                    transition-all duration-200
-                    ${isActive(item.path) 
-                      ? "text-gray-900" 
-                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
-                    }
-                  `}
-                  onClick={() => handleProtectedClick(item.path, item.action)}
+                  className={`flex flex-col items-center transition-colors ${
+                    isActive(item.path) 
+                      ? `${item.color}` 
+                      : "text-gray-500 hover:text-black"
+                  }`}
                 >
-                  <div className="relative">
-                    <item.icon className="text-xl mb-1" />
-                    {item.badge !== undefined && <NotificationBadge count={item.badge} />}
-                  </div>
-                  <span className="text-xs font-medium">{item.label}</span>
-                  
-                  {/* Active indicator */}
-                  {isActive(item.path) && (
-                    <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-8 h-0.5 bg-blue-600 rounded-full"></div>
-                  )}
-                </button>
+                  <item.icon className="text-xl" />
+                  <span className="text-xs">{item.label}</span>
+                </Link>
               ))}
-            </nav>
-
-            {/* Mobile Menu Button */}
-            <div className="md:hidden">
-              <button 
-                onClick={() => setShowMobileMenu(!showMobileMenu)}
-                className="p-2 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors"
-              >
-                {showMobileMenu ? <HiX className="w-6 h-6" /> : <HiMenu className="w-6 h-6" />}
-              </button>
             </div>
+          </nav>
 
-            {/* Right Side Actions */}
-            <div className="hidden md:flex items-center space-x-2 ml-6">
-              {isLoggedIn ? (
-                <>
-                  {/* Settings Button */}
-                  <button
-                    onClick={() => setShowSettings(true)}
-                    className="p-3 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors"
-                  >
-                    <HiCog className="text-xl" />
-                  </button>
+          {/* Mobile Menu Button */}
+          <div className="md:hidden ml-auto">
+            <button 
+              onClick={() => setShowMobileMenu(!showMobileMenu)}
+              className="text-gray-500 hover:text-gray-700"
+            >
+              {showMobileMenu ? <HiX className="w-6 h-6" /> : <HiMenu className="w-6 h-6" />}
+            </button>
+          </div>
 
-                  {/* Profile Dropdown */}
-                  <div className="relative" ref={profileRef}>
-                    <button
-                      onClick={() => setShowProfileDropdown(!showProfileDropdown)}
-                      className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-50 transition-colors"
+          {/* Desktop Right Icons */}
+          <div className="hidden md:flex items-center space-x-4 ml-4">
+            <button
+              onClick={() => setShowSettings(true)}
+              className={`flex flex-col items-center ${
+                showSettings ? "text-blue-500" : "text-gray-500 hover:text-black"
+              }`}
+            >
+              <HiCog className="text-2xl" />
+              <span className="text-xs mt-1">Settings</span>
+            </button>
+
+            <Link to="/profile" className="flex flex-col items-center text-gray-500 hover:text-black">
+              <div className="w-6 h-6 rounded-full bg-gray-300 mb-1"></div>
+              <span className="text-xs">Me</span>
+            </Link>
+          </div>
+        </div>
+      </header>
+
+      {/* Mobile Navigation Bar */}
+      {showMobileMenu && (
+        <div className="md:hidden fixed inset-x-0 bottom-0 bg-white border-t z-50 shadow-lg">
+          <div className="flex justify-around py-2 px-2">
+            {/* First 4 navigation items */}
+            {navItems.slice(0, 4).map((item) => (
+              <Link
+                to={item.path}
+                key={item.label}
+                className={`flex flex-col items-center px-2 py-1 ${
+                  isActive(item.path) ? item.color : "text-gray-500"
+                }`}
+                onClick={() => setShowMobileMenu(false)}
+              >
+                <item.icon className="w-6 h-6" />
+                <span className="text-xs mt-1">{item.label}</span>
+              </Link>
+            ))}
+            
+            {/* More dropdown */}
+            <div className="relative" ref={dropdownRef}>
+              <button
+                className={`flex flex-col items-center px-2 py-1 ${
+                  showMoreDropdown ? "text-purple-500" : "text-gray-500"
+                }`}
+                onClick={() => setShowMoreDropdown(!showMoreDropdown)}
+              >
+                <HiDotsHorizontal className="w-6 h-6" />
+                <span className="text-xs mt-1">More</span>
+              </button>
+              {/* Dropdown menu */}
+              {showMoreDropdown && (
+                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-48 bg-white rounded-lg shadow-lg py-2 border">
+                  {/* Original navbar items */}
+                  {navItems.slice(4).map((item) => (
+                    item.path !== "#" ? (
+                      <Link
+                        key={item.label}
+                        to={item.path}
+                        className={`flex items-center px-4 py-2 hover:bg-gray-100 ${item.color}`}
+                        onClick={() => {
+                          setShowMobileMenu(false);
+                          setShowMoreDropdown(false);
+                        }}
+                      >
+                        <item.icon className="w-5 h-5 mr-2" />
+                        <span>{item.label}</span>
+                      </Link>
+                    ) : (
+                      <div
+                        key={item.label}
+                        className={`flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer ${item.color}`}
+                        onClick={() => {
+                          item.action?.();
+                          setShowMobileMenu(false);
+                          setShowMoreDropdown(false);
+                        }}
+                      >
+                        <item.icon className="w-5 h-5 mr-2" />
+                        <span>{item.label}</span>
+                      </div>
+                    )
+                  ))}
+                  
+                  {/* Separator */}
+                  <div className="border-t border-gray-200 my-2"></div>
+                  
+                  {/* Additional sidebar items for mobile */}
+                  {moreItems.map((item) => (
+                    <Link
+                      key={item.label}
+                      to={item.path}
+                      className={`flex items-center px-4 py-2 hover:bg-gray-100 ${item.color}`}
+                      onClick={() => {
+                        setShowMobileMenu(false);
+                        setShowMoreDropdown(false);
+                      }}
                     >
-                      <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-medium text-sm">
-                        JD
-                      </div>
-                      <span className="text-sm font-medium text-gray-700 hidden lg:block">John Doe</span>
-                    </button>
-                    
-                    {/* Profile Dropdown Menu */}
-                    {showProfileDropdown && (
-                      <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
-                        <div className="px-4 py-3 border-b border-gray-100">
-                          <p className="font-semibold text-gray-900">John Doe</p>
-                          <p className="text-sm text-gray-600">Software Engineer</p>
-                        </div>
-                        <Link 
-                          to="/my-profile" 
-                          className="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-50 transition-colors"
-                          onClick={() => setShowProfileDropdown(false)}
-                        >
-                          <HiUser className="w-4 h-4 mr-3" />
-                          View Profile
-                        </Link>
-                        <button 
-                          onClick={handleLogout}
-                          className="flex items-center w-full px-4 py-2 text-gray-700 hover:bg-gray-50 transition-colors"
-                        >
-                          <HiLogout className="w-4 h-4 mr-3" />
-                          Sign Out
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </>
-              ) : (
-                <button
-                  onClick={() => setShowLoginModal(true)}
-                  className="btn-professional flex items-center gap-2"
-                >
-                  <HiLogin className="w-4 h-4" />
-                  <span>Sign In</span>
-                </button>
+                      <item.icon className="w-5 h-5 mr-2" />
+                      <span>{item.label}</span>
+                    </Link>
+                  ))}
+                </div>
               )}
             </div>
           </div>
         </div>
-
-        {/* Mobile Navigation */}
-        {showMobileMenu && (
-          <div className="md:hidden bg-white border-t border-gray-200">
-            <nav className="p-4 space-y-2">
-              {navItems.map((item) => (
-                <button
-                  key={item.label}
-                  className={`
-                    w-full flex items-center gap-4 p-3 rounded-lg text-left
-                    transition-colors
-                    ${isActive(item.path) 
-                      ? "text-blue-600 bg-blue-50" 
-                      : "text-gray-700 hover:bg-gray-50"
-                    }
-                  `}
-                  onClick={() => {
-                    handleProtectedClick(item.path, item.action)
-                    setShowMobileMenu(false)
-                  }}
-                >
-                  <div className="relative">
-                    <item.icon className="text-xl" />
-                    {item.badge !== undefined && <NotificationBadge count={item.badge} />}
-                  </div>
-                  <span className="font-medium">{item.label}</span>
-                </button>
-              ))}
-              
-              {/* Mobile Auth Actions */}
-              {!isLoggedIn ? (
-                <button
-                  onClick={() => {
-                    setShowLoginModal(true)
-                    setShowMobileMenu(false)
-                  }}
-                  className="w-full btn-professional mt-4"
-                >
-                  Sign In
-                </button>
-              ) : (
-                <button
-                  onClick={handleLogout}
-                  className="w-full flex items-center gap-4 p-3 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
-                >
-                  <HiLogout className="text-xl" />
-                  <span className="font-medium">Sign Out</span>
-                </button>
-              )}
-            </nav>
-          </div>
-        )}
-      </header>
+      )}
 
       {/* Professional Login Modal */}
       {showLoginModal && (
@@ -371,10 +333,7 @@ export default function Navbar() {
         </div>
       )}
 
-      {/* Settings Modal */}
-      {showSettings && (
-        <SettingsModal onClose={() => setShowSettings(false)} />
-      )}
+      <SettingsModal isOpen={showSettings} onClose={() => setShowSettings(false)} />
     </>
   )
 }

@@ -229,7 +229,7 @@ export default function Messaging() {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-150px)] max-h-screen">
+    <div className="flex flex-col h-[calc(100vh-150px)] max-h-screen bg-blue-50 p-4 rounded-lg">
       {/* Conversations List */}
       <div className="w-full bg-white rounded-lg shadow overflow-hidden flex flex-col h-full">
         <div className="p-4 border-b">
