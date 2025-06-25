@@ -13,18 +13,21 @@ export default function LoginForm({ onClose }) {
       setError('')
       setDebugInfo('Starting OAuth flow...')
       
+      const redirectUrl = `${window.location.origin}/auth/callback`
+      
       console.log('🔍 OAuth Debug Info:')
       console.log('Provider:', provider)
       console.log('Current origin:', window.location.origin)
-      console.log('Redirect URL will be:', `${window.location.origin}/auth/callback`)
+      console.log('Redirect URL will be:', redirectUrl)
+      console.log('Full redirect URL:', redirectUrl)
       
       let result
       if (provider === 'google') {
-        setDebugInfo('Calling auth.signInWithGoogle()...')
-        result = await auth.signInWithGoogle()
+        setDebugInfo(`Calling auth.signInWithGoogle() with redirect: ${redirectUrl}`)
+        result = await auth.signInWithGoogle(redirectUrl)
       } else if (provider === 'github') {
-        setDebugInfo('Calling auth.signInWithGitHub()...')
-        result = await auth.signInWithGitHub()
+        setDebugInfo(`Calling auth.signInWithGitHub() with redirect: ${redirectUrl}`)
+        result = await auth.signInWithGitHub(redirectUrl)
       }
 
       console.log('🔍 OAuth Result:', result)
@@ -32,9 +35,10 @@ export default function LoginForm({ onClose }) {
       if (result.error) {
         console.error('❌ OAuth Error Details:', result.error)
         setError(`OAuth Error: ${result.error.message}`)
-        setDebugInfo(`Error Code: ${result.error.code || 'N/A'}\nError Message: ${result.error.message}`)
+        setDebugInfo(`Error Code: ${result.error.code || 'N/A'}\nError Message: ${result.error.message}\nRedirect URL used: ${redirectUrl}`)
       } else {
         console.log('✅ OAuth initiated successfully')
+        console.log('🔗 OAuth URL:', result.data?.url)
         setDebugInfo('OAuth URL generated, redirecting...')
         // On success, user will be redirected by OAuth flow
       }
@@ -85,6 +89,17 @@ export default function LoginForm({ onClose }) {
         )}
 
         <div className="space-y-4">
+          {/* Debug Info */}
+          <div className="bg-gray-50 border border-gray-200 text-gray-700 px-4 py-3 rounded text-xs">
+            <strong>Current Setup:</strong><br/>
+            Origin: {window.location.origin}<br/>
+            Redirect URL: {window.location.origin}/auth/callback<br/>
+            <br/>
+            <strong>Required in Google Cloud Console:</strong><br/>
+            http://localhost:3000/auth/callback<br/>
+            https://nuntsizvwfmjzucuubcd.supabase.co/auth/v1/callback
+          </div>
+
           {/* Test Connection Button */}
           <button
             onClick={testSupabaseConnection}
