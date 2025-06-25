@@ -27,25 +27,52 @@ export default function AuthCallback() {
           return
         }
 
-        // Get the current session - Supabase handles the code exchange automatically
-        const { session, error: sessionError } = await auth.getSession()
-
-        if (sessionError) {
-          console.error('Session error:', sessionError)
-          setError('Failed to establish session')
-          setLoading(false)
-          return
-        }
-
-        if (session?.user) {
-          console.log('✅ OAuth authentication successful:', session.user.email)
-          console.log('Provider:', session.user.app_metadata?.provider)
+        // Handle OAuth callback - check for code and exchange for session
+        const code = urlParams.get('code')
+        
+        if (code) {
+          console.log('✅ OAuth code received, exchanging for session...')
           
-          // Redirect to home page after successful authentication
-          navigate('/', { replace: true })
+          // For OAuth callback, we need to wait a moment for the session to be established
+          await new Promise(resolve => setTimeout(resolve, 1000))
+          
+          const { session, error: sessionError } = await auth.getSession()
+
+          if (sessionError) {
+            console.error('Session error after OAuth:', sessionError)
+            setError('Failed to establish session after OAuth')
+            setLoading(false)
+            return
+          }
+
+          if (session?.user) {
+            console.log('✅ OAuth authentication successful:', session.user.email)
+            console.log('Provider:', session.user.app_metadata?.provider)
+            console.log('User metadata:', session.user.user_metadata)
+            
+            // Give time for database triggers to create profile
+            await new Promise(resolve => setTimeout(resolve, 2000))
+            
+            // Redirect to home page after successful authentication
+            navigate('/', { replace: true })
+          } else {
+            console.warn('⚠️ No session found after code exchange')
+            setError('Authentication completed but no session was created')
+            setLoading(false)
+          }
         } else {
-          setError('No session found after authentication')
-          setLoading(false)
+          // No code parameter - might be a direct access
+          console.log('ℹ️ No OAuth code found, checking existing session...')
+          
+          const { session, error: sessionError } = await auth.getSession()
+          
+          if (session?.user) {
+            console.log('✅ Existing session found')
+            navigate('/', { replace: true })
+          } else {
+            setError('No authentication code or session found')
+            setLoading(false)
+          }
         }
       } catch (err) {
         console.error('OAuth callback error:', err)
