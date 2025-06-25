@@ -15,190 +15,331 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
   realtime: {
     params: {
-      eventsPerSecond: 10
+      eventsPerSecond: 2
     }
   }
 })
 
-// Auth helpers
-export const getCurrentUser = async () => {
-  const { data: { user }, error } = await supabase.auth.getUser()
-  if (error) throw error
-  return user
-}
-
-export const signInWithEmail = async (email, password) => {
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password
-  })
-  if (error) throw error
-  return data
-}
-
-export const signUpWithEmail = async (email, password, name) => {
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      data: {
-        name
+// Authentication helpers
+export const auth = {
+  signUp: async (email, password, userData = {}) => {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: userData
       }
+    })
+    return { data, error }
+  },
+
+  signIn: async (email, password) => {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    })
+    return { data, error }
+  },
+
+  signOut: async () => {
+    const { error } = await supabase.auth.signOut()
+    return { error }
+  },
+
+  getCurrentUser: async () => {
+    const { data: { user }, error } = await supabase.auth.getUser()
+    return { user, error }
+  },
+
+  getSession: async () => {
+    const { data: { session }, error } = await supabase.auth.getSession()
+    return { session, error }
+  }
+}
+
+// Profile helpers
+export const profiles = {
+  get: async (userId) => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single()
+    return { data, error }
+  },
+
+  update: async (userId, updates) => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .update(updates)
+      .eq('id', userId)
+      .select()
+      .single()
+    return { data, error }
+  },
+
+  create: async (profile) => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .insert(profile)
+      .select()
+      .single()
+    return { data, error }
+  }
+}
+
+// Posts helpers
+export const posts = {
+  getFeed: async (limit = 10, offset = 0) => {
+    const { data, error } = await supabase
+      .from('posts')
+      .select(`
+        *,
+        profiles:author_id (
+          id, full_name, avatar_url, headline
+        ),
+        likes_count:likes(count),
+        comments_count:comments(count),
+        user_liked:likes!left(user_id)
+      `)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1)
+    return { data, error }
+  },
+
+  create: async (post) => {
+    const { data, error } = await supabase
+      .from('posts')
+      .insert(post)
+      .select(`
+        *,
+        profiles:author_id (
+          id, full_name, avatar_url, headline
+        )
+      `)
+      .single()
+    return { data, error }
+  },
+
+  like: async (postId, userId) => {
+    const { data, error } = await supabase
+      .from('likes')
+      .insert({ post_id: postId, user_id: userId })
+      .select()
+    return { data, error }
+  },
+
+  unlike: async (postId, userId) => {
+    const { data, error } = await supabase
+      .from('likes')
+      .delete()
+      .eq('post_id', postId)
+      .eq('user_id', userId)
+    return { data, error }
+  }
+}
+
+// Jobs helpers
+export const jobs = {
+  search: async (query = '', location = '', jobType = '', limit = 20) => {
+    let queryBuilder = supabase
+      .from('jobs')
+      .select(`
+        *,
+        companies:company_id (
+          id, name, logo_url
+        ),
+        applications_count:job_applications(count)
+      `)
+      .eq('is_active', true)
+      .order('created_at', { ascending: false })
+      .limit(limit)
+
+    if (query) {
+      queryBuilder = queryBuilder.or(`title.ilike.%${query}%,description.ilike.%${query}%`)
     }
-  })
-  if (error) throw error
-  return data
-}
-
-export const signInWithGoogle = async () => {
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: 'google',
-    options: {
-      redirectTo: `${window.location.origin}/auth/callback`
+    if (location) {
+      queryBuilder = queryBuilder.ilike('location', `%${location}%`)
     }
-  })
-  if (error) throw error
-  return data
-}
-
-export const signInWithGitHub = async () => {
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: 'github',
-    options: {
-      redirectTo: `${window.location.origin}/auth/callback`
+    if (jobType && jobType !== 'all') {
+      queryBuilder = queryBuilder.eq('job_type', jobType)
     }
-  })
-  if (error) throw error
-  return data
+
+    const { data, error } = await queryBuilder
+    return { data, error }
+  },
+
+  apply: async (jobId, userId, resumeUrl) => {
+    const { data, error } = await supabase
+      .from('job_applications')
+      .insert({
+        job_id: jobId,
+        user_id: userId,
+        resume_url: resumeUrl,
+        status: 'pending'
+      })
+      .select()
+      .single()
+    return { data, error }
+  }
 }
 
-export const signOut = async () => {
-  const { error } = await supabase.auth.signOut()
-  if (error) throw error
+// Messages helpers
+export const messages = {
+  getConversations: async (userId) => {
+    const { data, error } = await supabase
+      .from('conversations')
+      .select(`
+        *,
+        participant_1:profiles!conversations_participant_1_id_fkey (
+          id, full_name, avatar_url
+        ),
+        participant_2:profiles!conversations_participant_2_id_fkey (
+          id, full_name, avatar_url
+        ),
+        last_message:messages (
+          content, created_at
+        )
+      `)
+      .or(`participant_1_id.eq.${userId},participant_2_id.eq.${userId}`)
+      .order('updated_at', { ascending: false })
+    return { data, error }
+  },
+
+  getMessages: async (conversationId) => {
+    const { data, error } = await supabase
+      .from('messages')
+      .select(`
+        *,
+        sender:profiles!messages_sender_id_fkey (
+          id, full_name, avatar_url
+        )
+      `)
+      .eq('conversation_id', conversationId)
+      .order('created_at', { ascending: true })
+    return { data, error }
+  },
+
+  send: async (conversationId, senderId, content) => {
+    const { data, error } = await supabase
+      .from('messages')
+      .insert({
+        conversation_id: conversationId,
+        sender_id: senderId,
+        content
+      })
+      .select(`
+        *,
+        sender:profiles!messages_sender_id_fkey (
+          id, full_name, avatar_url
+        )
+      `)
+      .single()
+    return { data, error }
+  }
 }
 
-// API helpers
-export const callEdgeFunction = async (functionName, data, method = 'POST') => {
-  const { data: result, error } = await supabase.functions.invoke(functionName, {
-    body: data,
-    method
-  })
-  
-  if (error) throw error
-  return result
+// Notifications helpers
+export const notifications = {
+  get: async (userId, limit = 20) => {
+    const { data, error } = await supabase
+      .from('notifications')
+      .select(`
+        *,
+        actor:profiles!notifications_actor_id_fkey (
+          id, full_name, avatar_url
+        )
+      `)
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(limit)
+    return { data, error }
+  },
+
+  markAsRead: async (notificationId) => {
+    const { data, error } = await supabase
+      .from('notifications')
+      .update({ is_read: true })
+      .eq('id', notificationId)
+    return { data, error }
+  }
+}
+
+// Real-time subscriptions
+export const realtime = {
+  subscribeToUserNotifications: (userId, callback) => {
+    return supabase
+      .channel('user-notifications')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${userId}`
+        },
+        callback
+      )
+      .subscribe()
+  },
+
+  subscribeToConversation: (conversationId, callback) => {
+    return supabase
+      .channel(`conversation-${conversationId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `conversation_id=eq.${conversationId}`
+        },
+        callback
+      )
+      .subscribe()
+  },
+
+  subscribeToFeed: (callback) => {
+    return supabase
+      .channel('feed-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'posts'
+        },
+        callback
+      )
+      .subscribe()
+  }
 }
 
 // Storage helpers
-export const uploadFile = async (bucket, path, file) => {
-  const { data, error } = await supabase.storage
-    .from(bucket)
-    .upload(path, file)
-  
-  if (error) throw error
-  return data
-}
+export const storage = {
+  uploadFile: async (bucket, path, file) => {
+    const { data, error } = await supabase.storage
+      .from(bucket)
+      .upload(path, file, {
+        cacheControl: '3600',
+        upsert: false
+      })
+    return { data, error }
+  },
 
-export const getPublicUrl = (bucket, path) => {
-  const { data } = supabase.storage
-    .from(bucket)
-    .getPublicUrl(path)
-  
-  return data.publicUrl
-}
+  getPublicUrl: (bucket, path) => {
+    const { data } = supabase.storage
+      .from(bucket)
+      .getPublicUrl(path)
+    return data.publicUrl
+  },
 
-// Real-time helpers
-export const subscribeToTable = (table, callback, filter) => {
-  const channel = supabase
-    .channel(`${table}-changes`)
-    .on(
-      'postgres_changes',
-      {
-        event: '*',
-        schema: 'public',
-        table,
-        filter
-      },
-      callback
-    )
-    .subscribe()
-
-  return channel
-}
-
-export const subscribeToUserNotifications = (userId, callback) => {
-  return subscribeToTable(
-    'notifications',
-    callback,
-    `recipient_id=eq.${userId}`
-  )
-}
-
-export const subscribeToConversation = (conversationId, callback) => {
-  return subscribeToTable(
-    'messages',
-    callback,
-    `conversation_id=eq.${conversationId}`
-  )
-}
-
-// API functions for easy frontend integration
-export const getFeed = async (page = 1, limit = 20, type = 'all') => {
-  return await callEdgeFunction('get-feed', null, 'GET')
-}
-
-export const createPost = async (content, mediaUrls = [], postType = 'user', sourceId = null) => {
-  return await callEdgeFunction('create-post', {
-    content,
-    media_urls: mediaUrls,
-    post_type: postType,
-    source_id: sourceId
-  })
-}
-
-export const toggleLike = async (postId) => {
-  return await callEdgeFunction('toggle-like', {
-    post_id: postId
-  })
-}
-
-export const searchJobs = async (query, filters = {}) => {
-  const params = new URLSearchParams({
-    ...(query && { query }),
-    ...filters
-  })
-  
-  return await callEdgeFunction(`search-jobs?${params}`, null, 'GET')
-}
-
-export const getJobRecommendations = async (limit = 10) => {
-  return await callEdgeFunction(`job-recommendations?limit=${limit}`, null, 'GET')
-}
-
-export const sendMessage = async (recipientId, content, conversationId = null, mediaUrl = null) => {
-  return await callEdgeFunction('send-message', {
-    recipient_id: recipientId,
-    conversation_id: conversationId,
-    content,
-    media_url: mediaUrl
-  })
-}
-
-export const getNotifications = async (page = 1, unreadOnly = false) => {
-  const params = new URLSearchParams({
-    page: page.toString(),
-    ...(unreadOnly && { unread_only: 'true' })
-  })
-  
-  return await callEdgeFunction(`get-notifications?${params}`, null, 'GET')
-}
-
-export const uploadFileToStorage = async (bucket, file, customPath = null) => {
-  const formData = new FormData()
-  formData.append('file', file)
-  formData.append('bucket', bucket)
-  if (customPath) {
-    formData.append('path', customPath)
+  deleteFile: async (bucket, path) => {
+    const { data, error } = await supabase.storage
+      .from(bucket)
+      .remove([path])
+    return { data, error }
   }
-  
-  return await callEdgeFunction('upload-file', formData)
 }
+
+export default supabase

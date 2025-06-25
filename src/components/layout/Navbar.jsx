@@ -6,16 +6,17 @@ import {
   HiLogin, HiLogout, HiUser, HiBookmark, HiFlag, HiUsers
 } from "react-icons/hi"
 import SettingsModal from "../settings/SettingsModal"
+import { auth, notifications } from '../../lib/supabase'
 
 /**
- * Navbar Component - Mobile-First Responsive Navigation
+ * Navbar Component - Real Supabase Authentication
  * 
  * Features:
- * - Mobile-optimized navigation with collapsible menu
- * - Fixed bottom navigation bar for mobile devices
- * - Proper icon spacing and text handling
- * - Responsive design that adapts to different screen sizes
+ * - Real Supabase authentication
+ * - Dynamic user state management
+ * - Real notification counts from database
  * - Professional LinkedIn-style appearance
+ * - Mobile-optimized navigation
  */
 export default function Navbar() {
   const [showSettings, setShowSettings] = useState(false)
@@ -23,17 +24,30 @@ export default function Navbar() {
   const [showMoreDropdown, setShowMoreDropdown] = useState(false)
   const [showProfileDropdown, setShowProfileDropdown] = useState(false)
   const [showLoginModal, setShowLoginModal] = useState(false)
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [user, setUser] = useState(null)
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [loginError, setLoginError] = useState("")
-  const [unreadNotifications, setUnreadNotifications] = useState(15)
+  const [unreadNotifications, setUnreadNotifications] = useState(0)
   const [searchQuery, setSearchQuery] = useState("")
+  const [loading, setLoading] = useState(false)
   const dropdownRef = useRef(null)
   const profileRef = useRef(null)
   const location = useLocation()
   const navigate = useNavigate()
   
+  // Initialize user state and notifications
+  useEffect(() => {
+    initializeAuth()
+  }, [])
+
+  // Load notifications count when user changes
+  useEffect(() => {
+    if (user) {
+      loadNotifications()
+    }
+  }, [user])
+
   // Main navigation items - core features
   const navItems = [
     { icon: HiHome, label: "Home", path: "/", color: "text-blue-500" },
@@ -54,6 +68,27 @@ export default function Navbar() {
 
   const isActive = (path) => location.pathname === path
 
+  const initializeAuth = async () => {
+    try {
+      const { user: currentUser } = await auth.getCurrentUser()
+      setUser(currentUser)
+    } catch (error) {
+      console.error('Error getting current user:', error)
+    }
+  }
+
+  const loadNotifications = async () => {
+    try {
+      const { data: notificationData, error } = await notifications.get(user.id, 50)
+      if (!error && notificationData) {
+        const unreadCount = notificationData.filter(n => !n.is_read).length
+        setUnreadNotifications(unreadCount)
+      }
+    } catch (error) {
+      console.error('Error loading notifications:', error)
+    }
+  }
+
   // Handle click outside to close dropdown
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -71,15 +106,7 @@ export default function Navbar() {
     }
   }, [])
 
-  // Check login status on initial load
-  useEffect(() => {
-    const token = localStorage.getItem("token")
-    if (token) {
-      setIsLoggedIn(true)
-    }
-  }, [])
-
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault()
     
     if (!email || !password) {
@@ -87,24 +114,51 @@ export default function Navbar() {
       return
     }
     
-    localStorage.setItem("token", "demo_token")
-    setIsLoggedIn(true)
-    setShowLoginModal(false)
-    setLoginError("")
-    setEmail("")
-    setPassword("")
-    navigate("/")
+    try {
+      setLoading(true)
+      setLoginError("")
+
+      const { data, error } = await auth.signIn(email, password)
+      
+      if (error) {
+        setLoginError(error.message)
+        return
+      }
+
+      if (data.user) {
+        setUser(data.user)
+        setShowLoginModal(false)
+        setEmail("")
+        setPassword("")
+        navigate("/")
+      }
+    } catch (err) {
+      console.error('Login error:', err)
+      setLoginError("An unexpected error occurred")
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const handleLogout = () => {
-    localStorage.removeItem("token")
-    setIsLoggedIn(false)
-    setShowProfileDropdown(false)
-    navigate("/")
+  const handleLogout = async () => {
+    try {
+      const { error } = await auth.signOut()
+      if (error) {
+        console.error('Logout error:', error)
+        return
+      }
+      
+      setUser(null)
+      setUnreadNotifications(0)
+      setShowProfileDropdown(false)
+      navigate("/")
+    } catch (err) {
+      console.error('Logout error:', err)
+    }
   }
 
   const handleProtectedClick = (path, action) => {
-    if (!isLoggedIn) {
+    if (!user) {
       setShowLoginModal(true)
       return
     }
@@ -213,14 +267,34 @@ export default function Navbar() {
                 onClick={() => setShowProfileDropdown(!showProfileDropdown)}
                 className="flex flex-col items-center text-gray-500 hover:text-black"
               >
-                <div className="w-6 h-6 rounded-full bg-gray-300 mb-1"></div>
+                {user?.user_metadata?.avatar_url ? (
+                  <img 
+                    src={user.user_metadata.avatar_url} 
+                    alt="Profile"
+                    className="w-6 h-6 rounded-full object-cover mb-1"
+                  />
+                ) : (
+                  <div className="w-6 h-6 rounded-full bg-gray-300 mb-1 flex items-center justify-center">
+                    {user ? (
+                      <span className="text-xs text-gray-600 font-semibold">
+                        {(user.user_metadata?.full_name || user.email)?.charAt(0).toUpperCase()}
+                      </span>
+                    ) : null}
+                  </div>
+                )}
                 <span className="text-xs">Me</span>
               </button>
               
               {showProfileDropdown && (
                 <div className="absolute top-full right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-2 border z-50">
-                  {isLoggedIn ? (
+                  {user ? (
                     <>
+                      <div className="px-4 py-2 border-b border-gray-100">
+                        <p className="font-semibold text-gray-900 text-sm">
+                          {user.user_metadata?.full_name || user.email}
+                        </p>
+                        <p className="text-xs text-gray-500">{user.email}</p>
+                      </div>
                       <Link
                         to="/profile"
                         className="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-100"
@@ -363,8 +437,14 @@ export default function Navbar() {
                   
               {/* Profile section */}
               <div className="pt-4 border-t">
-                {isLoggedIn ? (
+                {user ? (
                   <>
+                    <div className="px-3 py-2 mb-2">
+                      <p className="font-semibold text-gray-900">
+                        {user.user_metadata?.full_name || user.email}
+                      </p>
+                      <p className="text-sm text-gray-500">{user.email}</p>
+                    </div>
                     <Link
                       to="/profile"
                       onClick={() => setShowMobileMenu(false)}
@@ -407,9 +487,14 @@ export default function Navbar() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
             <div className="p-6 border-b flex justify-between items-center">
-              <h2 className="text-xl font-bold">Login to LinkedIn</h2>
+              <h2 className="text-xl font-bold">Sign in to LinkedIn</h2>
               <button 
-                onClick={() => setShowLoginModal(false)}
+                onClick={() => {
+                  setShowLoginModal(false)
+                  setLoginError("")
+                  setEmail("")
+                  setPassword("")
+                }}
                 className="text-gray-400 hover:text-gray-600"
               >
                 <HiX className="w-6 h-6" />
@@ -433,6 +518,7 @@ export default function Navbar() {
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
+                  disabled={loading}
                 />
               </div>
               
@@ -446,15 +532,31 @@ export default function Navbar() {
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
+                  disabled={loading}
                 />
               </div>
               
               <button
                 type="submit"
-                className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors"
+                disabled={loading}
+                className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors disabled:bg-blue-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                Login
+                {loading ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>Signing in...</span>
+                  </>
+                ) : (
+                  <span>Sign in</span>
+                )}
               </button>
+              
+              <p className="mt-4 text-center text-sm text-gray-600">
+                Don't have an account? 
+                <span className="text-blue-600 hover:underline cursor-pointer ml-1">
+                  Join now
+                </span>
+              </p>
             </form>
           </div>
         </div>
