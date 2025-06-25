@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS public.notifications (
     type TEXT NOT NULL CHECK (type IN ('like', 'comment', 'connection_request', 'connection_accepted', 'job_application', 'mention')),
     title TEXT NOT NULL,
     message TEXT,
-    read BOOLEAN DEFAULT FALSE,
+    is_read BOOLEAN DEFAULT FALSE,
     post_id UUID REFERENCES public.posts(id) ON DELETE CASCADE,
     comment_id UUID REFERENCES public.comments(id) ON DELETE CASCADE,
     connection_id UUID,
@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS public.notifications (
 CREATE INDEX IF NOT EXISTS idx_notifications_recipient_id ON public.notifications(recipient_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_sender_id ON public.notifications(sender_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON public.notifications(created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_notifications_read ON public.notifications(read);
+CREATE INDEX IF NOT EXISTS idx_notifications_is_read ON public.notifications(is_read);
 
 -- 2. Create connections table
 CREATE TABLE IF NOT EXISTS public.connections (

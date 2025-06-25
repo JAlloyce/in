@@ -327,7 +327,7 @@ export const notifications = {
   markAsRead: async (notificationId) => {
     const { data, error } = await supabase
       .from('notifications')
-      .update({ read: true })
+      .update({ is_read: true })
       .eq('id', notificationId)
     return { data, error }
   }
