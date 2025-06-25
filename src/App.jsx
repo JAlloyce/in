@@ -14,6 +14,7 @@ import Pages from "./pages/Pages"
 import CompanyPage from "./pages/CompanyPage"
 import Workspace from "./pages/Workspace"
 import CommunityDetail from "./pages/CommunityDetail"
+import AuthCallback from "./pages/AuthCallback"
 
 /**
  * Main Application Component - Professional Edition
@@ -78,6 +79,7 @@ function AppContent() {
           <Route path="/pages" element={<Pages />} />
           <Route path="/company/:id" element={<CompanyPage />} />
           <Route path="/workspace" element={<Workspace />} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
         </Routes>
       </div>
       

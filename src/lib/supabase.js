@@ -27,7 +27,7 @@ export const auth = {
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: redirectTo || `${window.location.origin}/`,
+        redirectTo: redirectTo || `${window.location.origin}/auth/callback`,
         queryParams: {
           access_type: 'offline',
           prompt: 'consent',
@@ -42,7 +42,7 @@ export const auth = {
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'github',
       options: {
-        redirectTo: redirectTo || `${window.location.origin}/`,
+        redirectTo: redirectTo || `${window.location.origin}/auth/callback`,
         scopes: 'user:email'
       }
     })
