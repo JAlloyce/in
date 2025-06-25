@@ -4,8 +4,9 @@ import { FaBuilding, FaRobot } from "react-icons/fa";
 import { useAuth } from "../context/AuthContext";
 import CreatePost from "../components/feed/CreatePost"
 import Comment from "../components/feed/Comment"
+import CommentInput from "../components/feed/CommentInput"
 import AuthDebug from "../components/debug/AuthDebug"
-import { posts, realtime } from '../lib/supabase'
+import { posts, comments, realtime } from '../lib/supabase'
 
 /**
  * Home Page Component - LinkedIn Feed (Connected to Supabase)
@@ -143,11 +144,45 @@ export default function Home() {
     }
   }
 
-  const toggleComments = (postId) => {
+  const toggleComments = async (postId) => {
     setShowComments(prev => ({
       ...prev,
       [postId]: !prev[postId]
     }))
+
+    // Load comments when showing them for the first time
+    if (!showComments[postId]) {
+      try {
+        const { data: commentsData, error } = await comments.getByPost(postId)
+        
+        if (error) {
+          console.error('Error loading comments:', error)
+          return
+        }
+
+        // Update the post with real comments
+        setFeedPosts(prev => prev.map(post => 
+          post.id === postId 
+            ? { ...post, commentsList: commentsData || [] }
+            : post
+        ))
+      } catch (err) {
+        console.error('Error loading comments:', err)
+      }
+    }
+  }
+
+  const handleCommentAdded = (postId, newComment) => {
+    // Add the new comment to the post's comment list
+    setFeedPosts(prev => prev.map(post => 
+      post.id === postId 
+        ? { 
+            ...post, 
+            commentsList: [...(post.commentsList || []), newComment],
+            comments: post.comments + 1
+          }
+        : post
+    ))
   }
 
   const handleAiAnalysis = async (post) => {
@@ -351,35 +386,22 @@ export default function Home() {
         <div className="mt-4 border-t border-gray-100 pt-4">
           <div className="space-y-4">
             {post.commentsList && post.commentsList.map(comment => (
-              <Comment key={comment.id} comment={comment} />
+              <Comment 
+                key={comment.id} 
+                user={comment.user?.name || 'Unknown User'}
+                content={comment.content}
+                time={formatTimestamp(comment.created_at)}
+                likes={0}
+                liked={false}
+              />
             ))}
           </div>
           
           {/* Add Comment */}
-          <div className="mt-4 flex gap-3">
-            {user?.user_metadata?.avatar_url ? (
-              <img 
-                src={user.user_metadata.avatar_url} 
-                alt="Your avatar"
-                className="w-8 h-8 rounded-full object-cover"
-              />
-            ) : (
-              <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
-                {user && (
-                  <span className="text-xs text-gray-600 font-semibold">
-                    {user.email?.charAt(0).toUpperCase()}
-                  </span>
-                )}
-              </div>
-            )}
-            <div className="flex-1">
-              <input
-                type="text"
-                placeholder="Write a comment..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          </div>
+          <CommentInput 
+            postId={post.id} 
+            onCommentAdded={(newComment) => handleCommentAdded(post.id, newComment)}
+          />
         </div>
       )}
     </div>
