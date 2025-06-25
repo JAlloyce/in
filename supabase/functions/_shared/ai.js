@@ -1,29 +1,4 @@
-export interface AIResponse {
-  content: string
-  usage?: {
-    prompt_tokens: number
-    completion_tokens: number
-    total_tokens: number
-  }
-}
-
-export interface JobRecommendation {
-  jobId: string
-  title: string
-  company: string
-  matchScore: number
-  reasons: string[]
-}
-
-export interface ResumeAnalysis {
-  skills: string[]
-  experienceLevel: string
-  strengths: string[]
-  improvements: string[]
-  summary: string
-}
-
-export async function callPerplexityAI(prompt: string, model: string = 'llama-3.1-sonar-small-128k-online'): Promise<AIResponse> {
+export async function callPerplexityAI(prompt, model = 'llama-3.1-sonar-small-128k-online') {
   const apiKey = Deno.env.get('PERPLEXITY_API_KEY')
   if (!apiKey) {
     throw new Error('Perplexity API key not configured')
@@ -60,12 +35,12 @@ export async function callPerplexityAI(prompt: string, model: string = 'llama-3.
   }
 }
 
-export async function generateJobRecommendations(userProfile: any, availableJobs: any[]): Promise<JobRecommendation[]> {
+export async function generateJobRecommendations(userProfile, availableJobs) {
   const prompt = `
 Based on this user profile:
-- Skills: ${userProfile.skills?.map((s: any) => s.name).join(', ') || 'Not specified'}
-- Experience: ${userProfile.experiences?.map((e: any) => `${e.title} at ${e.company}`).join(', ') || 'Not specified'}
-- Education: ${userProfile.education?.map((e: any) => `${e.degree} from ${e.institution}`).join(', ') || 'Not specified'}
+- Skills: ${userProfile.skills?.map(s => s.name).join(', ') || 'Not specified'}
+- Experience: ${userProfile.experiences?.map(e => `${e.title} at ${e.company}`).join(', ') || 'Not specified'}
+- Education: ${userProfile.education?.map(e => `${e.degree} from ${e.institution}`).join(', ') || 'Not specified'}
 - Location: ${userProfile.location || 'Not specified'}
 - About: ${userProfile.about || 'Not specified'}
 
@@ -103,7 +78,7 @@ Format as JSON array with this structure:
 
     const recommendations = JSON.parse(jsonMatch[0])
     
-    return recommendations.map((rec: any) => ({
+    return recommendations.map(rec => ({
       jobId: rec.jobId,
       title: availableJobs.find(j => j.id === rec.jobId)?.title || '',
       company: availableJobs.find(j => j.id === rec.jobId)?.company_name || '',
@@ -116,7 +91,7 @@ Format as JSON array with this structure:
   }
 }
 
-export async function analyzeResume(resumeText: string): Promise<ResumeAnalysis> {
+export async function analyzeResume(resumeText) {
   const prompt = `
 Analyze this resume and provide structured feedback:
 
@@ -161,12 +136,7 @@ Focus on:
   }
 }
 
-export async function generatePostInsights(postContent: string): Promise<{
-  sentiment: string
-  topics: string[]
-  engagementPrediction: number
-  suggestions: string[]
-}> {
+export async function generatePostInsights(postContent) {
   const prompt = `
 Analyze this social media post for a professional platform:
 
@@ -207,12 +177,7 @@ Consider:
   }
 }
 
-export async function generateStudyContent(topic: string, userLevel: string = 'beginner'): Promise<{
-  content: string
-  resources: string[]
-  tasks: string[]
-  timeline: string
-}> {
+export async function generateStudyContent(topic, userLevel = 'beginner') {
   const prompt = `
 Create study content for this topic: "${topic}"
 User level: ${userLevel}
@@ -252,10 +217,10 @@ Include:
   }
 }
 
-export async function generateConnectionSuggestions(userProfile: any, potentialConnections: any[]): Promise<any[]> {
+export async function generateConnectionSuggestions(userProfile, potentialConnections) {
   const prompt = `
 Based on this user's profile:
-- Skills: ${userProfile.skills?.map((s: any) => s.name).join(', ') || 'Not specified'}
+- Skills: ${userProfile.skills?.map(s => s.name).join(', ') || 'Not specified'}
 - Industry: ${userProfile.headline || 'Not specified'}
 - Location: ${userProfile.location || 'Not specified'}
 

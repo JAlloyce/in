@@ -1,17 +1,11 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+const supabaseUrl = Deno.env.get('SUPABASE_URL')
+const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
 
 export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
 
-export interface AuthUser {
-  id: string
-  email: string
-  user_metadata?: any
-}
-
-export async function getUser(request: Request): Promise<AuthUser> {
+export async function getUser(request) {
   const authHeader = request.headers.get('Authorization')
   if (!authHeader) {
     throw new Error('No authorization header')
@@ -26,12 +20,12 @@ export async function getUser(request: Request): Promise<AuthUser> {
 
   return {
     id: data.user.id,
-    email: data.user.email!,
+    email: data.user.email,
     user_metadata: data.user.user_metadata
   }
 }
 
-export async function requireAuth(request: Request): Promise<AuthUser> {
+export async function requireAuth(request) {
   try {
     return await getUser(request)
   } catch (error) {
@@ -42,21 +36,21 @@ export async function requireAuth(request: Request): Promise<AuthUser> {
   }
 }
 
-export function createErrorResponse(message: string, status: number = 400) {
+export function createErrorResponse(message, status = 400) {
   return new Response(JSON.stringify({ error: message }), {
     status,
     headers: { 'Content-Type': 'application/json' }
   })
 }
 
-export function createSuccessResponse(data: any, status: number = 200) {
+export function createSuccessResponse(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
     headers: { 'Content-Type': 'application/json' }
   })
 }
 
-export async function getUserProfile(userId: string) {
+export async function getUserProfile(userId) {
   const { data, error } = await supabaseAdmin
     .from('profiles')
     .select('*')
@@ -70,38 +64,37 @@ export async function getUserProfile(userId: string) {
   return data
 }
 
-export async function validateInput(schema: any, data: any) {
-  // Basic validation - in production, use a proper validation library like Zod
+export async function validateInput(schema, data) {
+  // Basic validation - check required fields and formats
   for (const [key, rules] of Object.entries(schema)) {
     const value = data[key]
-    const rulesArray = rules as any[]
 
-    if (rulesArray.includes('required') && (!value || value === '')) {
+    if (rules.includes('required') && (!value || value === '')) {
       throw new Error(`${key} is required`)
     }
 
-    if (rulesArray.includes('email') && value && !isValidEmail(value)) {
+    if (rules.includes('email') && value && !isValidEmail(value)) {
       throw new Error(`${key} must be a valid email`)
     }
 
-    if (rulesArray.includes('uuid') && value && !isValidUUID(value)) {
+    if (rules.includes('uuid') && value && !isValidUUID(value)) {
       throw new Error(`${key} must be a valid UUID`)
     }
   }
 }
 
-function isValidEmail(email: string): boolean {
+function isValidEmail(email) {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
   return emailRegex.test(email)
 }
 
-function isValidUUID(uuid: string): boolean {
+function isValidUUID(uuid) {
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
   return uuidRegex.test(uuid)
 }
 
-export async function checkRateLimit(userId: string, action: string, limit: number = 10): Promise<boolean> {
-  // Simple rate limiting - in production, use Redis or similar
+export async function checkRateLimit(userId, action, limit = 10) {
+  // Simple rate limiting implementation
   const key = `rate_limit:${userId}:${action}`
   const now = Date.now()
   const window = 60000 // 1 minute

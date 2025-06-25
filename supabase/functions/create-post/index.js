@@ -1,13 +1,6 @@
-import { corsHeaders } from '../_shared/cors.ts'
-import { requireAuth, createErrorResponse, createSuccessResponse, supabaseAdmin, validateInput } from '../_shared/auth.ts'
-import { generatePostInsights } from '../_shared/ai.ts'
-
-interface CreatePostRequest {
-  content: string
-  media_urls?: string[]
-  post_type?: 'user' | 'community' | 'page'
-  source_id?: string
-}
+import { corsHeaders } from '../_shared/cors.js'
+import { requireAuth, createErrorResponse, createSuccessResponse, supabaseAdmin, validateInput } from '../_shared/auth.js'
+import { generatePostInsights } from '../_shared/ai.js'
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -20,7 +13,7 @@ Deno.serve(async (req) => {
 
   try {
     const user = await requireAuth(req)
-    const body: CreatePostRequest = await req.json()
+    const body = await req.json()
 
     // Validate input
     await validateInput({
@@ -29,7 +22,7 @@ Deno.serve(async (req) => {
       source_id: ['uuid']
     }, body)
 
-    if (!body.content.trim()) {
+    if (!body.content || !body.content.trim()) {
       return createErrorResponse('Post content cannot be empty')
     }
 
@@ -100,7 +93,7 @@ Deno.serve(async (req) => {
       .catch(error => console.error('AI insights error:', error))
 
     // Create notifications for connections (if user post)
-    if (body.post_type === 'user') {
+    if (body.post_type === 'user' || !body.post_type) {
       // Get user's connections
       const { data: connections } = await supabaseAdmin
         .from('connections')
@@ -117,7 +110,7 @@ Deno.serve(async (req) => {
         const notifications = connectionIds.map(connectionId => ({
           recipient_id: connectionId,
           sender_id: user.id,
-          type: 'post' as any,
+          type: 'post',
           title: 'New post',
           content: `${post.profiles?.name} shared a new post`,
           data: { post_id: post.id }
