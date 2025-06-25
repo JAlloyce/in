@@ -1,5 +1,3 @@
-"use client"
-
 import { useState } from "react"
 import { 
   HiDotsHorizontal, HiThumbUp, HiChat, HiShare, 
