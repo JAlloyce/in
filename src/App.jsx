@@ -54,18 +54,26 @@ function App() {
  */
 function AppContent() {
   const location = useLocation();
+  const { isAuthenticated, loading } = useAuth();
   const isWorkspace = location.pathname.startsWith("/workspace");
-  const isLoggedIn = !!localStorage.getItem("token");
 
-  return (
-    <div className="grid grid-cols-1 lg:grid-cols-4 gap-2 sm:gap-4 lg:gap-6">
-      {!isWorkspace && isLoggedIn && (
-        <div className="lg:col-span-1">
-          <Sidebar />
+      if (loading) {
+      return (
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
         </div>
-      )}
-      
-      <div className={`${isWorkspace ? 'lg:col-span-4' : isLoggedIn ? 'lg:col-span-2' : 'lg:col-span-3 lg:col-start-2'}`}>
+      );
+    }
+
+    return (
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-2 sm:gap-4 lg:gap-6">
+        {!isWorkspace && isAuthenticated && (
+          <div className="lg:col-span-1">
+            <Sidebar />
+          </div>
+        )}
+        
+        <div className={`${isWorkspace ? 'lg:col-span-4' : isAuthenticated ? 'lg:col-span-2' : 'lg:col-span-3 lg:col-start-2'}`}>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/profile" element={<Profile />} />
@@ -82,9 +90,9 @@ function AppContent() {
           <Route path="/workspace" element={<Workspace />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
         </Routes>
-      </div>
-      
-      {!isWorkspace && isLoggedIn && (
+              </div>
+        
+        {!isWorkspace && isAuthenticated && (
         <div className="lg:col-span-1">
           <div className="bg-white rounded-lg shadow p-3 sm:p-4 sticky top-20 sm:top-24">
             <h3 className="font-semibold mb-3 sm:mb-4 text-sm sm:text-base">LinkedIn News</h3>
