@@ -6,6 +6,7 @@ import {
   HiLogin, HiLogout, HiUser, HiBookmark, HiFlag, HiUsers
 } from "react-icons/hi"
 import SettingsModal from "../settings/SettingsModal"
+import LoginForm from "../auth/LoginForm"
 import { auth, notifications } from '../../lib/supabase'
 
 /**
@@ -25,31 +26,61 @@ export default function Navbar() {
   const [showProfileDropdown, setShowProfileDropdown] = useState(false)
   const [showLoginModal, setShowLoginModal] = useState(false)
   const [user, setUser] = useState(null)
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [loginError, setLoginError] = useState("")
   const [unreadNotifications, setUnreadNotifications] = useState(0)
   const [searchQuery, setSearchQuery] = useState("")
-  const [loading, setLoading] = useState(false)
+  const [authLoading, setAuthLoading] = useState(true)
   const dropdownRef = useRef(null)
   const profileRef = useRef(null)
   const location = useLocation()
   const navigate = useNavigate()
 
-  // Initialize auth state
+  // Initialize OAuth authentication
   useEffect(() => {
-    initializeAuth()
-  }, [])
+    const initializeAuth = async () => {
+      try {
+        setAuthLoading(true)
+        // Use getSession for initial load - handles OAuth redirects properly
+        const { session, error } = await auth.getSession()
+        
+        if (error) {
+          console.error('OAuth session error:', error)
+          setUser(null)
+          return
+        }
 
-  // Set up auth state listener
-  useEffect(() => {
+        if (session?.user) {
+          console.log('✅ OAuth user authenticated:', session.user.email)
+          console.log('Provider:', session.user.app_metadata?.provider)
+          setUser(session.user)
+          loadNotifications(session.user.id)
+        } else {
+          console.log('ℹ️ No OAuth session found')
+          setUser(null)
+        }
+      } catch (error) {
+        console.error('OAuth initialization error:', error)
+        setUser(null)
+      } finally {
+        setAuthLoading(false)
+      }
+    }
+
+    initializeAuth()
+
+    // Listen for OAuth auth state changes
     const { data: { subscription } } = auth.onAuthStateChange((event, session) => {
-      setUser(session?.user || null)
-      if (session?.user) {
+      console.log('🔄 OAuth state changed:', event, session?.user?.email)
+      
+      if (event === 'SIGNED_IN' && session?.user) {
+        console.log('OAuth provider:', session.user.app_metadata?.provider)
+        setUser(session.user)
         loadNotifications(session.user.id)
-      } else {
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null)
         setUnreadNotifications(0)
       }
+      
+      setAuthLoading(false)
     })
 
     return () => subscription.unsubscribe()
@@ -74,21 +105,6 @@ export default function Navbar() {
   ]
 
   const isActive = (path) => location.pathname === path
-
-  const initializeAuth = async () => {
-    try {
-      // Use getSession for initial load (better than getUser for page load)
-      const { session, error } = await auth.getSession()
-      if (error) {
-        console.error('Error getting session:', error)
-      } else if (session?.user) {
-        setUser(session.user)
-        loadNotifications(session.user.id)
-      }
-    } catch (error) {
-      console.error('Error initializing auth:', error)
-    }
-  }
 
   const loadNotifications = async (userId) => {
     try {
@@ -119,39 +135,7 @@ export default function Navbar() {
     }
   }, [])
 
-  const handleLogin = async (e) => {
-    e.preventDefault()
-    
-    if (!email || !password) {
-      setLoginError("Please enter both email and password")
-      return
-    }
-    
-    try {
-      setLoading(true)
-      setLoginError("")
 
-      const { data, error } = await auth.signIn(email, password)
-      
-      if (error) {
-        setLoginError(error.message)
-        return
-      }
-
-      if (data.user) {
-        setUser(data.user)
-        setShowLoginModal(false)
-        setEmail("")
-        setPassword("")
-        navigate("/")
-      }
-    } catch (err) {
-      console.error('Login error:', err)
-      setLoginError("An unexpected error occurred")
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const handleLogout = async () => {
     try {
@@ -511,84 +495,9 @@ export default function Navbar() {
         </div>
       )}
 
-      {/* Login Modal */}
+      {/* OAuth Login Modal */}
       {showLoginModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
-            <div className="p-6 border-b flex justify-between items-center">
-              <h2 className="text-xl font-bold">Sign in to LinkedIn</h2>
-              <button 
-                onClick={() => {
-                  setShowLoginModal(false)
-                  setLoginError("")
-                  setEmail("")
-                  setPassword("")
-                }}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <HiX className="w-6 h-6" />
-              </button>
-            </div>
-            
-            <form onSubmit={handleLogin} className="p-6">
-              {loginError && (
-                <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
-                  {loginError}
-                </div>
-              )}
-              
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                  disabled={loading}
-                />
-              </div>
-              
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Password
-                </label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                  disabled={loading}
-                />
-              </div>
-              
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors disabled:bg-blue-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              >
-                {loading ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    <span>Signing in...</span>
-                  </>
-                ) : (
-                  <span>Sign in</span>
-                )}
-              </button>
-              
-              <p className="mt-4 text-center text-sm text-gray-600">
-                Don't have an account? 
-                <span className="text-blue-600 hover:underline cursor-pointer ml-1">
-                  Join now
-                </span>
-              </p>
-            </form>
-          </div>
-        </div>
+        <LoginForm onClose={() => setShowLoginModal(false)} />
       )}
 
       {/* Settings Modal */}

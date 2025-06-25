@@ -20,45 +20,74 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   }
 })
 
-// Authentication helpers
+// OAuth Authentication - Proper implementation
 export const auth = {
-  signUp: async (email, password, userData = {}) => {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
+  // OAuth Sign In with Google
+  signInWithGoogle: async (redirectTo = null) => {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
       options: {
-        data: userData
+        redirectTo: redirectTo || `${window.location.origin}/`,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent',
+        }
       }
     })
     return { data, error }
   },
 
-  signIn: async (email, password) => {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password
+  // OAuth Sign In with GitHub
+  signInWithGitHub: async (redirectTo = null) => {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'github',
+      options: {
+        redirectTo: redirectTo || `${window.location.origin}/`,
+        scopes: 'user:email'
+      }
     })
     return { data, error }
   },
 
-  signOut: async () => {
-    const { error } = await supabase.auth.signOut()
-    return { error }
-  },
-
-  getCurrentUser: async () => {
-    const { data: { user }, error } = await supabase.auth.getUser()
-    return { user, error }
-  },
-
+  // Get current session
   getSession: async () => {
     const { data: { session }, error } = await supabase.auth.getSession()
     return { session, error }
   },
 
-  // Better method for checking auth state on load
+  // Get current user
+  getUser: async () => {
+    const { data: { user }, error } = await supabase.auth.getUser()
+    return { user, error }
+  },
+
+  // Sign out
+  signOut: async () => {
+    const { error } = await supabase.auth.signOut()
+    return { error }
+  },
+
+  // Listen to auth state changes
   onAuthStateChange: (callback) => {
     return supabase.auth.onAuthStateChange(callback)
+  },
+
+  // Store OAuth tokens for API access
+  storeOAuthTokens: () => {
+    supabase.auth.onAuthStateChange((event, session) => {
+      if (session && session.provider_token) {
+        window.localStorage.setItem('oauth_provider_token', session.provider_token)
+      }
+
+      if (session && session.provider_refresh_token) {
+        window.localStorage.setItem('oauth_provider_refresh_token', session.provider_refresh_token)
+      }
+
+      if (event === 'SIGNED_OUT') {
+        window.localStorage.removeItem('oauth_provider_token')
+        window.localStorage.removeItem('oauth_provider_refresh_token')
+      }
+    })
   }
 }
 
@@ -93,10 +122,10 @@ export const profiles = {
   }
 }
 
-// Posts helpers - FIXED QUERIES
+// Posts helpers
 export const posts = {
-  getFeed: async (limit = 10, offset = 0) => {
-    const { data, error } = await supabase
+  getFeed: async (userId = null, offset = 0, limit = 20) => {
+    let query = supabase
       .from('posts')
       .select(`
         *,
@@ -105,10 +134,19 @@ export const posts = {
           name, 
           avatar_url, 
           headline
-        )
+        ),
+        likes_count:likes(count),
+        comments_count:comments(count),
+        user_liked:likes!left (user_id)
       `)
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1)
+
+    if (userId) {
+      query = query.eq('likes.user_id', userId)
+    }
+
+    const { data, error } = await query
     return { data, error }
   },
 
@@ -215,10 +253,10 @@ export const messages = {
       .select(`
         *,
         participant_1:profiles!conversations_participant_1_id_fkey (
-          id, name, avatar_url
+          id, name, avatar_url, headline
         ),
         participant_2:profiles!conversations_participant_2_id_fkey (
-          id, name, avatar_url
+          id, name, avatar_url, headline
         )
       `)
       .or(`participant_1_id.eq.${userId},participant_2_id.eq.${userId}`)
@@ -393,31 +431,85 @@ export const communities = {
   }
 }
 
-// Companies/Pages helpers
+// Companies/Pages helpers - NEW: Real database integration
 export const companies = {
   getFollowed: async (userId) => {
-    // This would need a company_followers table in a real implementation
+    // Get companies that the user follows
     const { data, error } = await supabase
-      .from('companies')
-      .select('*')
-      .limit(10)
+      .from('company_followers')
+      .select(`
+        *,
+        company:companies!company_followers_company_id_fkey (
+          id, name, category, logo_url, follower_count, 
+          description, website, location, verified
+        )
+      `)
+      .eq('user_id', userId)
+      .order('followed_at', { ascending: false })
     return { data, error }
   },
 
   getSuggested: async (limit = 10) => {
     const { data, error } = await supabase
       .from('companies')
-      .select('*')
+      .select('id, name, category, logo_url, follower_count, description')
+      .eq('is_active', true)
+      .order('follower_count', { ascending: false })
       .limit(limit)
     return { data, error }
   },
 
-  create: async (company) => {
+  create: async (company, userId) => {
     const { data, error } = await supabase
       .from('companies')
-      .insert(company)
+      .insert({
+        ...company,
+        owner_id: userId,
+        is_active: true,
+        follower_count: 0
+      })
       .select()
       .single()
+    return { data, error }
+  },
+
+  follow: async (companyId, userId) => {
+    const { data, error } = await supabase
+      .from('company_followers')
+      .insert({
+        company_id: companyId,
+        user_id: userId
+      })
+      .select()
+      .single()
+    return { data, error }
+  },
+
+  unfollow: async (companyId, userId) => {
+    const { data, error } = await supabase
+      .from('company_followers')
+      .delete()
+      .eq('company_id', companyId)
+      .eq('user_id', userId)
+    return { data, error }
+  },
+
+  search: async (query = '', category = '', limit = 20) => {
+    let queryBuilder = supabase
+      .from('companies')
+      .select('id, name, category, logo_url, follower_count, description, website, location')
+      .eq('is_active', true)
+      .order('follower_count', { ascending: false })
+      .limit(limit)
+
+    if (query) {
+      queryBuilder = queryBuilder.or(`name.ilike.%${query}%,description.ilike.%${query}%`)
+    }
+    if (category) {
+      queryBuilder = queryBuilder.eq('category', category)
+    }
+
+    const { data, error } = await queryBuilder
     return { data, error }
   }
 }
@@ -609,5 +701,8 @@ export const storage = {
     return { data, error }
   }
 }
+
+// Initialize OAuth token storage
+auth.storeOAuthTokens()
 
 export default supabase
