@@ -42,9 +42,18 @@ CREATE INDEX IF NOT EXISTS idx_connections_receiver_id ON public.connections(rec
 CREATE INDEX IF NOT EXISTS idx_connections_status ON public.connections(status);
 CREATE INDEX IF NOT EXISTS idx_connections_created_at ON public.connections(created_at DESC);
 
--- Add foreign key reference for notifications connection_id
-ALTER TABLE public.notifications ADD CONSTRAINT notifications_connection_id_fkey 
-FOREIGN KEY (connection_id) REFERENCES public.connections(id) ON DELETE CASCADE;
+-- Add foreign key reference for notifications connection_id (now that connections table exists)
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE constraint_name = 'notifications_connection_id_fkey'
+        AND table_name = 'notifications'
+    ) THEN
+        ALTER TABLE public.notifications ADD CONSTRAINT notifications_connection_id_fkey 
+        FOREIGN KEY (connection_id) REFERENCES public.connections(id) ON DELETE CASCADE;
+    END IF;
+END $$;
 
 -- 3. Enable Row Level Security
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
