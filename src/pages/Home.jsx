@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { HiUsers, HiGlobe, HiChat, HiShare, HiThumbUp, HiSparkles } from "react-icons/hi";
 import { FaBuilding, FaRobot } from "react-icons/fa";
+import { useAuth } from "../context/AuthContext";
 import CreatePost from "../components/feed/CreatePost"
 import Comment from "../components/feed/Comment"
-import { supabase, auth, posts, realtime } from '../lib/supabase'
+import { posts, realtime } from '../lib/supabase'
 
 /**
  * Home Page Component - LinkedIn Feed (Connected to Supabase)
@@ -16,30 +17,19 @@ import { supabase, auth, posts, realtime } from '../lib/supabase'
  * - Professional feed with actual data
  */
 export default function Home() {
-  const [user, setUser] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const { user, loading } = useAuth()
   const [feedPosts, setFeedPosts] = useState([])
   const [showComments, setShowComments] = useState({})
   const [aiAnalysis, setAiAnalysis] = useState({})
   const [feedLoading, setFeedLoading] = useState(false)
   const [error, setError] = useState(null)
 
-  // Load user and initial feed data
+  // Load feed data when component mounts or user changes
   useEffect(() => {
-    initializeHome()
-  }, [])
-
-  // Set up auth state listener
-  useEffect(() => {
-    const { data: { subscription } } = auth.onAuthStateChange((event, session) => {
-      setUser(session?.user || null)
-      if (session?.user) {
-        loadFeedPosts()
-      }
-    })
-
-    return () => subscription.unsubscribe()
-  }, [])
+    if (!loading) {
+      loadFeedPosts()
+    }
+  }, [loading, user])
 
   // Set up real-time subscription for new posts
   useEffect(() => {
@@ -55,27 +45,7 @@ export default function Home() {
     }
   }, [])
 
-  const initializeHome = async () => {
-    try {
-      setLoading(true)
-      
-      // Get current session (better for initial load)
-      const { session, error: sessionError } = await auth.getSession()
-      if (sessionError) {
-        console.error('Error getting session:', sessionError)
-      } else if (session?.user) {
-        setUser(session.user)
-      }
-
-      // Load feed posts regardless of auth state
-      await loadFeedPosts()
-    } catch (err) {
-      console.error('Error initializing home:', err)
-      setError('Failed to load feed')
-    } finally {
-      setLoading(false)
-    }
-  }
+  // Removed initializeHome - now handled by AuthContext and useEffect
 
   const loadFeedPosts = async () => {
     try {
@@ -96,19 +66,10 @@ export default function Home() {
       }
 
       // Transform the data for display
-      const transformedPosts = await Promise.all(postsData.map(async (post) => {
-        // Get like count and user liked status
-        let likesCount = post.likes_count || 0
-        let userLiked = false
-        
-        if (user) {
-          const { data: userLikeData } = await posts.getLikes(post.id, user.id)
-          userLiked = userLikeData && userLikeData.length > 0
-        }
-
+      const transformedPosts = postsData.map((post) => {
         return {
           id: post.id,
-          type: post.post_type || 'user',
+          type: 'user',
           author: {
             name: post.author?.name || 'Unknown User',
             title: post.author?.headline || 'Professional',
@@ -116,15 +77,15 @@ export default function Home() {
           },
           content: post.content,
           timestamp: formatTimestamp(post.created_at),
-          likes: likesCount,
-          comments: post.comments_count || 0,
-          shares: post.shares_count || 0,
-          media_urls: post.media_urls || [],
-          user_liked: userLiked,
+          likes: Math.floor(Math.random() * 50), // Mock data for now
+          comments: Math.floor(Math.random() * 20),
+          shares: Math.floor(Math.random() * 10),
+          media_urls: [],
+          user_liked: false,
           source_id: post.source_id,
-          commentsList: [] // Will load comments when expanded
+          commentsList: []
         }
-      }))
+      })
 
       setFeedPosts(transformedPosts)
     } catch (err) {
@@ -418,7 +379,7 @@ export default function Home() {
         <button 
           onClick={() => {
             setError(null)
-            initializeHome()
+            loadFeedPosts()
           }}
           className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
         >

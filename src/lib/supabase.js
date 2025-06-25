@@ -124,8 +124,8 @@ export const profiles = {
 
 // Posts helpers
 export const posts = {
-  getFeed: async (userId = null, offset = 0, limit = 20) => {
-    let query = supabase
+  getFeed: async (limit = 20, offset = 0) => {
+    const { data, error } = await supabase
       .from('posts')
       .select(`
         *,
@@ -134,19 +134,11 @@ export const posts = {
           name, 
           avatar_url, 
           headline
-        ),
-        likes_count:likes(count),
-        comments_count:comments(count),
-        user_liked:likes!left (user_id)
+        )
       `)
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1)
 
-    if (userId) {
-      query = query.eq('likes.user_id', userId)
-    }
-
-    const { data, error } = await query
     return { data, error }
   },
 

@@ -5,9 +5,10 @@ import {
   HiChat, HiBell, HiViewGrid, HiCog, HiMenu, HiX, HiDotsHorizontal,
   HiLogin, HiLogout, HiUser, HiBookmark, HiFlag, HiUsers
 } from "react-icons/hi"
+import { useAuth } from "../../context/AuthContext"
 import SettingsModal from "../settings/SettingsModal"
 import LoginForm from "../auth/LoginForm"
-import { auth, notifications } from '../../lib/supabase'
+import { notifications } from '../../lib/supabase'
 
 /**
  * Navbar Component - Real Supabase Authentication
@@ -20,71 +21,27 @@ import { auth, notifications } from '../../lib/supabase'
  * - Mobile-optimized navigation
  */
 export default function Navbar() {
+  const { user, loading, signOut } = useAuth()
   const [showSettings, setShowSettings] = useState(false)
   const [showMobileMenu, setShowMobileMenu] = useState(false)
   const [showMoreDropdown, setShowMoreDropdown] = useState(false)
   const [showProfileDropdown, setShowProfileDropdown] = useState(false)
   const [showLoginModal, setShowLoginModal] = useState(false)
-  const [user, setUser] = useState(null)
   const [unreadNotifications, setUnreadNotifications] = useState(0)
   const [searchQuery, setSearchQuery] = useState("")
-  const [authLoading, setAuthLoading] = useState(true)
   const dropdownRef = useRef(null)
   const profileRef = useRef(null)
   const location = useLocation()
   const navigate = useNavigate()
 
-  // Initialize OAuth authentication
+  // Load notifications when user changes
   useEffect(() => {
-    const initializeAuth = async () => {
-      try {
-        setAuthLoading(true)
-        // Use getSession for initial load - handles OAuth redirects properly
-        const { session, error } = await auth.getSession()
-        
-        if (error) {
-          console.error('OAuth session error:', error)
-          setUser(null)
-          return
-        }
-
-        if (session?.user) {
-          console.log('✅ OAuth user authenticated:', session.user.email)
-          console.log('Provider:', session.user.app_metadata?.provider)
-          setUser(session.user)
-          loadNotifications(session.user.id)
-        } else {
-          console.log('ℹ️ No OAuth session found')
-          setUser(null)
-        }
-      } catch (error) {
-        console.error('OAuth initialization error:', error)
-        setUser(null)
-      } finally {
-        setAuthLoading(false)
-      }
+    if (user?.id) {
+      loadNotifications(user.id)
+    } else {
+      setUnreadNotifications(0)
     }
-
-    initializeAuth()
-
-    // Listen for OAuth auth state changes
-    const { data: { subscription } } = auth.onAuthStateChange((event, session) => {
-      console.log('🔄 OAuth state changed:', event, session?.user?.email)
-      
-      if (event === 'SIGNED_IN' && session?.user) {
-        console.log('OAuth provider:', session.user.app_metadata?.provider)
-        setUser(session.user)
-        loadNotifications(session.user.id)
-      } else if (event === 'SIGNED_OUT') {
-        setUser(null)
-        setUnreadNotifications(0)
-      }
-      
-      setAuthLoading(false)
-    })
-
-    return () => subscription.unsubscribe()
-  }, [])
+  }, [user])
   
   // Main navigation items - core features
   const navItems = [
@@ -139,13 +96,12 @@ export default function Navbar() {
 
   const handleLogout = async () => {
     try {
-      const { error } = await auth.signOut()
+      const { error } = await signOut()
       if (error) {
         console.error('Logout error:', error)
         return
       }
       
-      setUser(null)
       setUnreadNotifications(0)
       setShowProfileDropdown(false)
       navigate("/")
