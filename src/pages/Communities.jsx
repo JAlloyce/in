@@ -127,7 +127,6 @@ export default function Communities() {
         name: communityForm.name,
         description: communityForm.description,
         category: communityForm.category,
-        privacy_level: communityForm.privacy,
         rules: communityForm.rules,
         is_active: true
       }, user.id);
@@ -145,7 +144,7 @@ export default function Communities() {
         members: "1",
         description: newCommunity.description,
         category: newCommunity.category,
-        privacy: newCommunity.privacy_level,
+        privacy: "public", // Default since privacy_level doesn't exist in DB
         isAdmin: true,
         posts: 0,
         activity: "New",

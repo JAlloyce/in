@@ -5,6 +5,8 @@ import {
 } from "react-icons/hi"
 import { FaBuilding } from "react-icons/fa"
 import { posts, storage, auth } from '../../lib/supabase'
+import { Button, Card, Avatar, Input } from '../ui'
+import { motion, AnimatePresence } from 'framer-motion'
 
 /**
  * CreatePost Component - Real-time Post Creation
@@ -19,7 +21,6 @@ export default function CreatePost({ user, onPostCreated }) {
   const [showModal, setShowModal] = useState(false)
   const [content, setContent] = useState("")
   const [postType, setPostType] = useState("user")
-  const [visibility, setVisibility] = useState("public")
   const [mediaFiles, setMediaFiles] = useState([])
   const [mediaPreview, setMediaPreview] = useState([])
   const [uploading, setUploading] = useState(false)
@@ -107,13 +108,13 @@ export default function CreatePost({ user, onPostCreated }) {
       // Upload media files if any
       const mediaUrls = await uploadMedia()
 
-      // Create the post
+      // Create the post (removed visibility field)
       const postData = {
         author_id: user.id,
         content: content.trim(),
         post_type: postType,
-        media_urls: mediaUrls.length > 0 ? mediaUrls : null,
-        visibility
+        image_url: mediaUrls[0] ?? null,
+        media_urls: mediaUrls.length ? mediaUrls : null
       }
 
       const { data: newPost, error: postError } = await posts.create(postData)
@@ -163,7 +164,6 @@ export default function CreatePost({ user, onPostCreated }) {
   const resetForm = () => {
     setContent("")
     setPostType("user")
-    setVisibility("public")
     setMediaFiles([])
     
     // Clean up preview URLs
@@ -183,70 +183,83 @@ export default function CreatePost({ user, onPostCreated }) {
 
   if (!user) {
     return (
-      <div className="bg-white rounded-lg shadow p-6">
-        <div className="text-center">
-          <HiChat className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Share with your network</h3>
-          <p className="text-gray-600 mb-4">Join LinkedIn to start sharing your thoughts and experiences</p>
-          <button className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-            Sign In
-          </button>
-        </div>
-      </div>
+      <Card className="text-center">
+        <HiChat className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+        <h3 className="text-heading-3 mb-2">Share with your network</h3>
+        <p className="text-body text-gray-600 mb-4">Join LinkedIn to start sharing your thoughts and experiences</p>
+        <Button variant="primary" size="md">
+          Sign In
+        </Button>
+      </Card>
     )
   }
 
   return (
     <>
       {/* Main Create Post Card */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <div className="flex items-center gap-4">
-          {user?.user_metadata?.avatar_url ? (
-            <img 
-              src={user.user_metadata.avatar_url} 
-              alt="Your avatar"
-              className="w-12 h-12 rounded-full object-cover"
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        <Card className="hover:shadow-lg transition-shadow duration-300">
+          <div className="flex items-center gap-4 p-6">
+            <Avatar 
+              src={user?.user_metadata?.avatar_url}
+              name={user?.user_metadata?.full_name || user?.email}
+              size="lg"
             />
-          ) : (
-            <div className="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center">
-              <span className="text-gray-600 font-semibold">
-                {(user.user_metadata?.full_name || user.email)?.charAt(0).toUpperCase()}
-              </span>
-            </div>
-          )}
-          
-          <button
-            onClick={() => setShowModal(true)}
-            className="flex-1 text-left px-4 py-3 bg-gray-100 hover:bg-gray-200 rounded-full text-gray-600 transition-colors"
-          >
-            What's on your mind?
-          </button>
-        </div>
-        
-        <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
-          <button 
-            onClick={() => setShowModal(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-gray-100 text-blue-600 transition-colors"
-          >
-            <HiPhotograph className="w-5 h-5" />
-            <span className="font-medium">Photo</span>
-          </button>
-          <button 
-            onClick={() => setShowModal(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-gray-100 text-green-600 transition-colors"
-          >
-            <HiVideoCamera className="w-5 h-5" />
-            <span className="font-medium">Video</span>
-          </button>
-          <button 
-            onClick={() => setShowModal(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-gray-100 text-orange-600 transition-colors"
-          >
-            <HiCalendar className="w-5 h-5" />
-            <span className="font-medium">Event</span>
-          </button>
-        </div>
-      </div>
+            
+            <motion.button
+              onClick={() => setShowModal(true)}
+              className="flex-1 text-left px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 
+                        hover:from-blue-50 hover:to-purple-50 rounded-full text-gray-600 
+                        hover:text-gray-800 transition-all duration-300 border border-gray-200 
+                        hover:border-blue-200 hover:shadow-md"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <span className="text-lg">What's on your mind?</span>
+            </motion.button>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2 px-6 pb-6 border-t border-gray-100 pt-4">
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <Button 
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowModal(true)}
+                leftIcon={<HiPhotograph className="icon-system-sm text-blue-600" />}
+                className="w-full justify-center hover:bg-blue-50 text-blue-600 hover:text-blue-700"
+              >
+                Photo
+              </Button>
+            </motion.div>
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <Button 
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowModal(true)}
+                leftIcon={<HiVideoCamera className="icon-system-sm text-green-600" />}
+                className="w-full justify-center hover:bg-green-50 text-green-600 hover:text-green-700"
+              >
+                Video
+              </Button>
+            </motion.div>
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <Button 
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowModal(true)}
+                leftIcon={<HiCalendar className="icon-system-sm text-orange-600" />}
+                className="w-full justify-center hover:bg-orange-50 text-orange-600 hover:text-orange-700"
+              >
+                Event
+              </Button>
+            </motion.div>
+          </div>
+        </Card>
+      </motion.div>
 
       {/* Modal for creating post */}
       {showModal && (

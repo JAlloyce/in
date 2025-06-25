@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { HiThumbUp, HiOutlineDotsHorizontal, HiOutlineReply } from "react-icons/hi";
+import { Button, Avatar } from '../ui';
 
 export default function Comment({ user, role, content, time, likes, liked }) {
   const [isLiked, setIsLiked] = useState(liked);
@@ -16,36 +17,51 @@ export default function Comment({ user, role, content, time, likes, liked }) {
 
   return (
     <div className="py-3 border-b border-gray-100 last:border-0">
-      <div className="flex items-start">
-        <div className="w-8 h-8 rounded-full bg-gray-300 flex-shrink-0 mr-3"></div>
+      <div className="flex items-start gap-3">
+        <Avatar name={user} size="sm" />
+        
         <div className="flex-1">
-          <div className="flex items-baseline">
-            <h4 className="font-medium text-gray-900 mr-2">{user}</h4>
-            <p className="text-gray-700 text-sm">{content}</p>
+          <div className="flex items-baseline gap-2">
+            <h4 className="text-body font-medium text-gray-900">{user}</h4>
+            <p className="text-body text-gray-700">{content}</p>
           </div>
           
-          <div className="flex items-center mt-1 text-xs text-gray-500 space-x-3">
-            <span>{time}</span>
-            <button 
-              className={`font-medium ${isLiked ? "text-blue-600" : ""}`}
+          <div className="flex items-center mt-1 gap-3">
+            <span className="text-caption">{time}</span>
+            <Button 
+              variant="ghost"
+              size="sm"
+              className={`text-caption p-0 h-auto ${isLiked ? "text-blue-600" : "text-gray-500"}`}
               onClick={handleLike}
             >
               {likeCount} {likeCount === 1 ? "like" : "likes"}
-            </button>
-            <button className="font-medium">Reply</button>
+            </Button>
+            <Button 
+              variant="ghost"
+              size="sm"
+              className="text-caption p-0 h-auto"
+            >
+              Reply
+            </Button>
           </div>
         </div>
         
-        <div className="flex space-x-1">
-          <button 
-            className={`p-1 ${isLiked ? "text-blue-600" : "text-gray-400"}`}
+        <div className="flex gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            className={`p-1 h-auto ${isLiked ? "text-blue-600" : "text-gray-400"}`}
             onClick={handleLike}
           >
-            <HiThumbUp className="w-4 h-4" />
-          </button>
-          <button className="text-gray-400 hover:text-gray-600 p-1">
-            <HiOutlineReply className="w-4 h-4" />
-          </button>
+            <HiThumbUp className="icon-system-sm" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="p-1 h-auto text-gray-400 hover:text-gray-600"
+          >
+            <HiOutlineReply className="icon-system-sm" />
+          </Button>
         </div>
       </div>
       

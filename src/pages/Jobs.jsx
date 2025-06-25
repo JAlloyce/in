@@ -3,9 +3,24 @@ import {
   HiLocationMarker, HiCurrencyDollar, HiClock, 
   HiBriefcase, HiBookmark, HiChevronDown,
   HiX, HiLightBulb, HiPaperAirplane, HiArrowDown,
-  HiPlus, HiUsers, HiEye, HiChat, HiDocumentText, HiMail
+  HiPlus, HiUsers, HiEye, HiChat, HiDocumentText, HiMail,
+  HiFilter, HiSearch, HiSparkles, HiTrendingUp
 } from "react-icons/hi";
 import { jobs, auth, companies } from '../lib/supabase';
+import { Button, Card, Avatar } from '../components/ui';
+import { motion, AnimatePresence } from 'framer-motion';
+
+/**
+ * Enhanced Jobs Page Component - Modern Job Search Platform
+ * 
+ * Features:
+ * - Modern glass morphism design with animations
+ * - Improved search and filtering system
+ * - Better job card layout with hover effects
+ * - Enhanced mobile responsiveness
+ * - Professional styling with Embassy-inspired elements
+ * - AI-powered job recommendations
+ */
 
 export default function Jobs() {
   const [filters, setFilters] = useState({
@@ -326,120 +341,144 @@ export default function Jobs() {
 
   if (loading) {
     return (
-      <div className="grid grid-cols-1 bg-pink-50 min-h-screen p-4 rounded-lg">
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <div className="flex items-center justify-center py-12">
-            <div className="text-center">
-              <div className="w-8 h-8 border-2 border-pink-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-              <p className="text-gray-600">Loading job opportunities...</p>
-            </div>
-          </div>
-        </div>
-      </div>
+      <motion.div 
+        className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.6 }}
+      >
+        <Card className="text-center py-16">
+          <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600 font-medium">Loading amazing job opportunities...</p>
+        </Card>
+      </motion.div>
     );
   }
 
   if (error) {
     return (
-      <div className="grid grid-cols-1 bg-pink-50 min-h-screen p-4 rounded-lg">
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <div className="text-center py-12">
-            <p className="text-red-600 mb-4">{error}</p>
-            <button 
-              onClick={initializeJobs}
-              className="px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700"
-            >
+      <motion.div 
+        className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.6 }}
+      >
+        <Card className="text-center py-16 border border-red-200 bg-red-50">
+          <h2 className="text-lg font-medium text-red-800 mb-2">Error loading jobs</h2>
+          <p className="text-red-600 mb-4">{error}</p>
+          <Button variant="outline" onClick={() => window.location.reload()}>
               Try Again
-            </button>
-          </div>
-        </div>
-      </div>
+          </Button>
+        </Card>
+      </motion.div>
     );
   }
 
   return (
-    <div className="grid grid-cols-1 bg-pink-50 min-h-screen p-4 rounded-lg">
-      {/* Post Job Section */}
-      <div className="bg-white rounded-lg shadow p-6 mb-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
-          <h2 className="text-xl font-bold">Post a Job</h2>
-          <button
-            onClick={() => setShowPostJobModal(true)}
-            className="bg-pink-500 hover:bg-pink-600 text-white px-6 py-2 rounded-lg flex items-center gap-2 transition-colors"
-          >
-            <HiPlus className="w-5 h-5" />
-            Post Job Vacancy
-          </button>
+    <motion.div 
+      className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.8 }}
+    >
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        {/* Enhanced Jobs Header with Hero Section */}
+        <motion.div 
+          className="bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-700 rounded-2xl p-8 mb-8 overflow-hidden relative"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+        >
+          {/* Animated Background Pattern */}
+          <div className="absolute inset-0 opacity-10">
+            <div className="grid grid-cols-10 gap-4 h-full">
+              {[...Array(40)].map((_, i) => (
+                <motion.div 
+                  key={i} 
+                  className="bg-white rounded-full w-2 h-2"
+                  animate={{ 
+                    opacity: [0.3, 0.8, 0.3],
+                    scale: [1, 1.3, 1]
+                  }}
+                  transition={{ 
+                    duration: 3,
+                    delay: i * 0.1,
+                    repeat: Infinity
+                  }}
+                />
+              ))}
         </div>
-        <p className="text-gray-600">Share job opportunities with the LinkedIn community</p>
       </div>
 
-      {/* Your Posted Jobs */}
-      {postedJobs.length > 0 && (
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <h2 className="text-xl font-bold mb-4">Your Posted Jobs</h2>
-          <div className="space-y-4">
-            {postedJobs.map(job => (
-              <div key={job.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
-                <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4">
-                  <div className="flex-1">
-                    <h3 className="text-lg font-bold text-gray-900">{job.title}</h3>
-                    <p className="text-gray-600">{job.company}</p>
-                    <div className="flex flex-wrap gap-3 mt-2 text-sm text-gray-500">
-                      <span className="flex items-center">
-                        <HiLocationMarker className="mr-1 w-4 h-4" />
-                        {job.location}
-                      </span>
-                      <span className="flex items-center">
-                        <HiCurrencyDollar className="mr-1 w-4 h-4" />
-                        {job.salary}
-                      </span>
-                      <span className="flex items-center">
-                        <HiClock className="mr-1 w-4 h-4" />
-                        {job.posted}
-                      </span>
+          <div className="relative z-10 text-white text-center">
+            <motion.h1 
+              className="text-4xl md:text-5xl font-bold mb-4"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+            >
+              Find Your Dream Career
+            </motion.h1>
+            <motion.p 
+              className="text-xl text-blue-100 mb-6"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.4 }}
+            >
+              Discover opportunities from top companies worldwide
+            </motion.p>
+            <motion.div 
+              className="flex flex-wrap justify-center gap-8 text-blue-100"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.6 }}
+            >
+              <div className="flex items-center gap-2">
+                <HiTrendingUp className="w-5 h-5" />
+                <span className="font-medium">{jobListings.length}+ Jobs Available</span>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-1 text-blue-600">
+              <div className="flex items-center gap-2">
                       <HiUsers className="w-5 h-5" />
-                      <span className="font-medium">{job.applicants}</span>
-                      <span className="text-sm">applicants</span>
+                <span className="font-medium">500+ Companies</span>
                     </div>
-                    {job.applicants > 0 && (
-                      <button
-                        onClick={() => handleViewApplicants(job)}
-                        className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm transition-colors"
-                      >
-                        View Applications
-                      </button>
-                    )}
+              <div className="flex items-center gap-2">
+                <HiSparkles className="w-5 h-5" />
+                <span className="font-medium">AI-Powered Matching</span>
                   </div>
+            </motion.div>
                 </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+        </motion.div>
 
-      <div className="bg-white rounded-lg shadow p-6 mb-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-          <h1 className="text-2xl font-bold">Job Opportunities</h1>
-          
-          <div className="flex flex-wrap gap-3">
+        {/* Enhanced Search and Filter Section */}
+        <motion.div 
+          className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-soft border border-white/20 p-6 mb-8"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+        >
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+            {/* Search Bar */}
+            <div className="flex-1 max-w-2xl">
+              <div className="relative">
+                <HiSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
-              placeholder="Search jobs..."
+                  placeholder="Search jobs, companies, or keywords..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                  className="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
             />
+              </div>
+            </div>
             
+            {/* Filters */}
+            <div className="flex flex-wrap gap-3">
             <div className="relative">
               <select
                 value={filters.location}
                 onChange={(e) => handleFilterChange("location", e.target.value)}
-                className="bg-gray-100 px-4 py-2 rounded-lg appearance-none pr-8"
+                  className="bg-gray-50 border border-gray-200 px-4 py-3 rounded-xl appearance-none pr-10 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
               >
                 <option value="">Location</option>
                 <option value="remote">Remote</option>
@@ -447,14 +486,14 @@ export default function Jobs() {
                 <option value="new york">New York</option>
                 <option value="seattle">Seattle</option>
               </select>
-              <HiChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none" />
+                <HiChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none text-gray-400" />
             </div>
             
             <div className="relative">
               <select
                 value={filters.type}
                 onChange={(e) => handleFilterChange("type", e.target.value)}
-                className="bg-gray-100 px-4 py-2 rounded-lg appearance-none pr-8"
+                  className="bg-gray-50 border border-gray-200 px-4 py-3 rounded-xl appearance-none pr-10 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
               >
                 <option value="">Job Type</option>
                 <option value="full-time">Full-time</option>
@@ -462,24 +501,30 @@ export default function Jobs() {
                 <option value="contract">Contract</option>
                 <option value="internship">Internship</option>
               </select>
-              <HiChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none" />
+                <HiChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none text-gray-400" />
             </div>
             
             <div className="relative">
               <select
                 value={filters.experience}
                 onChange={(e) => handleFilterChange("experience", e.target.value)}
-                className="bg-gray-100 px-4 py-2 rounded-lg appearance-none pr-8"
+                  className="bg-gray-50 border border-gray-200 px-4 py-3 rounded-xl appearance-none pr-10 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
               >
                 <option value="">Experience</option>
                 <option value="entry">Entry Level</option>
                 <option value="mid">Mid Level</option>
                 <option value="senior">Senior Level</option>
               </select>
-              <HiChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none" />
+                <HiChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none text-gray-400" />
             </div>
+              
+              <Button variant="primary" size="lg" className="flex items-center gap-2">
+                <HiFilter className="w-5 h-5" />
+                Filter
+              </Button>
           </div>
         </div>
+        </motion.div>
         
         <div className="space-y-4">
           {jobListings.length > 0 ? (
@@ -1129,6 +1174,6 @@ export default function Jobs() {
           </div>
         </div>
       )}
-    </div>
+    </motion.div>
   );
 }

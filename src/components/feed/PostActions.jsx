@@ -18,6 +18,7 @@ export default function PostActions({
   liked, 
   onLike, 
   onComment, 
+  onShare,
   onAiInsight, 
   onBookmark, 
   isBookmarked,
@@ -47,7 +48,7 @@ export default function PostActions({
     {
       icon: HiShare,
       label: "Share",
-      onClick: () => {},
+      onClick: onShare,
       active: false,
       activeColor: "text-purple-600",
       hoverColor: "hover:bg-purple-50"

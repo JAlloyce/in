@@ -1,0 +1,234 @@
+/**
+ * Design System CSS
+ * 
+ * Custom utility classes and component styles based on design tokens
+ */
+
+/* Typography Utilities */
+.text-heading-1 {
+  @apply text-3xl font-bold leading-tight;
+}
+
+.text-heading-2 {
+  @apply text-2xl font-semibold leading-tight;
+}
+
+.text-heading-3 {
+  @apply text-xl font-semibold leading-normal;
+}
+
+.text-heading-4 {
+  @apply text-lg font-medium leading-normal;
+}
+
+.text-body-large {
+  @apply text-base leading-relaxed;
+}
+
+.text-body {
+  @apply text-sm leading-normal;
+}
+
+.text-body-small {
+  @apply text-xs leading-normal;
+}
+
+.text-caption {
+  @apply text-xs text-gray-500 leading-normal;
+}
+
+/* Spacing Utilities */
+.space-system-xs { @apply space-y-1; }
+.space-system-sm { @apply space-y-2; }
+.space-system-md { @apply space-y-3; }
+.space-system-lg { @apply space-y-4; }
+.space-system-xl { @apply space-y-6; }
+.space-system-2xl { @apply space-y-8; }
+
+/* Layout Utilities */
+.container-system {
+  @apply max-w-7xl mx-auto px-4 md:px-6 lg:px-8;
+}
+
+.grid-system-2 {
+  @apply grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6;
+}
+
+.grid-system-3 {
+  @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 lg:gap-6;
+}
+
+.grid-system-4 {
+  @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4 lg:gap-6;
+}
+
+/* Card Layouts */
+.card-system {
+  @apply bg-white rounded-lg shadow-sm border border-gray-200 p-4 md:p-6;
+}
+
+.card-system-hover {
+  @apply card-system hover:shadow-md hover:border-gray-300 transition-all duration-200 cursor-pointer;
+}
+
+.card-system-compact {
+  @apply bg-white rounded-lg shadow-sm border border-gray-200 p-3;
+}
+
+/* Button Variants */
+.btn-system-primary {
+  @apply inline-flex items-center justify-center h-10 px-4 text-sm font-medium;
+  @apply bg-blue-600 text-white rounded-lg;
+  @apply hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2;
+  @apply transition-all duration-200 focus:outline-none;
+  @apply disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+.btn-system-secondary {
+  @apply inline-flex items-center justify-center h-10 px-4 text-sm font-medium;
+  @apply bg-gray-100 text-gray-900 border border-gray-300 rounded-lg;
+  @apply hover:bg-gray-200 focus:ring-2 focus:ring-gray-500 focus:ring-offset-2;
+  @apply transition-all duration-200 focus:outline-none;
+  @apply disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+.btn-system-ghost {
+  @apply inline-flex items-center justify-center h-10 px-4 text-sm font-medium;
+  @apply bg-transparent text-gray-700 rounded-lg;
+  @apply hover:bg-gray-100 focus:ring-2 focus:ring-gray-500 focus:ring-offset-2;
+  @apply transition-all duration-200 focus:outline-none;
+  @apply disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+/* Form Elements */
+.input-system {
+  @apply w-full h-10 px-4 text-sm;
+  @apply bg-white border border-gray-300 rounded-lg;
+  @apply focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500;
+  @apply disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed;
+  @apply placeholder:text-gray-400 transition-all duration-200;
+}
+
+.input-system-error {
+  @apply input-system border-red-500 focus:ring-red-500 focus:border-red-500;
+  @apply text-red-900 placeholder:text-red-400;
+}
+
+/* Avatar Utilities */
+.avatar-system-xs { @apply w-6 h-6 text-xs; }
+.avatar-system-sm { @apply w-8 h-8 text-sm; }
+.avatar-system-md { @apply w-10 h-10 text-base; }
+.avatar-system-lg { @apply w-12 h-12 text-lg; }
+.avatar-system-xl { @apply w-16 h-16 text-xl; }
+
+.avatar-system {
+  @apply relative inline-flex items-center justify-center;
+  @apply bg-gray-100 text-gray-600 font-medium overflow-hidden;
+  @apply rounded-full border-2 border-transparent;
+  @apply transition-all duration-200;
+}
+
+/* Icon Sizing */
+.icon-system-xs { @apply w-3 h-3; }
+.icon-system-sm { @apply w-4 h-4; }
+.icon-system-md { @apply w-5 h-5; }
+.icon-system-lg { @apply w-6 h-6; }
+.icon-system-xl { @apply w-8 h-8; }
+
+/* Status Indicators */
+.status-online { @apply bg-green-500; }
+.status-offline { @apply bg-gray-400; }
+.status-away { @apply bg-yellow-500; }
+.status-busy { @apply bg-red-500; }
+
+/* Animation Classes */
+.animate-fade-in {
+  animation: fadeIn 200ms ease-in-out;
+}
+
+.animate-slide-up {
+  animation: slideUp 200ms ease-out;
+}
+
+.animate-scale-in {
+  animation: scaleIn 150ms ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Focus Visible for Better Accessibility */
+.focus-system {
+  @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2;
+}
+
+/* LinkedIn-specific Component Styles */
+.linkedin-post {
+  @apply card-system space-y-4 max-w-2xl mx-auto;
+}
+
+.linkedin-post-actions {
+  @apply grid grid-cols-2 md:grid-cols-4 gap-2 pt-3 border-t border-gray-100;
+}
+
+.linkedin-post-action-btn {
+  @apply flex items-center justify-center gap-2 px-3 py-2 rounded-lg;
+  @apply text-gray-600 hover:bg-gray-50 transition-colors text-sm;
+}
+
+.linkedin-sidebar {
+  @apply hidden md:block w-60 md:w-64 lg:w-72 flex-shrink-0;
+}
+
+.linkedin-navbar {
+  @apply sticky top-0 z-30 bg-white border-b border-gray-200 shadow-sm;
+}
+
+.linkedin-feed-container {
+  @apply max-w-2xl mx-auto space-y-6;
+}
+
+/* Responsive Text Sizing */
+@screen md {
+  .text-responsive-sm { @apply text-base; }
+  .text-responsive-md { @apply text-lg; }
+  .text-responsive-lg { @apply text-xl; }
+}
+
+/* Dark Mode Support (if needed in future) */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-primary: #3b82f6;
+    --color-background: #1f2937;
+    --color-surface: #374151;
+    --color-text: #f9fafb;
+  }
+} 

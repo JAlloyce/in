@@ -160,38 +160,142 @@ export const posts = {
     return { data: data || [], error: null };
   },
 
+  getByUser: async (userId, limit = 20, offset = 0) => {
+    // Get posts by specific user
+    const { data, error } = await supabase
+      .from('posts')
+      .select('*')
+      .eq('author_id', userId)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1)
+
+    if (error) {
+      console.error('User posts query error:', error);
+      return { data: [], error };
+    }
+
+    // Manually get author data for each post
+    if (data && data.length > 0) {
+      const postsWithAuthors = await Promise.all(
+        data.map(async (post) => {
+          if (post.author_id) {
+            const { data: author } = await supabase
+              .from('profiles')
+              .select('id, name, avatar_url, headline')
+              .eq('id', post.author_id)
+              .single();
+            
+            return { ...post, author };
+          }
+          return { ...post, author: null };
+        })
+      );
+      
+      return { data: postsWithAuthors, error: null };
+    }
+
+    return { data: data || [], error: null };
+  },
+
+  update: async (postId, userId, updates) => {
+    const { data, error } = await supabase
+      .from('posts')
+      .update(updates)
+      .eq('id', postId)
+      .eq('author_id', userId) // Ensure user can only update their own posts
+      .select('*')
+      .single()
+
+    if (error) {
+      return { data: null, error }
+    }
+
+    // Manually get author data
+    if (data && data.author_id) {
+      const { data: author } = await supabase
+        .from('profiles')
+        .select('id, name, avatar_url, headline')
+        .eq('id', data.author_id)
+        .single();
+      
+      return { data: { ...data, author }, error: null };
+    }
+
+    return { data: { ...data, author: null }, error: null };
+  },
+
+  delete: async (postId, userId) => {
+    const { data, error } = await supabase
+      .from('posts')
+      .delete()
+      .eq('id', postId)
+      .eq('author_id', userId) // Ensure user can only delete their own posts
+    
+    return { data, error };
+  },
+
   create: async (post) => {
     const { data, error } = await supabase
       .from('posts')
       .insert(post)
-      .select(`
-        *,
-        author:profiles!posts_author_id_fkey (
-          id, 
-          name, 
-          avatar_url, 
-          headline
-        )
-      `)
+      .select('*')
       .single()
-    return { data, error }
+
+    if (error) {
+      return { data: null, error }
+    }
+
+    // Manually get author data
+    if (data && data.author_id) {
+      const { data: author } = await supabase
+        .from('profiles')
+        .select('id, name, avatar_url, headline')
+        .eq('id', data.author_id)
+        .single();
+      
+      return { data: { ...data, author }, error: null };
+    }
+
+    return { data: { ...data, author: null }, error: null };
   },
 
   like: async (postId, userId) => {
-    const { data, error } = await supabase
-      .from('likes')
-      .insert({ post_id: postId, user_id: userId })
-      .select()
-    return { data, error }
+    try {
+      // Ensure auth user matches supplied userId
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+      if (authError || !user || user.id !== userId) {
+        return { data: null, error: authError || { message: 'User not authenticated' } }
+      }
+
+      // Direct insert
+      const { data, error } = await supabase
+        .from('likes')
+        .insert({ post_id: postId, user_id: userId })
+        .select()
+
+      return { data, error }
+    } catch (err) {
+      return { data: null, error: err }
+    }
   },
 
   unlike: async (postId, userId) => {
-    const { data, error } = await supabase
-      .from('likes')
-      .delete()
-      .eq('post_id', postId)
-      .eq('user_id', userId)
-    return { data, error }
+    try {
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+      if (authError || !user || user.id !== userId) {
+        return { data: null, error: authError || { message: 'User not authenticated' } }
+      }
+
+      const { data, error } = await supabase
+        .from('likes')
+        .delete()
+        .eq('post_id', postId)
+        .eq('user_id', userId)
+
+      return { data, error }
+    } catch (err) {
+      return { data: null, error: err }
+    }
   },
 
   getLikes: async (postId, userId = null) => {
@@ -230,56 +334,128 @@ export const posts = {
   },
 
   getSaved: async (userId, limit = 20) => {
-    const { data, error } = await supabase
+    // Get saved posts
+    const { data: savedData, error: savedError } = await supabase
       .from('saved_posts')
-      .select(`
-        *,
-        post:posts!saved_posts_post_id_fkey (
-          id,
-          content,
-          created_at,
-          likes_count,
-          comments_count,
-          author:profiles!posts_author_id_fkey (
-            id, name, avatar_url, headline
-          )
-        )
-      `)
+      .select('*, post_id')
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
       .limit(limit)
-    return { data, error }
+
+    if (savedError) {
+      return { data: [], error: savedError }
+    }
+
+    // Manually get post and author data for each saved post
+    if (savedData && savedData.length > 0) {
+      const savedWithPosts = await Promise.all(
+        savedData.map(async (saved) => {
+          if (saved.post_id) {
+            // Get post data
+            const { data: post } = await supabase
+              .from('posts')
+              .select('*')
+              .eq('id', saved.post_id)
+              .single();
+
+            if (post && post.author_id) {
+              // Get author data
+              const { data: author } = await supabase
+                .from('profiles')
+                .select('id, name, avatar_url, headline')
+                .eq('id', post.author_id)
+                .single();
+              
+              return { 
+                ...saved, 
+                post: { 
+                  ...post, 
+                  author 
+                } 
+              };
+            }
+            return { ...saved, post };
+          }
+          return { ...saved, post: null };
+        })
+      );
+      
+      return { data: savedWithPosts, error: null };
+    }
+
+    return { data: savedData || [], error: null };
   }
 }
 
 // Comments helpers
 export const comments = {
   getByPost: async (postId) => {
-    const { data, error } = await supabase
+    // Get comments and manually join with profiles since foreign keys may not exist
+    const { data: commentsData, error: commentsError } = await supabase
       .from('comments')
-      .select(`
-        *,
-        user:profiles!comments_user_id_fkey (
-          id, name, avatar_url, headline
-        )
-      `)
+      .select('*')
       .eq('post_id', postId)
       .order('created_at', { ascending: true })
-    return { data, error }
+
+    if (commentsError) {
+      return { data: [], error: commentsError }
+    }
+
+    // Manually get author data for each comment
+    if (commentsData && commentsData.length > 0) {
+      const commentsWithAuthors = await Promise.all(
+        commentsData.map(async (comment) => {
+          if (comment.author_id) {
+            const { data: author } = await supabase
+              .from('profiles')
+              .select('id, name, avatar_url, headline')
+              .eq('id', comment.author_id)
+              .single();
+            
+            return { ...comment, user: author };
+          }
+          return { ...comment, user: null };
+        })
+      );
+      
+      return { data: commentsWithAuthors, error: null };
+    }
+
+    return { data: commentsData || [], error: null };
   },
 
   create: async (comment) => {
-    const { data, error } = await supabase
-      .from('comments')
-      .insert(comment)
-      .select(`
-        *,
-        user:profiles!comments_user_id_fkey (
-          id, name, avatar_url, headline
-        )
-      `)
-      .single()
-    return { data, error }
+    try {
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+      if (authError || !user) {
+        return { data: null, error: authError || { message: 'User not authenticated' } }
+      }
+
+      const commentData = {
+        post_id: comment.post_id,
+        content: comment.content,
+        author_id: user.id
+      }
+
+      const { data, error } = await supabase
+        .from('comments')
+        .insert(commentData)
+        .select('*')
+        .single()
+
+      if (error) return { data: null, error }
+
+      // fetch author
+      const { data: author } = await supabase
+        .from('profiles')
+        .select('id, name, avatar_url, headline')
+        .eq('id', user.id)
+        .single()
+
+      return { data: { ...data, user: author }, error: null }
+    } catch (err) {
+      return { data: null, error: err }
+    }
   },
 
   delete: async (commentId, userId) => {
@@ -287,7 +463,7 @@ export const comments = {
       .from('comments')
       .delete()
       .eq('id', commentId)
-      .eq('user_id', userId)
+      .eq('author_id', userId) // Use author_id instead of user_id
     return { data, error }
   }
 }
@@ -500,10 +676,28 @@ export const communities = {
   },
 
   create: async (community, userId) => {
+    // Convert rules string to array if it's a string
+    let rulesArray = []
+    if (community.rules) {
+      if (typeof community.rules === 'string') {
+        // Split by newlines or semicolons and filter out empty strings
+        rulesArray = community.rules
+          .split(/[\n;]/)
+          .map(rule => rule.trim())
+          .filter(rule => rule.length > 0)
+      } else if (Array.isArray(community.rules)) {
+        rulesArray = community.rules
+      }
+    }
+
     const { data, error } = await supabase
       .from('communities')
       .insert({
-        ...community,
+        name: community.name,
+        description: community.description,
+        category: community.category,
+        rules: rulesArray, // Send as proper array
+        is_active: community.is_active || true,
         admin_id: userId
       })
       .select()
@@ -787,6 +981,129 @@ export const storage = {
     const { data, error } = await supabase.storage
       .from(bucket)
       .remove([path])
+    return { data, error }
+  }
+}
+
+// Experience helpers
+export const experiences = {
+  getByUser: async (userId) => {
+    const { data, error } = await supabase
+      .from('experiences')
+      .select('*')
+      .eq('profile_id', userId)
+      .order('start_date', { ascending: false })
+    return { data, error }
+  },
+
+  create: async (experience) => {
+    const { data, error } = await supabase
+      .from('experiences')
+      .insert(experience)
+      .select('*')
+      .single()
+    return { data, error }
+  },
+
+  update: async (experienceId, userId, updates) => {
+    const { data, error } = await supabase
+      .from('experiences')
+      .update(updates)
+      .eq('id', experienceId)
+      .eq('profile_id', userId)
+      .select('*')
+      .single()
+    return { data, error }
+  },
+
+  delete: async (experienceId, userId) => {
+    const { data, error } = await supabase
+      .from('experiences')
+      .delete()
+      .eq('id', experienceId)
+      .eq('profile_id', userId)
+    return { data, error }
+  }
+}
+
+// Education helpers
+export const education = {
+  getByUser: async (userId) => {
+    const { data, error } = await supabase
+      .from('education')
+      .select('*')
+      .eq('profile_id', userId)
+      .order('start_date', { ascending: false })
+    return { data, error }
+  },
+
+  create: async (educationItem) => {
+    const { data, error } = await supabase
+      .from('education')
+      .insert(educationItem)
+      .select('*')
+      .single()
+    return { data, error }
+  },
+
+  update: async (educationId, userId, updates) => {
+    const { data, error } = await supabase
+      .from('education')
+      .update(updates)
+      .eq('id', educationId)
+      .eq('profile_id', userId)
+      .select('*')
+      .single()
+    return { data, error }
+  },
+
+  delete: async (educationId, userId) => {
+    const { data, error } = await supabase
+      .from('education')
+      .delete()
+      .eq('id', educationId)
+      .eq('profile_id', userId)
+    return { data, error }
+  }
+}
+
+// Skills helpers
+export const skills = {
+  getByUser: async (userId) => {
+    const { data, error } = await supabase
+      .from('skills')
+      .select('*')
+      .eq('profile_id', userId)
+      .order('endorsements_count', { ascending: false })
+    return { data, error }
+  },
+
+  create: async (skill) => {
+    const { data, error } = await supabase
+      .from('skills')
+      .insert(skill)
+      .select('*')
+      .single()
+    return { data, error }
+  },
+
+  update: async (skillId, userId, updates) => {
+    const { data, error } = await supabase
+      .from('skills')
+      .update(updates)
+      .eq('id', skillId)
+      .eq('profile_id', userId)
+      .select('*')
+      .single()
+    return { data, error }
+  },
+
+  delete: async (skillId, userId) => {
+    const { data, error } = await supabase
+      .from('skills')
+      .delete()
+      .eq('id', skillId)
+      .eq('profile_id', userId)
     return { data, error }
   }
 }

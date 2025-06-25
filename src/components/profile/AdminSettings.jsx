@@ -1,13 +1,34 @@
 import { useState } from 'react';
 import { HiUserAdd, HiUserRemove, HiX } from 'react-icons/hi';
 
-export default function AdminSettings({ admins, onAddAdmin, onRemoveAdmin }) {
+export default function AdminSettings({
+  admins,
+  onAddAdmin,
+  onRemoveAdmin,
+  pageAdmins,
+  setPageAdmins,
+  onClose
+}) {
+  // Prefer the explicit `admins` prop but fall back to `pageAdmins` (legacy)
+  const adminList = admins ?? pageAdmins ?? [];
+
+  // Compose default handlers when consumer doesn't provide them
+  const addAdmin = (email) => {
+    if (onAddAdmin) onAddAdmin(email);
+    else if (setPageAdmins) setPageAdmins((prev) => [...prev, email]);
+  };
+
+  const removeAdmin = (email) => {
+    if (onRemoveAdmin) onRemoveAdmin(email);
+    else if (setPageAdmins) setPageAdmins((prev) => prev.filter((a) => a !== email));
+  };
+
   const [newAdminEmail, setNewAdminEmail] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
 
   const handleAddAdmin = () => {
-    if (newAdminEmail && !admins.includes(newAdminEmail)) {
-      onAddAdmin(newAdminEmail);
+    if (newAdminEmail && !adminList.includes(newAdminEmail)) {
+      addAdmin(newAdminEmail);
       setNewAdminEmail('');
       setShowAddForm(false);
     }
@@ -48,11 +69,11 @@ export default function AdminSettings({ admins, onAddAdmin, onRemoveAdmin }) {
 
       <div className="space-y-2">
         <h3 className="font-medium text-sm">Current Admins:</h3>
-        {admins.map((admin, index) => (
+        {adminList.map((admin, index) => (
           <div key={index} className="flex justify-between items-center bg-gray-50 p-2 rounded">
             <span className="text-sm">{admin}</span>
             <button 
-              onClick={() => onRemoveAdmin(admin)}
+              onClick={() => removeAdmin(admin)}
               className="text-red-600 hover:text-red-800"
             >
               <HiUserRemove className="w-4 h-4" />

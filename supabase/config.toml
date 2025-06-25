@@ -160,6 +160,7 @@ s3_secret_key = "env(S3_SECRET_KEY)"
 
 [edge_runtime]
 enabled = true
+policy = "per_worker"
 
 [functions]
 # Functions are automatically detected from the ./supabase/functions directory

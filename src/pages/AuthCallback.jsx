@@ -119,10 +119,10 @@ export default function AuthCallback() {
               {error}
             </p>
             <button 
-              onClick={() => navigate('/login')}
+              onClick={() => navigate('/')}
               className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
             >
-              Try Again
+              Back to Home
             </button>
           </div>
         </div>
