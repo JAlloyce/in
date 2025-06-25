@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom"
+import { useAuth } from "./context/AuthContext"
 import Navbar from "./components/layout/Navbar"
 import Sidebar from "./components/layout/Sidebar"
 import Home from "./pages/Home"
