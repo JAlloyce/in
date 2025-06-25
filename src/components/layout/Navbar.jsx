@@ -35,19 +35,26 @@ export default function Navbar() {
   const profileRef = useRef(null)
   const location = useLocation()
   const navigate = useNavigate()
-  
-  // Initialize user state and notifications
+
+  // Initialize auth state
   useEffect(() => {
     initializeAuth()
   }, [])
 
-  // Load notifications count when user changes
+  // Set up auth state listener
   useEffect(() => {
-    if (user) {
-      loadNotifications()
-    }
-  }, [user])
+    const { data: { subscription } } = auth.onAuthStateChange((event, session) => {
+      setUser(session?.user || null)
+      if (session?.user) {
+        loadNotifications(session.user.id)
+      } else {
+        setUnreadNotifications(0)
+      }
+    })
 
+    return () => subscription.unsubscribe()
+  }, [])
+  
   // Main navigation items - core features
   const navItems = [
     { icon: HiHome, label: "Home", path: "/", color: "text-blue-500" },
@@ -70,16 +77,22 @@ export default function Navbar() {
 
   const initializeAuth = async () => {
     try {
-      const { user: currentUser } = await auth.getCurrentUser()
-      setUser(currentUser)
+      // Use getSession for initial load (better than getUser for page load)
+      const { session, error } = await auth.getSession()
+      if (error) {
+        console.error('Error getting session:', error)
+      } else if (session?.user) {
+        setUser(session.user)
+        loadNotifications(session.user.id)
+      }
     } catch (error) {
-      console.error('Error getting current user:', error)
+      console.error('Error initializing auth:', error)
     }
   }
 
-  const loadNotifications = async () => {
+  const loadNotifications = async (userId) => {
     try {
-      const { data: notificationData, error } = await notifications.get(user.id, 50)
+      const { data: notificationData, error } = await notifications.get(userId, 50)
       if (!error && notificationData) {
         const unreadCount = notificationData.filter(n => !n.is_read).length
         setUnreadNotifications(unreadCount)
@@ -181,6 +194,22 @@ export default function Navbar() {
     );
   };
 
+  const getUserDisplayName = () => {
+    if (!user) return '';
+    
+    // Try user_metadata first, then email
+    return user.user_metadata?.name || 
+           user.user_metadata?.full_name || 
+           user.email?.split('@')[0] ||
+           user.email ||
+           'User';
+  }
+
+  const getUserInitial = () => {
+    const displayName = getUserDisplayName();
+    return displayName.charAt(0).toUpperCase();
+  }
+
   return (
     <>
       {/* Desktop Header */}
@@ -275,11 +304,11 @@ export default function Navbar() {
                   />
                 ) : (
                   <div className="w-6 h-6 rounded-full bg-gray-300 mb-1 flex items-center justify-center">
-                    {user ? (
+                    {user && (
                       <span className="text-xs text-gray-600 font-semibold">
-                        {(user.user_metadata?.full_name || user.email)?.charAt(0).toUpperCase()}
+                        {getUserInitial()}
                       </span>
-                    ) : null}
+                    )}
                   </div>
                 )}
                 <span className="text-xs">Me</span>
@@ -291,7 +320,7 @@ export default function Navbar() {
                     <>
                       <div className="px-4 py-2 border-b border-gray-100">
                         <p className="font-semibold text-gray-900 text-sm">
-                          {user.user_metadata?.full_name || user.email}
+                          {getUserDisplayName()}
                         </p>
                         <p className="text-xs text-gray-500">{user.email}</p>
                       </div>
@@ -441,7 +470,7 @@ export default function Navbar() {
                   <>
                     <div className="px-3 py-2 mb-2">
                       <p className="font-semibold text-gray-900">
-                        {user.user_metadata?.full_name || user.email}
+                        {getUserDisplayName()}
                       </p>
                       <p className="text-sm text-gray-500">{user.email}</p>
                     </div>

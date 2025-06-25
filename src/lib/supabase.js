@@ -54,6 +54,11 @@ export const auth = {
   getSession: async () => {
     const { data: { session }, error } = await supabase.auth.getSession()
     return { session, error }
+  },
+
+  // Better method for checking auth state on load
+  onAuthStateChange: (callback) => {
+    return supabase.auth.onAuthStateChange(callback)
   }
 }
 
@@ -88,19 +93,19 @@ export const profiles = {
   }
 }
 
-// Posts helpers
+// Posts helpers - FIXED QUERIES
 export const posts = {
   getFeed: async (limit = 10, offset = 0) => {
     const { data, error } = await supabase
       .from('posts')
       .select(`
         *,
-        profiles:author_id (
-          id, full_name, avatar_url, headline
-        ),
-        likes_count:likes(count),
-        comments_count:comments(count),
-        user_liked:likes!left(user_id)
+        author:profiles!posts_author_id_fkey (
+          id, 
+          name, 
+          avatar_url, 
+          headline
+        )
       `)
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1)
@@ -113,8 +118,11 @@ export const posts = {
       .insert(post)
       .select(`
         *,
-        profiles:author_id (
-          id, full_name, avatar_url, headline
+        author:profiles!posts_author_id_fkey (
+          id, 
+          name, 
+          avatar_url, 
+          headline
         )
       `)
       .single()
@@ -136,6 +144,20 @@ export const posts = {
       .eq('post_id', postId)
       .eq('user_id', userId)
     return { data, error }
+  },
+
+  getLikes: async (postId, userId = null) => {
+    let query = supabase
+      .from('likes')
+      .select('user_id')
+      .eq('post_id', postId)
+
+    if (userId) {
+      query = query.eq('user_id', userId)
+    }
+
+    const { data, error } = await query
+    return { data, error }
   }
 }
 
@@ -146,10 +168,11 @@ export const jobs = {
       .from('jobs')
       .select(`
         *,
-        companies:company_id (
-          id, name, logo_url
-        ),
-        applications_count:job_applications(count)
+        company:companies!jobs_company_id_fkey (
+          id, 
+          name, 
+          logo_url
+        )
       `)
       .eq('is_active', true)
       .order('created_at', { ascending: false })
@@ -174,7 +197,7 @@ export const jobs = {
       .from('job_applications')
       .insert({
         job_id: jobId,
-        user_id: userId,
+        applicant_id: userId,
         resume_url: resumeUrl,
         status: 'pending'
       })
@@ -192,13 +215,10 @@ export const messages = {
       .select(`
         *,
         participant_1:profiles!conversations_participant_1_id_fkey (
-          id, full_name, avatar_url
+          id, name, avatar_url
         ),
         participant_2:profiles!conversations_participant_2_id_fkey (
-          id, full_name, avatar_url
-        ),
-        last_message:messages (
-          content, created_at
+          id, name, avatar_url
         )
       `)
       .or(`participant_1_id.eq.${userId},participant_2_id.eq.${userId}`)
@@ -212,7 +232,7 @@ export const messages = {
       .select(`
         *,
         sender:profiles!messages_sender_id_fkey (
-          id, full_name, avatar_url
+          id, name, avatar_url
         )
       `)
       .eq('conversation_id', conversationId)
@@ -231,7 +251,7 @@ export const messages = {
       .select(`
         *,
         sender:profiles!messages_sender_id_fkey (
-          id, full_name, avatar_url
+          id, name, avatar_url
         )
       `)
       .single()
@@ -246,11 +266,11 @@ export const notifications = {
       .from('notifications')
       .select(`
         *,
-        actor:profiles!notifications_actor_id_fkey (
-          id, full_name, avatar_url
+        sender:profiles!notifications_sender_id_fkey (
+          id, name, avatar_url
         )
       `)
-      .eq('user_id', userId)
+      .eq('recipient_id', userId)
       .order('created_at', { ascending: false })
       .limit(limit)
     return { data, error }
@@ -276,7 +296,7 @@ export const realtime = {
           event: 'INSERT',
           schema: 'public',
           table: 'notifications',
-          filter: `user_id=eq.${userId}`
+          filter: `recipient_id=eq.${userId}`
         },
         callback
       )

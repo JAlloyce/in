@@ -129,9 +129,9 @@ export default function CreatePost({ user, onPostCreated }) {
         id: newPost.id,
         type: newPost.post_type || 'user',
         author: {
-          name: newPost.profiles?.full_name || user.user_metadata?.full_name || user.email,
-          title: newPost.profiles?.headline || 'Professional',
-          avatar: newPost.profiles?.avatar_url || user.user_metadata?.avatar_url
+          name: newPost.author?.name || user.user_metadata?.name || user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+          title: newPost.author?.headline || 'Professional',
+          avatar: newPost.author?.avatar_url || user.user_metadata?.avatar_url
         },
         content: newPost.content,
         timestamp: 'Just now',

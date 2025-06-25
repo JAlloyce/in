@@ -29,35 +29,45 @@ export default function Home() {
     initializeHome()
   }, [])
 
+  // Set up auth state listener
+  useEffect(() => {
+    const { data: { subscription } } = auth.onAuthStateChange((event, session) => {
+      setUser(session?.user || null)
+      if (session?.user) {
+        loadFeedPosts()
+      }
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
+
   // Set up real-time subscription for new posts
   useEffect(() => {
-    if (user) {
-      const subscription = realtime.subscribeToFeed((payload) => {
-        console.log('New post received:', payload)
-        if (payload.eventType === 'INSERT') {
-          loadFeedPosts() // Reload feed when new posts are added
-        }
-      })
-
-      return () => {
-        subscription.unsubscribe()
+    const subscription = realtime.subscribeToFeed((payload) => {
+      console.log('New post received:', payload)
+      if (payload.eventType === 'INSERT') {
+        loadFeedPosts() // Reload feed when new posts are added
       }
+    })
+
+    return () => {
+      subscription.unsubscribe()
     }
-  }, [user])
+  }, [])
 
   const initializeHome = async () => {
     try {
       setLoading(true)
       
-      // Get current user
-      const { user: currentUser, error: userError } = await auth.getCurrentUser()
-      if (userError) {
-        console.error('Error getting user:', userError)
-      } else {
-        setUser(currentUser)
+      // Get current session (better for initial load)
+      const { session, error: sessionError } = await auth.getSession()
+      if (sessionError) {
+        console.error('Error getting session:', sessionError)
+      } else if (session?.user) {
+        setUser(session.user)
       }
 
-      // Load feed posts
+      // Load feed posts regardless of auth state
       await loadFeedPosts()
     } catch (err) {
       console.error('Error initializing home:', err)
@@ -70,38 +80,56 @@ export default function Home() {
   const loadFeedPosts = async () => {
     try {
       setFeedLoading(true)
+      setError(null)
+      
       const { data: postsData, error: postsError } = await posts.getFeed(20)
       
       if (postsError) {
         console.error('Error loading posts:', postsError)
-        setError('Failed to load posts')
+        setError('Failed to load posts: ' + postsError.message)
+        return
+      }
+
+      if (!postsData) {
+        setFeedPosts([])
         return
       }
 
       // Transform the data for display
-      const transformedPosts = postsData.map(post => ({
-        id: post.id,
-        type: post.post_type || 'user',
-        author: {
-          name: post.profiles?.full_name || 'Unknown User',
-          title: post.profiles?.headline || 'Professional',
-          avatar: post.profiles?.avatar_url
-        },
-        content: post.content,
-        timestamp: formatTimestamp(post.created_at),
-        likes: post.likes_count?.[0]?.count || 0,
-        comments: post.comments_count?.[0]?.count || 0,
-        shares: 0, // TODO: Implement shares
-        media_urls: post.media_urls || [],
-        user_liked: post.user_liked?.length > 0,
-        source_id: post.source_id,
-        commentsList: [] // Will load comments when expanded
+      const transformedPosts = await Promise.all(postsData.map(async (post) => {
+        // Get like count and user liked status
+        let likesCount = post.likes_count || 0
+        let userLiked = false
+        
+        if (user) {
+          const { data: userLikeData } = await posts.getLikes(post.id, user.id)
+          userLiked = userLikeData && userLikeData.length > 0
+        }
+
+        return {
+          id: post.id,
+          type: post.post_type || 'user',
+          author: {
+            name: post.author?.name || 'Unknown User',
+            title: post.author?.headline || 'Professional',
+            avatar: post.author?.avatar_url
+          },
+          content: post.content,
+          timestamp: formatTimestamp(post.created_at),
+          likes: likesCount,
+          comments: post.comments_count || 0,
+          shares: post.shares_count || 0,
+          media_urls: post.media_urls || [],
+          user_liked: userLiked,
+          source_id: post.source_id,
+          commentsList: [] // Will load comments when expanded
+        }
       }))
 
       setFeedPosts(transformedPosts)
     } catch (err) {
       console.error('Error loading feed:', err)
-      setError('Failed to load feed')
+      setError('Failed to load feed: ' + err.message)
     } finally {
       setFeedLoading(false)
     }
@@ -128,15 +156,19 @@ export default function Home() {
       const post = feedPosts.find(p => p.id === postId)
       if (post.user_liked) {
         // Unlike the post
-        await posts.unlike(postId, user.id)
+        const { error } = await posts.unlike(postId, user.id)
+        if (error) throw error
+        
         setFeedPosts(prev => prev.map(p => 
           p.id === postId 
-            ? { ...p, likes: p.likes - 1, user_liked: false }
+            ? { ...p, likes: Math.max(0, p.likes - 1), user_liked: false }
             : p
         ))
       } else {
         // Like the post
-        await posts.like(postId, user.id)
+        const { error } = await posts.like(postId, user.id)
+        if (error) throw error
+        
         setFeedPosts(prev => prev.map(p => 
           p.id === postId 
             ? { ...p, likes: p.likes + 1, user_liked: true }
@@ -145,7 +177,7 @@ export default function Home() {
       }
     } catch (err) {
       console.error('Error toggling like:', err)
-      alert('Failed to update like')
+      alert('Failed to update like: ' + err.message)
     }
   }
 
@@ -347,7 +379,13 @@ export default function Home() {
                 className="w-8 h-8 rounded-full object-cover"
               />
             ) : (
-              <div className="w-8 h-8 bg-gray-300 rounded-full"></div>
+              <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
+                {user && (
+                  <span className="text-xs text-gray-600 font-semibold">
+                    {user.email?.charAt(0).toUpperCase()}
+                  </span>
+                )}
+              </div>
             )}
             <div className="flex-1">
               <input
