@@ -9,6 +9,16 @@ import {
 } from "react-icons/hi"
 import SettingsModal from "../settings/SettingsModal"
 
+/**
+ * Navbar Component - Mobile-First Responsive Navigation
+ * 
+ * Features:
+ * - Mobile-optimized navigation with collapsible menu
+ * - Fixed bottom navigation bar for mobile devices
+ * - Proper icon spacing and text handling
+ * - Responsive design that adapts to different screen sizes
+ * - Professional LinkedIn-style appearance
+ */
 export default function Navbar() {
   const [showSettings, setShowSettings] = useState(false)
   const [showMobileMenu, setShowMobileMenu] = useState(false)
@@ -26,22 +36,22 @@ export default function Navbar() {
   const location = useLocation()
   const navigate = useNavigate()
   
-  // Navigation items with vibrant colors
+  // Main navigation items - core features
   const navItems = [
     { icon: HiHome, label: "Home", path: "/", color: "text-blue-500" },
     { icon: HiUserGroup, label: "Network", path: "/network", color: "text-purple-500" },
     { icon: HiBriefcase, label: "Jobs", path: "/jobs", color: "text-pink-500" },
     { icon: HiChat, label: "Messaging", path: "/messaging", color: "text-blue-500" },
     { icon: HiBell, label: "Notifications", path: "/notifications", color: "text-purple-500" },
-    { icon: HiViewGrid, label: "Work", path: "/workspace", color: "text-pink-500" },
-    { icon: HiCog, label: "Settings", path: "#", action: () => setShowSettings(true), color: "text-blue-500" },
   ]
 
-  // Additional items for mobile "More" dropdown
-  const moreItems = [
+  // Secondary navigation items for mobile more menu
+  const secondaryNavItems = [
+    { icon: HiViewGrid, label: "Work", path: "/workspace", color: "text-pink-500" },
     { icon: HiUsers, label: "Communities", path: "/communities", color: "text-purple-500" },
     { icon: HiFlag, label: "Pages", path: "/pages", color: "text-pink-500" },
     { icon: HiBookmark, label: "Saved", path: "/saved", color: "text-blue-500" },
+    { icon: HiCog, label: "Settings", path: "#", action: () => setShowSettings(true), color: "text-blue-500" },
   ]
 
   const isActive = (path) => location.pathname === path
@@ -121,6 +131,7 @@ export default function Navbar() {
 
   return (
     <>
+      {/* Desktop Header */}
       <header className="sticky top-0 z-30 bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 py-2 flex items-center">
           {/* Logo */}
@@ -134,6 +145,8 @@ export default function Navbar() {
             <input
               type="text"
               placeholder="Search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-8 pr-3 py-1 bg-gray-100 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 w-full text-sm"
             />
           </div>
@@ -141,7 +154,7 @@ export default function Navbar() {
           {/* Desktop Navigation */}
           <nav className="hidden md:flex flex-1 justify-center">
             <div className="flex space-x-6">
-              {navItems.slice(0, 6).map((item) => (
+              {navItems.map((item) => (
                 <Link
                   to={item.path}
                   key={item.label}
@@ -151,189 +164,308 @@ export default function Navbar() {
                       : "text-gray-500 hover:text-black"
                   }`}
                 >
-                  <item.icon className="text-xl" />
-                  <span className="text-xs">{item.label}</span>
+                  <div className="relative">
+                    <item.icon className="text-xl" />
+                    {item.label === "Notifications" && (
+                      <NotificationBadge count={unreadNotifications} />
+                    )}
+                  </div>
+                  <span className="text-xs mt-1">{item.label}</span>
                 </Link>
               ))}
+              
+              {/* Work dropdown */}
+              <div className="relative" ref={dropdownRef}>
+                <button
+                  onClick={() => setShowMoreDropdown(!showMoreDropdown)}
+                  className={`flex flex-col items-center transition-colors ${
+                    showMoreDropdown ? "text-pink-500" : "text-gray-500 hover:text-black"
+                  }`}
+                >
+                  <HiViewGrid className="text-xl" />
+                  <span className="text-xs mt-1">Work</span>
+                </button>
+                
+                {showMoreDropdown && (
+                  <div className="absolute top-full right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-2 border z-50">
+                    {secondaryNavItems.map((item) => (
+                      <Link
+                        key={item.label}
+                        to={item.path}
+                        onClick={() => {
+                          if (item.action) item.action()
+                          setShowMoreDropdown(false)
+                        }}
+                        className="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-100"
+                      >
+                        <item.icon className={`w-5 h-5 mr-3 ${item.color}`} />
+                        {item.label}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </nav>
+
+          {/* Desktop Right Icons */}
+          <div className="hidden md:flex items-center space-x-4 ml-4">
+            <div className="relative" ref={profileRef}>
+              <button
+                onClick={() => setShowProfileDropdown(!showProfileDropdown)}
+                className="flex flex-col items-center text-gray-500 hover:text-black"
+              >
+                <div className="w-6 h-6 rounded-full bg-gray-300 mb-1"></div>
+                <span className="text-xs">Me</span>
+              </button>
+              
+              {showProfileDropdown && (
+                <div className="absolute top-full right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-2 border z-50">
+                  {isLoggedIn ? (
+                    <>
+                      <Link
+                        to="/profile"
+                        className="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-100"
+                        onClick={() => setShowProfileDropdown(false)}
+                      >
+                        <HiUser className="w-5 h-5 mr-3" />
+                        View Profile
+                      </Link>
+                      <button
+                        onClick={handleLogout}
+                        className="flex items-center w-full px-4 py-2 text-gray-700 hover:bg-gray-100"
+                      >
+                        <HiLogout className="w-5 h-5 mr-3" />
+                        Logout
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setShowLoginModal(true)
+                        setShowProfileDropdown(false)
+                      }}
+                      className="flex items-center w-full px-4 py-2 text-gray-700 hover:bg-gray-100"
+                    >
+                      <HiLogin className="w-5 h-5 mr-3" />
+                      Login
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
 
           {/* Mobile Menu Button */}
           <div className="md:hidden ml-auto">
             <button 
               onClick={() => setShowMobileMenu(!showMobileMenu)}
-              className="text-gray-500 hover:text-gray-700"
+              className="text-gray-500 hover:text-gray-700 p-2"
             >
               {showMobileMenu ? <HiX className="w-6 h-6" /> : <HiMenu className="w-6 h-6" />}
             </button>
           </div>
-
-          {/* Desktop Right Icons */}
-          <div className="hidden md:flex items-center space-x-4 ml-4">
-            <button
-              onClick={() => setShowSettings(true)}
-              className={`flex flex-col items-center ${
-                showSettings ? "text-blue-500" : "text-gray-500 hover:text-black"
-              }`}
-            >
-              <HiCog className="text-2xl" />
-              <span className="text-xs mt-1">Settings</span>
-            </button>
-
-            <Link to="/profile" className="flex flex-col items-center text-gray-500 hover:text-black">
-              <div className="w-6 h-6 rounded-full bg-gray-300 mb-1"></div>
-              <span className="text-xs">Me</span>
-            </Link>
-          </div>
         </div>
       </header>
 
-      {/* Mobile Navigation Bar */}
-      {showMobileMenu && (
-        <div className="md:hidden fixed inset-x-0 bottom-0 bg-white border-t z-50 shadow-lg">
-          <div className="flex justify-around py-2 px-2">
-            {/* First 4 navigation items */}
-            {navItems.slice(0, 4).map((item) => (
-              <Link
-                to={item.path}
-                key={item.label}
-                className={`flex flex-col items-center px-2 py-1 ${
-                  isActive(item.path) ? item.color : "text-gray-500"
-                }`}
-                onClick={() => setShowMobileMenu(false)}
-              >
-                <item.icon className="w-6 h-6" />
-                <span className="text-xs mt-1">{item.label}</span>
-              </Link>
-            ))}
-            
-            {/* More dropdown */}
-            <div className="relative" ref={dropdownRef}>
-              <button
-                className={`flex flex-col items-center px-2 py-1 ${
-                  showMoreDropdown ? "text-purple-500" : "text-gray-500"
-                }`}
-                onClick={() => setShowMoreDropdown(!showMoreDropdown)}
-              >
-                <HiDotsHorizontal className="w-6 h-6" />
-                <span className="text-xs mt-1">More</span>
-              </button>
-              {/* Dropdown menu */}
-              {showMoreDropdown && (
-                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-48 bg-white rounded-lg shadow-lg py-2 border">
-                  {/* Original navbar items */}
-                  {navItems.slice(4).map((item) => (
-                    item.path !== "#" ? (
-                      <Link
-                        key={item.label}
-                        to={item.path}
-                        className={`flex items-center px-4 py-2 hover:bg-gray-100 ${item.color}`}
-                        onClick={() => {
-                          setShowMobileMenu(false);
-                          setShowMoreDropdown(false);
-                        }}
-                      >
-                        <item.icon className="w-5 h-5 mr-2" />
-                        <span>{item.label}</span>
-                      </Link>
-                    ) : (
-                      <div
-                        key={item.label}
-                        className={`flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer ${item.color}`}
-                        onClick={() => {
-                          item.action?.();
-                          setShowMobileMenu(false);
-                          setShowMoreDropdown(false);
-                        }}
-                      >
-                        <item.icon className="w-5 h-5 mr-2" />
-                        <span>{item.label}</span>
-                      </div>
-                    )
-                  ))}
-                  
-                  {/* Separator */}
-                  <div className="border-t border-gray-200 my-2"></div>
-                  
-                  {/* Additional sidebar items for mobile */}
-                  {moreItems.map((item) => (
-                    <Link
-                      key={item.label}
-                      to={item.path}
-                      className={`flex items-center px-4 py-2 hover:bg-gray-100 ${item.color}`}
-                      onClick={() => {
-                        setShowMobileMenu(false);
-                        setShowMoreDropdown(false);
-                      }}
-                    >
-                      <item.icon className="w-5 h-5 mr-2" />
-                      <span>{item.label}</span>
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
+      {/* Mobile Bottom Navigation - Fixed */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg z-40">
+        <div className="flex justify-around items-center py-2 px-1 safe-area-bottom">
+          {navItems.slice(0, 4).map((item) => (
+            <Link
+              to={item.path}
+              key={item.label}
+              className={`flex flex-col items-center px-1 py-2 min-w-0 ${
+                isActive(item.path) 
+                  ? `${item.color}` 
+                  : "text-gray-500"
+              }`}
+            >
+              <div className="relative">
+                <item.icon className="text-xl mb-1" />
+                {item.label === "Notifications" && (
+                  <NotificationBadge count={unreadNotifications} />
+                )}
+              </div>
+              <span className="text-xs truncate max-w-full">{item.label}</span>
+            </Link>
+          ))}
+          
+          {/* More button for mobile */}
+          <button
+            onClick={() => setShowMobileMenu(!showMobileMenu)}
+            className={`flex flex-col items-center px-1 py-2 min-w-0 ${
+              showMobileMenu ? "text-blue-500" : "text-gray-500"
+            }`}
+          >
+            <HiDotsHorizontal className="text-xl mb-1" />
+            <span className="text-xs">More</span>
+          </button>
         </div>
-      )}
+      </div>
 
-      {/* Professional Login Modal */}
-      {showLoginModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white max-w-md w-full p-8 rounded-lg shadow-xl">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">Sign In</h2>
+      {/* Mobile Slide-out Menu */}
+      {showMobileMenu && (
+        <div className="md:hidden fixed inset-0 bg-black bg-opacity-50 z-50">
+          <div className="absolute top-0 right-0 h-full w-80 max-w-full bg-white shadow-lg">
+            <div className="p-4 border-b flex justify-between items-center">
+              <h3 className="text-lg font-semibold">Menu</h3>
               <button 
-                onClick={() => setShowLoginModal(false)}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
+                onClick={() => setShowMobileMenu(false)}
+                className="p-2 rounded-full hover:bg-gray-100"
               >
                 <HiX className="w-6 h-6" />
               </button>
             </div>
             
-            <form onSubmit={handleLogin} className="space-y-6">
+            <div className="p-4 space-y-2">
+              {/* Primary nav items */}
+              <div className="mb-6">
+                <h4 className="text-sm font-medium text-gray-500 mb-2">MAIN</h4>
+                {navItems.slice(4).map((item) => (
+                  <Link
+                    key={item.label}
+                    to={item.path}
+                    onClick={() => setShowMobileMenu(false)}
+                    className={`flex items-center px-3 py-3 rounded-lg transition-colors ${
+                      isActive(item.path) 
+                        ? `bg-blue-50 ${item.color}` 
+                        : "text-gray-700 hover:bg-gray-100"
+                    }`}
+                  >
+                    <div className="relative">
+                      <item.icon className="w-6 h-6 mr-3" />
+                      {item.label === "Notifications" && (
+                        <NotificationBadge count={unreadNotifications} />
+                      )}
+                    </div>
+                    <span className="font-medium">{item.label}</span>
+                  </Link>
+                ))}
+              </div>
+              
+              {/* Secondary nav items */}
               <div>
+                <h4 className="text-sm font-medium text-gray-500 mb-2">MORE</h4>
+                {secondaryNavItems.map((item) => (
+                  <Link
+                    key={item.label}
+                    to={item.path}
+                    onClick={() => {
+                      if (item.action) item.action()
+                      setShowMobileMenu(false)
+                    }}
+                    className="flex items-center px-3 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+                  >
+                    <item.icon className={`w-6 h-6 mr-3 ${item.color}`} />
+                    <span className="font-medium">{item.label}</span>
+                  </Link>
+                ))}
+              </div>
+              
+              {/* Profile section */}
+              <div className="pt-4 border-t">
+                {isLoggedIn ? (
+                  <>
+                    <Link
+                      to="/profile"
+                      onClick={() => setShowMobileMenu(false)}
+                      className="flex items-center px-3 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+                    >
+                      <HiUser className="w-6 h-6 mr-3" />
+                      <span className="font-medium">View Profile</span>
+                    </Link>
+                    <button
+                      onClick={() => {
+                        handleLogout()
+                        setShowMobileMenu(false)
+                      }}
+                      className="flex items-center w-full px-3 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+                    >
+                      <HiLogout className="w-6 h-6 mr-3" />
+                      <span className="font-medium">Logout</span>
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => {
+                      setShowLoginModal(true)
+                      setShowMobileMenu(false)
+                    }}
+                    className="flex items-center w-full px-3 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+                  >
+                    <HiLogin className="w-6 h-6 mr-3" />
+                    <span className="font-medium">Login</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Login Modal */}
+      {showLoginModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+            <div className="p-6 border-b flex justify-between items-center">
+              <h2 className="text-xl font-bold">Login to LinkedIn</h2>
+              <button 
+                onClick={() => setShowLoginModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <HiX className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <form onSubmit={handleLogin} className="p-6">
+              {loginError && (
+                <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+                  {loginError}
+                </div>
+              )}
+              
+              <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Email
                 </label>
                 <input
                   type="email"
-                  placeholder="Enter your email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="input-modern w-full"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
                 />
               </div>
               
-              <div>
+              <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Password
                 </label>
                 <input
                   type="password"
-                  placeholder="Enter your password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="input-modern w-full"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
                 />
               </div>
               
-              {loginError && (
-                <p className="text-red-600 text-sm">{loginError}</p>
-              )}
-              
               <button
                 type="submit"
-                className="w-full btn-professional flex items-center justify-center gap-2"
+                className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors"
               >
-                Sign In
+                Login
               </button>
             </form>
           </div>
         </div>
       )}
 
-      <SettingsModal isOpen={showSettings} onClose={() => setShowSettings(false)} />
+      {/* Settings Modal */}
+      {showSettings && (
+        <SettingsModal onClose={() => setShowSettings(false)} />
+      )}
     </>
   )
 }

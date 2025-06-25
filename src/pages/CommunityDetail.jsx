@@ -2,7 +2,9 @@ import { useState, useEffect } from "react";
 import { 
   HiUserGroup, HiCalendar, HiUser, HiInformationCircle, 
   HiPlus, HiOutlineDotsHorizontal, HiOutlineBookmark, 
-  HiOutlineShare, HiOutlineFlag, HiOutlineChevronDown, HiSearch 
+  HiOutlineShare, HiOutlineFlag, HiOutlineChevronDown, HiSearch,
+  HiOutlineLocationMarker, HiOutlineClock, HiOutlineUserGroup,
+  HiOutlineCalendar, HiOutlineTicket, HiOutlinePresentationChartLine
 } from "react-icons/hi";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import CreatePost from "../components/feed/CreatePost";
@@ -20,6 +22,15 @@ const CommunityDetail = () => {
   const [isAdmin, setIsAdmin] = useState(true); // In real app, check user role
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [blockedMembers, setBlockedMembers] = useState([]);
+  const [showCreateEvent, setShowCreateEvent] = useState(false);
+  const [eventForm, setEventForm] = useState({
+    title: '',
+    description: '',
+    date: '',
+    time: '',
+    location: '',
+    type: 'in-person'
+  });
 
   // Mock community data
   useEffect(() => {
@@ -40,8 +51,26 @@ const CommunityDetail = () => {
           "No spam or irrelevant content"
         ],
         events: [
-          { id: 1, title: "Monthly Tech Meetup", date: "June 15, 2023", location: "San Francisco" },
-          { id: 2, title: "AI Workshop", date: "June 22, 2023", location: "Online" }
+          { 
+            id: 1, 
+            title: "Monthly Tech Meetup", 
+            date: "June 15, 2023", 
+            time: "6:00 PM",
+            location: "San Francisco",
+            type: "in-person",
+            attendees: 45,
+            description: "Join us for our monthly tech discussion and networking event."
+          },
+          { 
+            id: 2, 
+            title: "AI Workshop", 
+            date: "June 22, 2023", 
+            time: "2:00 PM",
+            location: "Online",
+            type: "online",
+            attendees: 128,
+            description: "Learn about the latest AI tools and techniques."
+          }
         ]
       });
       
@@ -106,6 +135,50 @@ const CommunityDetail = () => {
     setPosts([newPost, ...posts]);
   };
 
+  const handleCreateEvent = () => {
+    if (!eventForm.title || !eventForm.date || !eventForm.time) {
+      alert("Please fill in all required fields");
+      return;
+    }
+
+    const newEvent = {
+      id: Date.now(),
+      ...eventForm,
+      attendees: 0,
+      createdDate: new Date().toLocaleDateString()
+    };
+
+    setCommunity(prev => ({
+      ...prev,
+      events: [...prev.events, newEvent]
+    }));
+
+    setEventForm({
+      title: '',
+      description: '',
+      date: '',
+      time: '',
+      location: '',
+      type: 'in-person'
+    });
+    setShowCreateEvent(false);
+    alert("Event created successfully!");
+  };
+
+  const handleAttendEvent = (eventId) => {
+    setCommunity(prev => ({
+      ...prev,
+      events: prev.events.map(event => 
+        event.id === eventId 
+          ? { ...event, attendees: event.attendees + 1, attending: true }
+          : event
+      )
+    }));
+    
+    // Create notification
+    alert(`You're now attending this event! You'll receive notifications about updates.`);
+  };
+
   if (!community) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -119,40 +192,42 @@ const CommunityDetail = () => {
       {/* Community Header */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
         {/* Cover Image */}
-        <div className="h-48 bg-gradient-to-r from-blue-500 to-purple-600 relative">
+        <div className="h-32 lg:h-48 bg-gradient-to-r from-blue-500 to-purple-600 relative">
           <div className="absolute inset-0 bg-black bg-opacity-20 flex items-center justify-center">
             <button 
-              className="bg-white text-blue-600 px-4 py-2 rounded-full font-medium"
+              className="bg-white text-blue-600 px-3 py-1 lg:px-4 lg:py-2 rounded-full font-medium text-sm lg:text-base"
               onClick={() => alert("Upload cover image")}
             >
               Add Cover Photo
             </button>
           </div>
           
-          <div className="absolute bottom-4 left-6 flex items-end">
-            <div className="w-32 h-32 rounded-full bg-white p-1">
-              <div className="bg-gray-200 border-2 border-dashed rounded-full w-full h-full flex items-center justify-center">
-                <HiUserGroup className="w-12 h-12 text-gray-400" />
+          <div className="absolute bottom-4 left-3 lg:left-6 flex items-end">
+            {/* Fixed community icon to be perfectly round */}
+            <div className="w-20 h-20 lg:w-32 lg:h-32 rounded-full bg-white p-1 shadow-lg">
+              <div className="bg-purple-100 rounded-full w-full h-full flex items-center justify-center">
+                <HiUserGroup className="w-6 h-6 lg:w-12 lg:h-12 text-purple-600" />
               </div>
             </div>
-            <div className="ml-4 text-white mb-4">
-              <h1 className="text-3xl font-bold">{community.name}</h1>
-              <p className="text-lg">{community.members} members</p>
+            <div className="ml-2 lg:ml-4 text-white mb-2 lg:mb-4">
+              <h1 className="text-lg lg:text-3xl font-bold">{community.name}</h1>
+              <p className="text-sm lg:text-lg">{community.members} members</p>
             </div>
           </div>
           
-          <div className="absolute top-4 right-4 flex space-x-2">
+          {/* Mobile-optimized action buttons */}
+          <div className="absolute top-2 lg:top-4 right-2 lg:right-4 flex space-x-1 lg:space-x-2">
             <div className="relative">
               <button 
-                className="bg-white text-blue-600 px-4 py-2 rounded-full font-medium flex items-center"
+                className="bg-white text-blue-600 px-2 py-1 lg:px-4 lg:py-2 rounded-full font-medium flex items-center text-sm lg:text-base"
                 onClick={() => setShowMemberOptions(!showMemberOptions)}
               >
                 <span className="mr-1">{isMember ? "Member" : "Join"}</span>
-                <HiOutlineChevronDown />
+                <HiOutlineChevronDown className="w-3 h-3 lg:w-4 lg:h-4" />
               </button>
               
               {showMemberOptions && (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10">
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-20">
                   {isMember ? (
                     <>
                       <button 
@@ -189,15 +264,15 @@ const CommunityDetail = () => {
               )}
             </div>
             
-            <button className="bg-white text-blue-600 p-2 rounded-full">
-              <HiOutlineShare className="w-5 h-5" />
+            <button className="bg-white text-blue-600 p-1 lg:p-2 rounded-full">
+              <HiOutlineShare className="w-4 h-4 lg:w-5 lg:h-5" />
             </button>
           </div>
         </div>
         
         {/* Community Info */}
-        <div className="p-6 pt-24">
-          <p className="text-gray-700 mb-6">{community.description}</p>
+        <div className="p-3 lg:p-6 pt-12 lg:pt-24">
+          <p className="text-gray-700 mb-4 lg:mb-6 text-sm lg:text-base">{community.description}</p>
           
           {/* Tabs */}
           <div className="flex border-b overflow-x-auto">
@@ -317,46 +392,92 @@ const CommunityDetail = () => {
         )}
         
         {activeTab === "events" && (
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold">Upcoming Events</h2>
-              <button className="flex items-center bg-blue-600 text-white px-3 py-1.5 rounded-md text-sm">
-                <HiPlus className="mr-1" /> Create Event
-              </button>
+          <div className="space-y-4">
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center space-y-2 lg:space-y-0">
+              <h3 className="text-lg font-semibold">Upcoming Events</h3>
+              {isAdmin && (
+                <button 
+                  onClick={() => setShowCreateEvent(true)}
+                  className="bg-blue-600 text-white px-3 py-2 rounded-lg flex items-center text-sm"
+                >
+                  <HiOutlineCalendar className="w-4 h-4 mr-1" />
+                  Create Event
+                </button>
+              )}
             </div>
             
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {community.events.map(event => (
                 <div key={event.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
-                  <div className="flex">
-                    <div className="w-16 h-16 bg-blue-100 rounded-lg flex flex-col items-center justify-center mr-4">
-                      <span className="font-bold text-blue-600">JUN</span>
-                      <span className="text-xl font-bold">{event.date.split(" ")[1].replace(",", "")}</span>
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-bold text-lg">{event.title}</h3>
-                      <p className="text-gray-600">{event.date} • {event.location}</p>
-                      <div className="flex items-center mt-3">
-                        <div className="flex -space-x-2">
-                          {[...Array(4)].map((_, i) => (
-                            <div key={i} className="w-6 h-6 rounded-full bg-gray-300 border-2 border-white"></div>
-                          ))}
-                        </div>
-                        <span className="text-sm text-gray-500 ml-2">+42 attending</span>
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center">
+                      {/* Event type icons */}
+                      <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center mr-3">
+                        {event.type === 'online' ? (
+                          <HiOutlinePresentationChartLine className="w-5 h-5 text-blue-600" />
+                        ) : (
+                          <HiOutlineLocationMarker className="w-5 h-5 text-blue-600" />
+                        )}
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-gray-900">{event.title}</h4>
+                        <p className="text-sm text-gray-500 flex items-center">
+                          <HiOutlineClock className="w-4 h-4 mr-1" />
+                          {event.date} at {event.time}
+                        </p>
                       </div>
                     </div>
+                    <div className="text-right">
+                      <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                        {event.type === 'online' ? 'Online' : 'In-Person'}
+                      </span>
+                    </div>
                   </div>
-                  <div className="mt-4 flex space-x-2">
-                    <button className="flex-1 bg-blue-600 text-white py-2 rounded-md">
-                      Attend
-                    </button>
-                    <button className="flex-1 border border-gray-300 text-gray-700 py-2 rounded-md">
-                      Share
+                  
+                  <p className="text-sm text-gray-600 mb-3">{event.description}</p>
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center text-sm text-gray-500">
+                      <HiOutlineUserGroup className="w-4 h-4 mr-1" />
+                      <span>{event.attendees} attending</span>
+                      <span className="mx-2">•</span>
+                      <HiOutlineLocationMarker className="w-4 h-4 mr-1" />
+                      <span>{event.location}</span>
+                    </div>
+                    <button 
+                      onClick={() => handleAttendEvent(event.id)}
+                      className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                        event.attending 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-blue-100 text-blue-800 hover:bg-blue-200'
+                      }`}
+                    >
+                      <HiOutlineTicket className="w-4 h-4 mr-1 inline" />
+                      {event.attending ? 'Attending' : 'Attend'}
                     </button>
                   </div>
+                  
+                  {event.attending && (
+                    <div className="mt-3 p-2 bg-green-50 rounded-lg">
+                      <p className="text-xs text-green-700">
+                        You'll receive notifications about this event. 
+                        <button className="ml-1 underline hover:no-underline">
+                          View attendees
+                        </button>
+                      </p>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
+            
+            {community.events.length === 0 && (
+              <div className="text-center py-8 bg-gray-50 rounded-lg">
+                <HiOutlineCalendar className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                <h3 className="text-lg font-medium text-gray-900">No upcoming events</h3>
+                <p className="text-gray-500">Be the first to create an event for this community!</p>
+              </div>
+            )}
           </div>
         )}
 
@@ -375,6 +496,98 @@ const CommunityDetail = () => {
           </div>
         )}
       </div>
+
+      {/* Create Event Modal */}
+      {showCreateEvent && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-4 lg:p-6 w-full max-w-md max-h-screen overflow-y-auto">
+            <h3 className="text-lg font-bold mb-4">Create New Event</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Event Title *</label>
+                <input
+                  type="text"
+                  value={eventForm.title}
+                  onChange={(e) => setEventForm({...eventForm, title: e.target.value})}
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter event title"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-1">Description</label>
+                <textarea
+                  value={eventForm.description}
+                  onChange={(e) => setEventForm({...eventForm, description: e.target.value})}
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  rows="3"
+                  placeholder="Event description"
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Date *</label>
+                  <input
+                    type="date"
+                    value={eventForm.date}
+                    onChange={(e) => setEventForm({...eventForm, date: e.target.value})}
+                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Time *</label>
+                  <input
+                    type="time"
+                    value={eventForm.time}
+                    onChange={(e) => setEventForm({...eventForm, time: e.target.value})}
+                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-1">Location</label>
+                <input
+                  type="text"
+                  value={eventForm.location}
+                  onChange={(e) => setEventForm({...eventForm, location: e.target.value})}
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Event location or 'Online'"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-1">Event Type</label>
+                <select
+                  value={eventForm.type}
+                  onChange={(e) => setEventForm({...eventForm, type: e.target.value})}
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="in-person">In-Person</option>
+                  <option value="online">Online</option>
+                  <option value="hybrid">Hybrid</option>
+                </select>
+              </div>
+            </div>
+            
+            <div className="flex space-x-3 mt-6">
+              <button
+                onClick={() => setShowCreateEvent(false)}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreateEvent}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                Create Event
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

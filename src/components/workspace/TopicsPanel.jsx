@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { HiOutlineChevronDown, HiOutlineChevronRight, HiOutlinePlus, HiOutlineDocumentAdd, HiOutlineTrash, HiOutlineShare } from 'react-icons/hi';
+import { HiOutlineChevronDown, HiOutlineChevronRight, HiOutlinePlus, HiOutlineDocumentAdd, HiOutlineTrash, HiOutlineShare, HiOutlineCheckCircle, HiOutlineClipboardList } from 'react-icons/hi';
 
 export default function TopicsPanel({ onAiRequest, onShareContent }) {
   const [topics, setTopics] = useState([
@@ -65,12 +65,13 @@ export default function TopicsPanel({ onAiRequest, onShareContent }) {
   const [activeTopic, setActiveTopic] = useState(1);
   const [newMaterial, setNewMaterial] = useState({ title: '', type: 'pdf' });
   const [showAddMaterial, setShowAddMaterial] = useState(false);
-  const [aiPrompt, setAiPrompt] = useState('');
   const [scheduleImage, setScheduleImage] = useState(null);
   const [scheduleDescription, setScheduleDescription] = useState('');
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
   const [isTopicListOpen, setIsTopicListOpen] = useState(false);
+  const [showCompletedTasks, setShowCompletedTasks] = useState(false);
+  const [showMaterials, setShowMaterials] = useState(false);
 
   useEffect(() => {
     const handleResize = () => {
@@ -130,13 +131,6 @@ export default function TopicsPanel({ onAiRequest, onShareContent }) {
     }
   };
 
-  const handleAiAction = () => {
-    if (aiPrompt.trim()) {
-      onAiRequest(aiPrompt);
-      setAiPrompt('');
-    }
-  };
-
   const handleScheduleUpdate = () => {
     setTopics(topics.map(topic => 
       topic.id === activeTopic 
@@ -184,6 +178,30 @@ export default function TopicsPanel({ onAiRequest, onShareContent }) {
     }
   };
 
+  const toggleSubtopicCompletion = (subtopicId) => {
+    setTopics(topics.map(topic => 
+      topic.id === activeTopic 
+        ? {
+            ...topic,
+            subtopics: topic.subtopics.map(sub => 
+              sub.id === subtopicId ? { ...sub, completed: !sub.completed } : sub
+            ),
+            lastUpdated: "Just now"
+          }
+        : topic
+    ));
+  };
+
+  const getCompletedTasks = () => {
+    const topic = topics.find(t => t.id === activeTopic);
+    return topic ? topic.subtopics.filter(sub => sub.completed) : [];
+  };
+
+  const getPendingTasks = () => {
+    const topic = topics.find(t => t.id === activeTopic);
+    return topic ? topic.subtopics.filter(sub => !sub.completed) : [];
+  };
+
   return (
     <div className="flex flex-col h-full">
       <div className="p-4 bg-white border-b">
@@ -201,8 +219,83 @@ export default function TopicsPanel({ onAiRequest, onShareContent }) {
         </div>
       </div>
       
+      {isMobile && activeTopic && (
+        <div className="p-3 bg-gray-50 border-b">
+          <div className="space-y-2">
+            <div className="bg-white rounded-lg border">
+              <button
+                onClick={() => setShowCompletedTasks(!showCompletedTasks)}
+                className="w-full p-3 flex items-center justify-between text-left"
+              >
+                <div className="flex items-center">
+                  <HiOutlineCheckCircle className="mr-2 text-green-600" />
+                  <span className="font-medium">Completed Tasks ({getCompletedTasks().length})</span>
+                </div>
+                {showCompletedTasks ? <HiOutlineChevronDown /> : <HiOutlineChevronRight />}
+              </button>
+              {showCompletedTasks && (
+                <div className="px-3 pb-3 space-y-2">
+                  {getCompletedTasks().map(task => (
+                    <div key={task.id} className="flex items-center p-2 bg-green-50 rounded">
+                      <input
+                        type="checkbox"
+                        checked={true}
+                        onChange={() => toggleSubtopicCompletion(task.id)}
+                        className="mr-2"
+                      />
+                      <span className="text-sm line-through text-gray-600">{task.title}</span>
+                    </div>
+                  ))}
+                  {getCompletedTasks().length === 0 && (
+                    <p className="text-sm text-gray-500 text-center py-2">No completed tasks yet</p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="bg-white rounded-lg border">
+              <button
+                onClick={() => setShowMaterials(!showMaterials)}
+                className="w-full p-3 flex items-center justify-between text-left"
+              >
+                <div className="flex items-center">
+                  <HiOutlineClipboardList className="mr-2 text-blue-600" />
+                  <span className="font-medium">Materials ({topics.find(t => t.id === activeTopic)?.materials.length || 0})</span>
+                </div>
+                {showMaterials ? <HiOutlineChevronDown /> : <HiOutlineChevronRight />}
+              </button>
+              {showMaterials && (
+                <div className="px-3 pb-3 space-y-2">
+                  {topics.find(t => t.id === activeTopic)?.materials.map(material => (
+                    <div key={material.id} className="flex items-center p-2 bg-blue-50 rounded">
+                      <div className="mr-2">
+                        {material.type === 'pdf' && (
+                          <div className="bg-red-100 text-red-800 rounded text-xs px-2 py-1">PDF</div>
+                        )}
+                        {material.type === 'doc' && (
+                          <div className="bg-blue-100 text-blue-800 rounded text-xs px-2 py-1">DOC</div>
+                        )}
+                        {material.type === 'image' && (
+                          <div className="bg-green-100 text-green-800 rounded text-xs px-2 py-1">IMG</div>
+                        )}
+                        {material.type === 'video' && (
+                          <div className="bg-yellow-100 text-yellow-800 rounded text-xs px-2 py-1">VID</div>
+                        )}
+                      </div>
+                      <span className="text-sm flex-1">{material.title}</span>
+                    </div>
+                  )) || []}
+                  {(!topics.find(t => t.id === activeTopic)?.materials.length) && (
+                    <p className="text-sm text-gray-500 text-center py-2">No materials uploaded yet</p>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+      
       <div className="flex flex-1 overflow-hidden">
-        {/* Topics List */}
         <div className={`w-full lg:w-1/3 bg-white border-r overflow-y-auto transition-all duration-300 ${isMobile ? (isTopicListOpen ? 'block' : 'hidden lg:block') : 'block'}`}>
           <div className="p-4">
             <div className="flex mb-4">
@@ -267,7 +360,7 @@ export default function TopicsPanel({ onAiRequest, onShareContent }) {
                                 type="checkbox" 
                                 checked={sub.completed}
                                 className="mr-2"
-                                onChange={() => {}}
+                                onChange={() => toggleSubtopicCompletion(sub.id)}
                               />
                               <span className={sub.completed ? 'line-through text-gray-500' : ''}>
                                 {sub.title}
@@ -284,39 +377,32 @@ export default function TopicsPanel({ onAiRequest, onShareContent }) {
           </div>
         </div>
         
-        {/* Topic Detail */}
         <div className="flex-1 flex flex-col min-w-0">
           <div className="p-4 bg-white border-b flex flex-wrap gap-2">
-            {/* Mobile toggle button */}
             {isMobile && (
               <button 
-                className="lg:hidden bg-gray-200 p-2 rounded"
+                className="lg:hidden bg-gray-200 p-2 rounded text-sm"
                 onClick={() => setIsTopicListOpen(!isTopicListOpen)}
               >
                 {isTopicListOpen ? 'Hide Topics' : 'Show Topics'}
               </button>
             )}
-            <input 
-              type="text"
-              placeholder="Ask AI to generate content for this topic..."
-              className="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <div className="flex space-x-2">
+            <div className="flex flex-1 space-x-2">
               <button 
-                className="bg-gray-100 px-3 py-1 rounded-lg flex items-center"
+                className="bg-gray-100 px-3 py-1 rounded-lg flex items-center text-sm"
                 onClick={handleShareTopic}
               >
                 <HiOutlineShare className="mr-1" />
                 Share
               </button>
               <button 
-                className="bg-blue-600 text-white px-3 py-1 rounded-lg"
+                className="bg-blue-600 text-white px-3 py-1 rounded-lg text-sm"
                 onClick={() => document.getElementById('subtopic-modal').showModal()}
               >
                 Add Subtopic
               </button>
               <button 
-                className="bg-purple-600 text-white px-3 py-1 rounded-lg"
+                className="bg-purple-600 text-white px-3 py-1 rounded-lg text-sm"
                 onClick={handleRegenerateTopic}
               >
                 Regenerate with AI
@@ -327,7 +413,27 @@ export default function TopicsPanel({ onAiRequest, onShareContent }) {
           <div className="flex-1 p-4 overflow-y-auto">
             {activeTopic && (
               <div className="space-y-6">
-                <div>
+                <div className={`${isMobile ? 'hidden' : 'block'}`}>
+                  <h3 className="font-bold mb-2">Pending Tasks</h3>
+                  <div className="space-y-2">
+                    {getPendingTasks().map(task => (
+                      <div key={task.id} className="flex items-center p-3 bg-yellow-50 rounded-lg border">
+                        <input
+                          type="checkbox"
+                          checked={false}
+                          onChange={() => toggleSubtopicCompletion(task.id)}
+                          className="mr-3"
+                        />
+                        <span className="font-medium">{task.title}</span>
+                      </div>
+                    ))}
+                    {getPendingTasks().length === 0 && (
+                      <p className="text-gray-500 text-center py-4">All tasks completed! 🎉</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className={`${isMobile ? 'hidden' : 'block'}`}>
                   <h3 className="font-bold mb-2">Materials & Resources</h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                     {topics.find(t => t.id === activeTopic)?.materials.map(material => (
@@ -373,7 +479,7 @@ export default function TopicsPanel({ onAiRequest, onShareContent }) {
                     Add Material
                   </button>
                 </div>
-                
+
                 <div>
                   <h3 className="font-bold mb-2">Class Schedule</h3>
                   <div className="border rounded-lg p-4 bg-gray-50">
@@ -413,35 +519,12 @@ export default function TopicsPanel({ onAiRequest, onShareContent }) {
                     </button>
                   </div>
                 </div>
-                
-                <div>
-                  <h3 className="font-bold mb-2">AI Assistance</h3>
-                  <div className="border rounded-lg p-4 bg-blue-50">
-                    <p className="mb-3">Ask AI to organize materials, generate practice questions, or explain concepts:</p>
-                    <div className="flex">
-                      <input
-                        type="text"
-                        value={aiPrompt}
-                        onChange={(e) => setAiPrompt(e.target.value)}
-                        placeholder="How can I help with this topic?"
-                        className="flex-1 px-4 py-2 border rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                      <button 
-                        className="bg-blue-600 text-white px-4 rounded-r-lg"
-                        onClick={handleAiAction}
-                      >
-                        Ask
-                      </button>
-                    </div>
-                  </div>
-                </div>
               </div>
             )}
           </div>
         </div>
       </div>
       
-      {/* Add Topic Modal */}
       <dialog id="topic-modal" className="rounded-lg shadow-xl p-0 w-full max-w-md">
         <div className="p-6">
           <h3 className="text-lg font-bold mb-4">Create New Topic</h3>
@@ -472,7 +555,6 @@ export default function TopicsPanel({ onAiRequest, onShareContent }) {
         </div>
       </dialog>
       
-      {/* Add Subtopic Modal */}
       <dialog id="subtopic-modal" className="rounded-lg shadow-xl p-0 w-full max-w-md">
         <div className="p-6">
           <h3 className="text-lg font-bold mb-4">Add New Subtopic</h3>
@@ -501,7 +583,6 @@ export default function TopicsPanel({ onAiRequest, onShareContent }) {
         </div>
       </dialog>
       
-      {/* Add Material Modal */}
       {showAddMaterial && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
@@ -548,7 +629,6 @@ export default function TopicsPanel({ onAiRequest, onShareContent }) {
         </div>
       )}
       
-      {/* Schedule Modal */}
       {showScheduleModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
