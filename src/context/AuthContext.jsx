@@ -18,43 +18,61 @@ export const AuthProvider = ({ children }) => {
   const [profile, setProfile] = useState(null);
 
   useEffect(() => {
+    let isMounted = true;
+
     // Get initial session
     const getInitialSession = async () => {
       try {
         console.log('🔍 AuthContext: Getting initial session...');
         const { session: initialSession, error } = await auth.getSession();
+        
+        if (!isMounted) return; // Prevent state updates if unmounted
+        
         if (error) {
           console.error('❌ AuthContext: Error getting session:', error);
+          setLoading(false);
         } else {
           console.log('✅ AuthContext: Session loaded:', initialSession?.user?.email || 'No user');
           setSession(initialSession);
           setUser(initialSession?.user || null);
           
-          // Load user profile if session exists
+          // Load user profile if session exists - but don't block on it
           if (initialSession?.user) {
             console.log('👤 AuthContext: Loading user profile...');
-            await loadUserProfile(initialSession.user.id);
+            loadUserProfile(initialSession.user.id).finally(() => {
+              if (isMounted) {
+                console.log('✅ AuthContext: Profile loading complete');
+              }
+            });
           }
+          
+          // Set loading to false immediately after setting user/session
+          console.log('✅ AuthContext: Loading complete, setting loading = false');
+          setLoading(false);
         }
       } catch (error) {
         console.error('❌ AuthContext: Error in getInitialSession:', error);
-      } finally {
-        console.log('✅ AuthContext: Loading complete, setting loading = false');
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
     getInitialSession();
 
-    // Fallback timeout to prevent infinite loading
+    // Fallback timeout to prevent infinite loading (reduced to 3 seconds)
     const timeoutId = setTimeout(() => {
-      console.log('⚠️ AuthContext: Timeout reached, forcing loading = false');
-      setLoading(false);
-    }, 5000);
+      if (isMounted) {
+        console.log('⚠️ AuthContext: Timeout reached, forcing loading = false');
+        setLoading(false);
+      }
+    }, 3000);
 
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
+        if (!isMounted) return;
+        
         console.log('🔄 AuthContext: Auth state change:', event, session?.user?.email);
         
         setSession(session);
@@ -62,7 +80,8 @@ export const AuthProvider = ({ children }) => {
         
         if (event === 'SIGNED_IN' && session?.user) {
           console.log('👤 AuthContext: User signed in, loading profile...');
-          await loadUserProfile(session.user.id);
+          // Load profile in background, don't block
+          loadUserProfile(session.user.id);
         } else if (event === 'SIGNED_OUT') {
           console.log('👋 AuthContext: User signed out');
           setProfile(null);
@@ -74,6 +93,7 @@ export const AuthProvider = ({ children }) => {
     );
 
     return () => {
+      isMounted = false;
       clearTimeout(timeoutId);
       subscription?.unsubscribe();
     };
@@ -97,6 +117,7 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error('❌ AuthContext: Error in loadUserProfile:', error);
     }
+    // Note: Don't set loading = false here, let the parent handle it
   };
 
   const signInWithGoogle = async () => {
