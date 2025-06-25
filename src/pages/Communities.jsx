@@ -79,7 +79,7 @@ export default function Communities() {
       category: "Community",
       privacy: "public",
       isAdmin: false, // We'd need to check if user is admin
-      posts: community.posts_count || 0,
+              posts: 0, // Communities table doesn't exist yet
       activity: "Active"
     }));
 
@@ -190,7 +190,7 @@ export default function Communities() {
         setJoinedCommunities(prev => [{
           ...community,
           isAdmin: false,
-          posts: community.posts_count || 0,
+          posts: 0, // Communities table doesn't exist yet
           activity: "Active"
         }, ...prev]);
       }
