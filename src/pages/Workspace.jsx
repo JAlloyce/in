@@ -9,9 +9,11 @@ import {
   HiOutlineLightBulb,
   HiOutlineChat,
   HiOutlineX,
-  HiOutlineMenu
+  HiOutlineMenu,
+  HiOutlineLogin
 } from 'react-icons/hi';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Link } from 'react-router-dom';
 import TopicsPanel from '../components/workspace/TopicsPanel';
 import CalendarPanel from '../components/workspace/CalendarPanel';
 import TasksPanel from '../components/workspace/TasksPanel';
@@ -21,7 +23,7 @@ import perplexityService from '../services/perplexity';
 import { useAuth } from '../context/AuthContext';
 
 export default function Workspace() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, isAuthenticated } = useAuth();
   
   // Core data states
   const [topics, setTopics] = useState([]);
@@ -41,10 +43,47 @@ export default function Workspace() {
 
   // Initialize workspace with proper data persistence
   useEffect(() => {
-    if (!authLoading && user) {
-    initializeWorkspace();
+    if (!authLoading) {
+      if (isAuthenticated && user) {
+        initializeWorkspace();
+      } else {
+        setLoading(false); // Stop loading if not authenticated
+      }
     }
-  }, [user, authLoading]);
+  }, [user, authLoading, isAuthenticated]);
+
+  // Show login prompt for non-authenticated users
+  if (!authLoading && !isAuthenticated) {
+    return (
+      <motion.div 
+        className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.6 }}
+      >
+        <div className="max-w-md mx-auto px-4">
+          <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
+            <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <HiOutlineLogin className="w-10 h-10 text-blue-600" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Access Your Workspace</h2>
+            <p className="text-gray-600 mb-6">
+              Sign in to access your personalized learning workspace with topics, tasks, and AI assistance.
+            </p>
+            <Link 
+              to="/"
+              className="inline-block w-full bg-blue-600 text-white px-6 py-3 rounded-xl font-medium hover:bg-blue-700 transition-colors"
+            >
+              Sign In to Continue
+            </Link>
+            <p className="text-sm text-gray-500 mt-4">
+              Join thousands of learners organizing their studies with AI
+            </p>
+          </div>
+        </div>
+      </motion.div>
+    );
+  }
 
   const initializeWorkspace = async () => {
     try {

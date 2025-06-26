@@ -6,8 +6,9 @@ import {
   HiPlus, HiUsers, HiEye, HiChat, HiDocumentText, HiMail,
   HiFilter, HiSearch, HiSparkles, HiTrendingUp
 } from "react-icons/hi";
-import { jobs, auth, companies } from '../lib/supabase';
-import { Button, Card, Avatar } from '../components/ui';
+import { supabase } from '../lib/supabase';
+import { useAuth } from '../context/AuthContext';
+import { Button, Card, Avatar, ErrorBoundary } from '../components/ui';
 import { motion, AnimatePresence } from 'framer-motion';
 
 /**
@@ -20,9 +21,12 @@ import { motion, AnimatePresence } from 'framer-motion';
  * - Enhanced mobile responsiveness
  * - Professional styling with Embassy-inspired elements
  * - AI-powered job recommendations
+ * - Fixed authentication with useAuth hook
  */
 
 export default function Jobs() {
+  const { user, isAuthenticated, loading: authLoading } = useAuth();
+  
   const [filters, setFilters] = useState({
     location: "",
     salary: "",
@@ -60,30 +64,30 @@ export default function Jobs() {
   });
 
   // Real data states
-  const [user, setUser] = useState(null);
   const [jobListings, setJobListings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [appliedJobs, setAppliedJobs] = useState([]);
 
-  // Load user and jobs data
+  // Load jobs data when component mounts (no auth required for viewing jobs)
   useEffect(() => {
     initializeJobs();
   }, []);
+
+  // Load applied jobs when user is authenticated
+  useEffect(() => {
+    if (!authLoading && isAuthenticated && user) {
+      loadAppliedJobs();
+    }
+  }, [user, isAuthenticated, authLoading]);
 
   const initializeJobs = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      // Get current user
-      const { session } = await auth.getSession();
-      if (session?.user) {
-        setUser(session.user);
-      }
-
-      // Load jobs
+      console.log('💼 Loading jobs...');
       await loadJobs();
 
     } catch (err) {
@@ -95,37 +99,81 @@ export default function Jobs() {
   };
 
   const loadJobs = async () => {
-    const { data: jobsData, error: jobsError } = await jobs.search(
-      searchQuery, 
-      filters.location, 
-      filters.type, 
-      50
-    );
+    try {
+      let query = supabase
+        .from('jobs')
+        .select(`
+          *,
+          company:companies(name, logo_url),
+          applications:job_applications(count)
+        `)
+        .eq('is_active', true);
+
+      // Apply filters
+      if (searchQuery) {
+        query = query.or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`);
+      }
+      if (filters.location) {
+        query = query.ilike('location', `%${filters.location}%`);
+      }
+      if (filters.type) {
+        query = query.eq('job_type', filters.type);
+      }
+
+      const { data: jobsData, error: jobsError } = await query
+        .order('created_at', { ascending: false })
+        .limit(50);
     
-    if (jobsError) {
-      console.error('Error loading jobs:', jobsError);
-      return;
+      if (jobsError) {
+        console.error('Error loading jobs:', jobsError);
+        return;
+      }
+
+      // Transform jobs data to match UI format
+      const transformedJobs = jobsData.map(job => ({
+        id: job.id,
+        title: job.title,
+        company: job.company?.name || 'Company',
+        location: job.location,
+        salary: job.salary_range || `$${job.salary_min || 'N/A'} - $${job.salary_max || 'N/A'}`,
+        type: job.job_type || 'Full-time',
+        experience: job.experience_level || 'Not specified',
+        description: job.description,
+        responsibilities: job.responsibilities?.split('\n') || [job.description],
+        requirements: job.requirements?.split('\n') || ['Experience in relevant field'],
+        benefits: job.benefits?.split('\n') || ['Competitive salary', 'Health insurance'],
+        posted: formatTimestamp(job.created_at),
+        applicants: job.applications?.[0]?.count || 0,
+        company_logo: job.company?.logo_url
+      }));
+
+      setJobListings(transformedJobs);
+      console.log('✅ Loaded jobs:', transformedJobs.length);
+    } catch (err) {
+      console.error('Error in loadJobs:', err);
     }
+  };
 
-    // Transform jobs data to match UI format
-    const transformedJobs = jobsData.map(job => ({
-      id: job.id,
-      title: job.title,
-      company: job.company?.name || 'Company',
-      location: job.location,
-      salary: job.salary_range || `$${job.salary_min || 'N/A'} - $${job.salary_max || 'N/A'}`,
-      type: job.job_type || 'Full-time',
-      experience: job.experience_level || 'Not specified',
-      description: job.description,
-      responsibilities: job.responsibilities?.split('\n') || [job.description],
-      requirements: job.requirements?.split('\n') || ['Experience in relevant field'],
-      benefits: job.benefits?.split('\n') || ['Competitive salary', 'Health insurance'],
-      posted: formatTimestamp(job.created_at),
-      applicants: job.application_count || 0,
-      company_logo: job.company?.logo_url
-    }));
+  const loadAppliedJobs = async () => {
+    if (!user) return;
 
-    setJobListings(transformedJobs);
+    try {
+      const { data: applicationsData, error: applicationsError } = await supabase
+        .from('job_applications')
+        .select('job_id')
+        .eq('applicant_id', user.id);
+
+      if (applicationsError) {
+        console.error('Error loading applied jobs:', applicationsError);
+        return;
+      }
+
+      const appliedJobIds = applicationsData.map(app => app.job_id);
+      setAppliedJobs(appliedJobIds);
+      console.log('✅ Loaded applied jobs:', appliedJobIds.length);
+    } catch (err) {
+      console.error('Error in loadAppliedJobs:', err);
+    }
   };
 
   // Reload jobs when filters change
@@ -174,7 +222,16 @@ export default function Jobs() {
     if (!selectedJob) return;
 
     try {
-      const { error } = await jobs.apply(selectedJob.id, user.id, resume);
+      const { error } = await supabase
+        .from('job_applications')
+        .insert([
+          {
+            job_id: selectedJob.id,
+            applicant_id: user.id,
+            resume: resume
+          }
+        ]);
+
       if (error) {
         console.error('Error applying for job:', error);
         alert('Failed to submit application');

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { HiPaperAirplane } from "react-icons/hi";
-import { comments } from '../../lib/supabase';
+import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
 import { Button, Avatar } from '../ui';
 
@@ -27,13 +27,34 @@ export default function CommentInput({ postId, onCommentAdded }) {
       setSending(true);
       setError(null);
 
+      console.log('💬 Creating comment with improved service...');
+
+      // Get current authenticated user for security
+      const { data: { user: currentUser }, error: authError } = await supabase.auth.getUser();
+      if (authError || !currentUser) {
+        setError('User not authenticated');
+        return;
+      }
+
       const commentData = {
         content: content.trim(),
         post_id: postId,
-        author_id: user.id
+        author_id: currentUser.id
       };
 
-      const { data: newComment, error: commentError } = await comments.create(commentData);
+      const { data: newComment, error: commentError } = await supabase
+        .from('comments')
+        .insert(commentData)
+        .select(`
+          *,
+          profiles!comments_author_id_fkey (
+            id,
+            name,
+            avatar_url,
+            headline
+          )
+        `)
+        .single();
 
       if (commentError) {
         console.error('Error creating comment:', commentError);
@@ -41,9 +62,19 @@ export default function CommentInput({ postId, onCommentAdded }) {
         return;
       }
 
+      console.log('✅ Comment created successfully:', newComment);
+
       // Notify parent component about the new comment
       if (onCommentAdded) {
-        onCommentAdded(newComment);
+        // Transform the comment to match expected format
+        const transformedComment = {
+          id: newComment.id,
+          content: newComment.content,
+          created_at: newComment.created_at,
+          user: newComment.profiles,
+          author: newComment.profiles // Fallback for different naming conventions
+        };
+        onCommentAdded(transformedComment);
       }
 
       // Reset form
@@ -66,43 +97,46 @@ export default function CommentInput({ postId, onCommentAdded }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="mt-4">
-      <div className="flex gap-3">
+    <div className="border-t border-gray-200 pt-4">
+      {error && (
+        <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-sm text-red-600">{error}</p>
+        </div>
+      )}
+      
+      <form onSubmit={handleSubmit} className="flex gap-3">
         <Avatar 
-          src={user?.user_metadata?.avatar_url}
-          name={user.user_metadata?.full_name || user.email}
+          src={user.user_metadata?.avatar_url} 
+          alt={user.user_metadata?.name || user.email} 
           size="sm"
         />
         
         <div className="flex-1">
-          <div className="flex items-end gap-2">
-            <div className="flex-1">
-              <textarea
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                placeholder="Write a comment..."
-                rows="2"
-                className="input-system resize-none"
-                disabled={sending}
-              />
-              {error && (
-                <p className="text-body-small text-red-500 mt-1">{error}</p>
-              )}
-            </div>
+          <div className="flex">
+            <input
+              type="text"
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              placeholder="Write a comment..."
+              disabled={sending}
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 disabled:cursor-not-allowed"
+            />
             
             <Button
               type="submit"
-              variant="primary"
-              size="md"
-              disabled={!content.trim() || sending}
-              loading={sending}
-              className="flex-shrink-0"
+              disabled={sending || !content.trim()}
+              className="rounded-l-none border-l-0"
+              size="sm"
             >
-              <HiPaperAirplane className="icon-system-sm" />
+              {sending ? (
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <HiPaperAirplane className="w-4 h-4" />
+              )}
             </Button>
           </div>
         </div>
-      </div>
-    </form>
+      </form>
+    </div>
   );
 }

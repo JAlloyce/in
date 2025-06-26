@@ -1,32 +1,49 @@
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom'
+import { Suspense, lazy } from 'react'
 import { AuthProvider } from './context/AuthContext'
 import { ModalProvider, useModal } from './context/ModalContext'
 import { motion, AnimatePresence } from 'framer-motion'
-import Settings from './pages/Settings'
+import { ErrorBoundary } from './components/ui'
 
-// Layout components
+// Layout components (keep these imported normally as they're always needed)
 import Navbar from './components/layout/Navbar'
 import Sidebar from './components/layout/Sidebar'
 import NewsWidget from './components/layout/NewsWidget'
 
-// Page components
-import Home from './pages/Home'
-import Profile from './pages/Profile'
-import UserProfile from './pages/UserProfile'
-import Network from './pages/Network'
-import Jobs from './pages/Jobs'
-import Messaging from './pages/Messaging'
-import Notifications from './pages/Notifications'
-import AuthCallback from './pages/AuthCallback'
-import DatabaseFix from './pages/DatabaseFix'
-import Communities from './pages/Communities'
-import CommunityDetail from './pages/CommunityDetail'
-import Workspace from './pages/Workspace'
-import CompanyPage from './pages/CompanyPage'
-import Pages from './pages/Pages'
-import Recent from './pages/Recent'
-import Saved from './pages/Saved'
-import Test from './pages/Test'
+// Lazy load page components for better initial loading performance
+const Home = lazy(() => import('./pages/Home'))
+const Profile = lazy(() => import('./pages/Profile'))
+const UserProfile = lazy(() => import('./pages/UserProfile'))
+const Network = lazy(() => import('./pages/Network'))
+const Jobs = lazy(() => import('./pages/Jobs'))
+const Messaging = lazy(() => import('./pages/Messaging'))
+const Notifications = lazy(() => import('./pages/Notifications'))
+const AuthCallback = lazy(() => import('./pages/AuthCallback'))
+const DatabaseFix = lazy(() => import('./pages/DatabaseFix'))
+const Communities = lazy(() => import('./pages/Communities'))
+const CommunityDetail = lazy(() => import('./pages/CommunityDetail'))
+const Workspace = lazy(() => import('./pages/Workspace'))
+const CompanyPage = lazy(() => import('./pages/CompanyPage'))
+const Pages = lazy(() => import('./pages/Pages'))
+const Recent = lazy(() => import('./pages/Recent'))
+const Saved = lazy(() => import('./pages/Saved'))
+const Settings = lazy(() => import('./pages/Settings'))
+const Test = lazy(() => import('./pages/Test'))
+
+// Loading skeleton component for better UX during route transitions
+const PageSkeleton = () => (
+  <div className="animate-pulse space-y-4">
+    <div className="bg-white rounded-lg shadow p-6">
+      <div className="h-4 bg-gray-200 rounded w-3/4 mb-4"></div>
+      <div className="h-4 bg-gray-200 rounded w-1/2 mb-4"></div>
+      <div className="h-32 bg-gray-200 rounded"></div>
+    </div>
+    <div className="bg-white rounded-lg shadow p-6">
+      <div className="h-4 bg-gray-200 rounded w-2/3 mb-4"></div>
+      <div className="h-24 bg-gray-200 rounded"></div>
+    </div>
+  </div>
+)
 
 /**
  * Main Application Component - Professional Edition
@@ -39,6 +56,7 @@ import Test from './pages/Test'
  * - Smooth transitions and modern interactions
  * - Mobile-optimized padding and spacing
  * - Full-width layout for specific pages (Jobs, Workspace)
+ * - Comprehensive error boundaries for fault tolerance
  */
 function AppContent() {
   const location = useLocation();
@@ -49,17 +67,23 @@ function AppContent() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Navbar />
+      <ErrorBoundary>
+        <Navbar />
+      </ErrorBoundary>
         
       <main className="pt-16"> {/* Account for fixed navbar */}
         {isFullWidthPage ? (
           // Full-width layout for Jobs and Workspace pages
-          <AnimatePresence mode="wait">
-            <Routes>
-              <Route path="/jobs" element={<Jobs />} />
-              <Route path="/workspace" element={<Workspace />} />
-            </Routes>
-          </AnimatePresence>
+          <ErrorBoundary>
+            <Suspense fallback={<PageSkeleton />}>
+              <AnimatePresence mode="wait">
+                <Routes>
+                  <Route path="/jobs" element={<Jobs />} />
+                  <Route path="/workspace" element={<Workspace />} />
+                </Routes>
+              </AnimatePresence>
+            </Suspense>
+          </ErrorBoundary>
         ) : (
           // Standard 3-column layout for other pages
           <div className="container-system">
@@ -77,7 +101,9 @@ function AppContent() {
                 transition={{ duration: 0.7, delay: 0.2 }}
               >
                 <div className="sticky top-20">
-                  <Sidebar />
+                  <ErrorBoundary>
+                    <Sidebar />
+                  </ErrorBoundary>
                 </div>
               </motion.div>
 
@@ -88,26 +114,30 @@ function AppContent() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.7, delay: 0.1 }}
               >
-                <AnimatePresence mode="wait">
-                  <Routes>
-                    <Route path="/" element={<Home />} />
-                    <Route path="/profile" element={<Profile />} />
-                    <Route path="/profile/:userId" element={<UserProfile />} />
-                    <Route path="/network" element={<Network />} />
-                    <Route path="/messaging" element={<Messaging />} />
-                    <Route path="/notifications" element={<Notifications />} />
-                    <Route path="/auth/callback" element={<AuthCallback />} />
-                    <Route path="/database-fix" element={<DatabaseFix />} />
-                    <Route path="/communities" element={<Communities />} />
-                    <Route path="/communities/:id" element={<CommunityDetail />} />
-                    <Route path="/company/:slug" element={<CompanyPage />} />
-                    <Route path="/pages" element={<Pages />} />
-                    <Route path="/recent" element={<Recent />} />
-                    <Route path="/saved" element={<Saved />} />
-                    <Route path="/settings" element={<Settings />} />
-                    <Route path="/test" element={<Test />} />
-                  </Routes>
-                </AnimatePresence>
+                <ErrorBoundary>
+                  <Suspense fallback={<PageSkeleton />}>
+                    <AnimatePresence mode="wait">
+                      <Routes>
+                        <Route path="/" element={<Home />} />
+                        <Route path="/profile" element={<Profile />} />
+                        <Route path="/profile/:userId" element={<UserProfile />} />
+                        <Route path="/network" element={<Network />} />
+                        <Route path="/messaging" element={<Messaging />} />
+                        <Route path="/notifications" element={<Notifications />} />
+                        <Route path="/auth/callback" element={<AuthCallback />} />
+                        <Route path="/database-fix" element={<DatabaseFix />} />
+                        <Route path="/communities" element={<Communities />} />
+                        <Route path="/communities/:id" element={<CommunityDetail />} />
+                        <Route path="/company/:slug" element={<CompanyPage />} />
+                        <Route path="/pages" element={<Pages />} />
+                        <Route path="/recent" element={<Recent />} />
+                        <Route path="/saved" element={<Saved />} />
+                        <Route path="/settings" element={<Settings />} />
+                        <Route path="/test" element={<Test />} />
+                      </Routes>
+                    </AnimatePresence>
+                  </Suspense>
+                </ErrorBoundary>
               </motion.div>
 
               {/* Right Sidebar - Conditionally rendered */}
@@ -136,7 +166,9 @@ function NewsWidgetWrapper() {
       transition={{ duration: 0.7, delay: 0.3 }}
     >
       <div className="sticky top-20">
-        <NewsWidget />
+        <ErrorBoundary>
+          <NewsWidget />
+        </ErrorBoundary>
       </div>
     </motion.div>
   )
@@ -144,12 +176,19 @@ function NewsWidgetWrapper() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <Router>
-        <ModalProvider>
-          <AppContent />
-        </ModalProvider>
-      </Router>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <Router
+          future={{
+            v7_startTransition: true,
+            v7_relativeSplatPath: true
+          }}
+        >
+          <ModalProvider>
+            <AppContent />
+          </ModalProvider>
+        </Router>
+      </AuthProvider>
+    </ErrorBoundary>
   )
 }

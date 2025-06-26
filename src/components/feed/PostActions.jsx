@@ -1,8 +1,10 @@
 import { useState } from "react"
 import { 
   HiThumbUp, HiChat, HiShare, HiSparkles, 
-  HiOutlineBookmark, HiDotsVertical, HiFlag, HiEyeOff
+  HiOutlineBookmark, HiDotsVertical, HiFlag, HiEyeOff, HiDotsHorizontal, HiOutlineEyeOff
 } from "react-icons/hi"
+import { posts } from '../../lib/supabase'
+import { useAuth } from '../../context/AuthContext'
 
 /**
  * PostActions Component - Mobile-Optimized with Enhanced Features
@@ -15,160 +17,209 @@ import {
  * - Professional LinkedIn-style interactions
  */
 export default function PostActions({ 
-  liked, 
-  onLike, 
-  onComment, 
-  onShare,
-  onAiInsight, 
-  onBookmark, 
-  isBookmarked,
-  onReport,
-  onNotInterested
+  postId, 
+  likes = 0, 
+  comments = 0, 
+  shares = 0,
+  userLiked = false,
+  onLikeChange,
+  onCommentToggle,
+  post
 }) {
-  const [showMoreMenu, setShowMoreMenu] = useState(false)
-  
-  // Main action buttons - always visible
-  const mainActions = [
-    {
-      icon: HiThumbUp,
-      label: "Like",
-      onClick: onLike,
-      active: liked,
-      activeColor: "text-blue-600",
-      hoverColor: "hover:bg-blue-50"
-    },
-    {
-      icon: HiChat,
-      label: "Comment",
-      onClick: onComment,
-      active: false,
-      activeColor: "text-green-600",
-      hoverColor: "hover:bg-green-50"
-    },
-    {
-      icon: HiShare,
-      label: "Share",
-      onClick: onShare,
-      active: false,
-      activeColor: "text-purple-600",
-      hoverColor: "hover:bg-purple-50"
-    }
-  ]
+  const { user } = useAuth()
+  const [isLiked, setIsLiked] = useState(userLiked)
+  const [likeCount, setLikeCount] = useState(likes)
+  const [isLoading, setIsLoading] = useState(false)
+  const [showDropdown, setShowDropdown] = useState(false)
+  const [error, setError] = useState(null)
 
-  // More menu options
-  const moreActions = [
-    {
-      icon: HiOutlineBookmark,
-      label: isBookmarked ? "Remove from Saved" : "Save post",
-      onClick: onBookmark,
-      active: isBookmarked,
-      activeColor: "text-blue-600"
-    },
-    {
-      icon: HiEyeOff,
-      label: "Not interested",
-      onClick: onNotInterested || (() => alert("Marked as not interested")),
-      active: false,
-      activeColor: "text-gray-600"
-    },
-    {
-      icon: HiFlag,
-      label: "Report post",
-      onClick: onReport || (() => alert("Post reported")),
-      active: false,
-      activeColor: "text-red-600"
+  const handleLike = async () => {
+    if (!user) {
+      setError('Please log in to like posts')
+      return
     }
-  ]
+
+    if (isLoading) return
+
+    try {
+      setIsLoading(true)
+      setError(null)
+      
+      console.log('🔄 Like action initiated:', { postId, isLiked })
+
+      if (isLiked) {
+        // Unlike the post
+        const { error: unlikeError } = await posts.unlike(postId)
+        
+        if (unlikeError) {
+          console.error('Unlike error:', unlikeError)
+          setError('Failed to unlike post')
+          return
+        }
+        
+        setIsLiked(false)
+        setLikeCount(prev => Math.max(0, prev - 1))
+        console.log('👎 Post unliked successfully')
+      } else {
+        // Like the post
+        const { error: likeError } = await posts.like(postId)
+        
+        if (likeError) {
+          console.error('Like error:', likeError)
+          setError('Failed to like post')
+          return
+        }
+        
+        setIsLiked(true)
+        setLikeCount(prev => prev + 1)
+        console.log('👍 Post liked successfully')
+      }
+
+      // Notify parent component of the change
+      if (onLikeChange) {
+        onLikeChange(postId, !isLiked)
+      }
+    } catch (err) {
+      console.error('Like action error:', err)
+      setError('Something went wrong')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleShare = async () => {
+    try {
+      const shareData = {
+        title: 'LinkedIn Clone Post',
+        text: post?.content || 'Check out this post!',
+        url: window.location.href
+      }
+
+      if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
+        await navigator.share(shareData)
+        console.log('📤 Post shared via Web Share API')
+      } else {
+        // Fallback - copy to clipboard
+        const textToShare = `${shareData.text}\n\n${shareData.url}`
+        await navigator.clipboard.writeText(textToShare)
+        
+        // Show temporary success message
+        const originalText = 'Share'
+        const button = document.activeElement
+        if (button && button.textContent.includes('Share')) {
+          button.textContent = 'Copied!'
+          setTimeout(() => {
+            button.textContent = originalText
+          }, 2000)
+        }
+        
+        console.log('📋 Post link copied to clipboard')
+      }
+    } catch (err) {
+      console.error('Share failed:', err)
+      setError('Failed to share post')
+    }
+  }
+
+  const handleSave = async () => {
+    // TODO: Implement save functionality
+    console.log('💾 Save post:', postId)
+  }
+
+  const handleHide = async () => {
+    // TODO: Implement hide functionality
+    console.log('👁️ Hide post:', postId)
+  }
+
+  const handleReport = async () => {
+    // TODO: Implement report functionality
+    console.log('🚩 Report post:', postId)
+  }
 
   return (
-    <div className="border-t border-gray-200 bg-white">
-      <div className="flex items-center px-2 sm:px-4 py-2">
-        {/* Main actions - responsive layout with icons only on mobile */}
-        <div className="flex items-center space-x-1 sm:space-x-2 flex-1">
-          {mainActions.map((action, index) => (
-            <button
-              key={index}
-              onClick={action.onClick}
-              className={`
-                flex items-center justify-center gap-1 sm:gap-2
-                px-2 sm:px-3 lg:px-4 py-2 rounded-lg
-                transition-all duration-200
-                text-sm font-medium min-w-0 flex-1 sm:flex-none
-                ${action.hoverColor}
-                ${action.active ? action.activeColor : "text-gray-600 hover:text-gray-800"}
-              `}
-              title={action.label}
-            >
-              <action.icon className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
-              {/* Hide text on mobile (< 640px), show on sm and larger */}
-              <span className="hidden sm:inline">{action.label}</span>
-            </button>
-          ))}
+    <div className="border-t border-gray-200 pt-3">
+      {error && (
+        <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded text-sm text-red-600">
+          {error}
         </div>
-        
-        {/* AI Insight - shown on larger screens, hidden on mobile to save space */}
-        <div className="hidden lg:flex items-center">
+      )}
+      
+      <div className="flex items-center justify-between">
+        {/* Main Actions */}
+        <div className="flex items-center space-x-1">
+          {/* Like Button */}
           <button
-            onClick={onAiInsight}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-amber-600 hover:bg-amber-50 hover:text-amber-700 transition-all duration-200"
-            title="AI Insight"
+            onClick={handleLike}
+            disabled={isLoading}
+            className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all ${
+              isLiked
+                ? 'text-blue-600 bg-blue-50 hover:bg-blue-100'
+                : 'text-gray-600 hover:bg-gray-100'
+            } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
-            <HiSparkles className="w-4 h-4 sm:w-5 sm:h-5" />
-            <span className="hidden xl:inline">AI Insight</span>
+            <HiThumbUp className={`w-5 h-5 ${isLoading ? 'animate-pulse' : ''}`} />
+            <span className="text-sm font-medium">
+              {isLoading ? '...' : likeCount > 0 ? likeCount : 'Like'}
+            </span>
+          </button>
+
+          {/* Comment Button */}
+          <button
+            onClick={() => onCommentToggle && onCommentToggle(postId)}
+            className="flex items-center space-x-2 px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-all"
+          >
+            <HiChat className="w-5 h-5" />
+            <span className="text-sm font-medium">
+              {comments > 0 ? comments : 'Comment'}
+            </span>
+          </button>
+
+          {/* Share Button */}
+          <button
+            onClick={handleShare}
+            className="flex items-center space-x-2 px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-all"
+          >
+            <HiShare className="w-5 h-5" />
+            <span className="text-sm font-medium">
+              {shares > 0 ? shares : 'Share'}
+            </span>
           </button>
         </div>
-        
-        {/* More menu */}
-        <div className="relative ml-1 sm:ml-2">
+
+        {/* More Options */}
+        <div className="relative">
           <button
-            onClick={() => setShowMoreMenu(!showMoreMenu)}
-            className="flex items-center justify-center p-2 rounded-lg text-gray-600 hover:bg-gray-100 hover:text-gray-800 transition-all duration-200"
-            title="More options"
+            onClick={() => setShowDropdown(!showDropdown)}
+            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all"
           >
-            <HiDotsVertical className="w-4 h-4 sm:w-5 sm:h-5" />
+            <HiDotsHorizontal className="w-5 h-5" />
           </button>
-          
-          {/* Dropdown menu */}
-          {showMoreMenu && (
-            <div className="fixed inset-0 z-10" onClick={() => setShowMoreMenu(false)}>
-              <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border z-20 py-1">
-                {/* AI Insight for mobile - only show in more menu on small screens */}
-                <div className="lg:hidden">
-                  <button
-                    onClick={() => {
-                      onAiInsight()
-                      setShowMoreMenu(false)
-                    }}
-                    className="flex items-center w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-100 transition-colors"
-                  >
-                    <HiSparkles className="w-5 h-5 mr-3 text-amber-500" />
-                    <span className="font-medium">AI Insight</span>
-                  </button>
-                  <div className="border-t border-gray-100 my-1" />
-                </div>
-                
-                {/* More actions */}
-                {moreActions.map((action, index) => (
-                  <button
-                    key={index}
-                    onClick={() => {
-                      action.onClick()
-                      setShowMoreMenu(false)
-                    }}
-                    className={`
-                      flex items-center w-full px-4 py-2 text-left
-                      transition-colors font-medium
-                      ${action.active ? action.activeColor : "text-gray-700"}
-                      hover:bg-gray-100
-                    `}
-                  >
-                    <action.icon className={`w-5 h-5 mr-3 ${
-                      action.active ? action.activeColor : "text-gray-500"
-                    }`} />
-                    <span>{action.label}</span>
-                  </button>
-                ))}
-              </div>
+
+          {showDropdown && (
+            <div className="absolute right-0 top-10 bg-white border border-gray-200 rounded-lg shadow-lg py-1 min-w-[150px] z-10">
+              <button
+                onClick={handleSave}
+                className="w-full flex items-center space-x-2 px-4 py-2 text-gray-700 hover:bg-gray-100"
+              >
+                <HiOutlineBookmark className="w-4 h-4" />
+                <span>Save post</span>
+              </button>
+              
+              <button
+                onClick={handleHide}
+                className="w-full flex items-center space-x-2 px-4 py-2 text-gray-700 hover:bg-gray-100"
+              >
+                <HiOutlineEyeOff className="w-4 h-4" />
+                <span>Hide post</span>
+              </button>
+              
+              <button
+                onClick={handleReport}
+                className="w-full flex items-center space-x-2 px-4 py-2 text-gray-700 hover:bg-gray-100"
+              >
+                <HiFlag className="w-4 h-4" />
+                <span>Report post</span>
+              </button>
             </div>
           )}
         </div>

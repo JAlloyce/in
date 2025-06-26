@@ -4,7 +4,9 @@ import {
   HiSearch, HiChevronDown, HiDotsVertical, HiTrash, HiUser, HiFlag
 } from "react-icons/hi";
 import { Link } from "react-router-dom";
-import { connections, auth } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
+import { useAuth } from '../context/AuthContext';
+import { ErrorBoundary } from '../components/ui';
 
 /**
  * Network Page - Real Database Connection Management
@@ -14,41 +16,40 @@ import { connections, auth } from '../lib/supabase';
  * - Live connection suggestions
  * - Delete connection functionality
  * - Mobile-responsive design with real data
+ * - Fixed authentication with useAuth hook
  */
 export default function Network() {
+  const { user, isAuthenticated, loading: authLoading } = useAuth();
   const [filter, setFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [showConnectionMenu, setShowConnectionMenu] = useState(null);
-  const [user, setUser] = useState(null);
   const [userConnections, setUserConnections] = useState([]);
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
-  // Load user and connections data
+  // Load connections data when user is authenticated
   useEffect(() => {
-    initializeNetwork();
-  }, []);
+    if (!authLoading && isAuthenticated && user) {
+      initializeNetwork();
+    } else if (!authLoading && !isAuthenticated) {
+      setError('Please log in to view your network');
+      setLoading(false);
+    }
+  }, [user, isAuthenticated, authLoading]);
 
   const initializeNetwork = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      // Get current user
-      const { session } = await auth.getSession();
-      if (!session?.user) {
-        setError('Please log in to view your network');
-        return;
-      }
-
-      setUser(session.user);
+      console.log('🌐 Loading network for user:', user.email);
 
       // Load connections and suggestions
       await Promise.all([
-        loadConnections(session.user.id),
-        loadSuggestions(session.user.id)
+        loadConnections(user.id),
+        loadSuggestions(user.id)
       ]);
 
     } catch (err) {
@@ -60,47 +61,77 @@ export default function Network() {
   };
 
   const loadConnections = async (userId) => {
-    const { data: connectionsData, error: connectionsError } = await connections.getConnections(userId);
+    try {
+      const { data: connectionsData, error: connectionsError } = await supabase
+        .from('connections')
+        .select(`
+          id,
+          created_at,
+          requester:profiles!connections_requester_id_fkey(id, name, headline, avatar_url),
+          receiver:profiles!connections_receiver_id_fkey(id, name, headline, avatar_url)
+        `)
+        .or(`requester_id.eq.${userId},receiver_id.eq.${userId}`)
+        .eq('status', 'accepted');
     
-    if (connectionsError) {
-      console.error('Error loading connections:', connectionsError);
-      return;
+      if (connectionsError) {
+        console.error('Error loading connections:', connectionsError);
+        return;
+      }
+
+      // Transform the data to match our UI format
+      const transformedConnections = connectionsData.map(conn => {
+        const otherUser = conn.requester.id === userId ? conn.receiver : conn.requester;
+        return {
+          id: conn.id,
+          userId: otherUser.id,
+          name: otherUser.name || 'User',
+          title: otherUser.headline || 'Professional',
+          avatar_url: otherUser.avatar_url,
+          connected: formatTimestamp(conn.created_at)
+        };
+      });
+
+      setUserConnections(transformedConnections);
+      console.log('✅ Loaded connections:', transformedConnections.length);
+    } catch (err) {
+      console.error('Error in loadConnections:', err);
     }
-
-    // Transform the data to match our UI format
-    const transformedConnections = connectionsData.map(conn => {
-      const otherUser = conn.requester.id === userId ? conn.receiver : conn.requester;
-      return {
-        id: conn.id,
-        userId: otherUser.id,
-        name: otherUser.name,
-        title: otherUser.headline || 'Professional',
-        avatar_url: otherUser.avatar_url,
-        connected: formatTimestamp(conn.created_at)
-      };
-    });
-
-    setUserConnections(transformedConnections);
   };
 
   const loadSuggestions = async (userId) => {
-    const { data: suggestionsData, error: suggestionsError } = await connections.getSuggestions(userId, 20);
+    try {
+      // Get users who are not connected to the current user
+      const { data: suggestionsData, error: suggestionsError } = await supabase
+        .from('profiles')
+        .select('id, name, headline, avatar_url')
+        .neq('id', userId)
+        .limit(20);
     
-    if (suggestionsError) {
-      console.error('Error loading suggestions:', suggestionsError);
-      return;
+      if (suggestionsError) {
+        console.error('Error loading suggestions:', suggestionsError);
+        return;
+      }
+
+      // Filter out existing connections
+      const existingConnectionIds = userConnections.map(conn => conn.userId);
+      const filteredSuggestions = suggestionsData.filter(
+        profile => !existingConnectionIds.includes(profile.id)
+      );
+
+      // Transform suggestions data
+      const transformedSuggestions = filteredSuggestions.map(profile => ({
+        id: profile.id,
+        name: profile.name || 'User',
+        title: profile.headline || 'Professional',
+        avatar_url: profile.avatar_url,
+        mutualConnections: 0 // TODO: Calculate mutual connections
+      }));
+
+      setSuggestions(transformedSuggestions);
+      console.log('✅ Loaded suggestions:', transformedSuggestions.length);
+    } catch (err) {
+      console.error('Error in loadSuggestions:', err);
     }
-
-    // Transform suggestions data
-    const transformedSuggestions = suggestionsData.map(profile => ({
-      id: profile.id,
-      name: profile.name,
-      title: profile.headline || 'Professional',
-      avatar_url: profile.avatar_url,
-              mutualConnections: suggestion.mutual_connections_count || 0
-    }));
-
-    setSuggestions(transformedSuggestions);
   };
 
   const formatTimestamp = (timestamp) => {
@@ -124,7 +155,10 @@ export default function Network() {
     if (!window.confirm("Are you sure you want to remove this connection?")) return;
 
     try {
-      const { error } = await connections.removeConnection(connectionId);
+      const { error } = await supabase
+        .from('connections')
+        .update({ status: 'rejected' })
+        .eq('id', connectionId);
       if (error) {
         console.error('Error removing connection:', error);
         alert('Failed to remove connection');
@@ -147,7 +181,13 @@ export default function Network() {
     }
 
     try {
-      const { error } = await connections.sendRequest(user.id, receiverId);
+      const { error } = await supabase
+        .from('connections')
+        .insert({
+          requester_id: user.id,
+          receiver_id: receiverId,
+          status: 'pending'
+        });
       if (error) {
         console.error('Error sending connection request:', error);
         alert('Failed to send connection request');

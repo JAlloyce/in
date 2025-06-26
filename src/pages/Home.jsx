@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo, memo } from "react";
 import { HiUsers, HiGlobe, HiChat, HiShare, HiThumbUp, HiSparkles, HiTrendingUp, HiClock } from "react-icons/hi";
 import { FaBuilding, FaRobot } from "react-icons/fa";
 import { useAuth } from "../context/AuthContext";
@@ -11,6 +11,52 @@ import { posts, comments, realtime } from '../lib/supabase'
 import { motion, AnimatePresence } from 'framer-motion'
 import PostActions from "../components/feed/PostActions"
 
+// Memoized components for better performance
+const MemoizedCreatePost = memo(CreatePost)
+const MemoizedHero = memo(Hero)
+const MemoizedComment = memo(Comment)
+const MemoizedCommentInput = memo(CommentInput)
+
+// Performance-optimized image component with lazy loading
+const OptimizedImage = memo(({ src, alt, className, onLoad, onError }) => {
+  const [loaded, setLoaded] = useState(false)
+  const [error, setError] = useState(false)
+
+  const handleLoad = useCallback(() => {
+    setLoaded(true)
+    onLoad?.()
+  }, [onLoad])
+
+  const handleError = useCallback(() => {
+    setError(true)
+    onError?.()
+  }, [onError])
+
+  if (error) {
+    return (
+      <div className={`bg-gray-200 flex items-center justify-center ${className}`}>
+        <span className="text-gray-500">Failed to load image</span>
+      </div>
+    )
+  }
+
+  return (
+    <div className={`relative ${className}`}>
+      {!loaded && (
+        <div className="absolute inset-0 bg-gray-200 animate-pulse rounded"></div>
+      )}
+      <img
+        src={src}
+        alt={alt}
+        className={`${className} transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`}
+        loading="lazy"
+        onLoad={handleLoad}
+        onError={handleError}
+      />
+    </div>
+  )
+})
+
 /**
  * Enhanced Home Page Component - Modern LinkedIn Feed
  * 
@@ -21,6 +67,7 @@ import PostActions from "../components/feed/PostActions"
  * - Enhanced feed filtering and sorting
  * - Real-time activity indicators
  * - Professional polish with smooth transitions
+ * - Performance optimizations with memoization and lazy loading
  */
 export default function Home() {
   const { user, loading } = useAuth()
@@ -31,6 +78,40 @@ export default function Home() {
   const [error, setError] = useState(null)
   const [feedFilter, setFeedFilter] = useState('all')
   const [sortBy, setSortBy] = useState('recent')
+
+  // Memoized filtered and sorted posts
+  const filteredAndSortedPosts = useMemo(() => {
+    let filtered = feedPosts
+
+    // Apply filters
+    if (feedFilter !== 'all') {
+      filtered = feedPosts.filter(post => {
+        switch (feedFilter) {
+          case 'following':
+            return post.type === 'user'
+          case 'communities':
+            return post.type === 'community'
+          case 'pages':
+            return post.type === 'company'
+          default:
+            return true
+        }
+      })
+    }
+
+    // Apply sorting
+    const sorted = [...filtered].sort((a, b) => {
+      switch (sortBy) {
+        case 'popular':
+          return (b.likes + b.comments + b.shares) - (a.likes + a.comments + a.shares)
+        case 'recent':
+        default:
+          return new Date(b.timestamp) - new Date(a.timestamp)
+      }
+    })
+
+    return sorted
+  }, [feedPosts, feedFilter, sortBy])
 
   // Load feed data when component mounts or user changes
   useEffect(() => {
@@ -105,7 +186,7 @@ export default function Home() {
     }
   }
 
-  const formatTimestamp = (timestamp) => {
+  const formatTimestamp = useCallback((timestamp) => {
     const date = new Date(timestamp)
     const now = new Date()
     const diffInHours = Math.floor((now - date) / (1000 * 60 * 60))
@@ -114,9 +195,9 @@ export default function Home() {
     if (diffInHours < 24) return `${diffInHours}h ago`
     if (diffInHours < 168) return `${Math.floor(diffInHours / 24)}d ago`
     return date.toLocaleDateString()
-  }
+  }, [])
 
-  const handleLike = async (postId) => {
+  const handleLike = useCallback(async (postId) => {
     if (!user) {
       alert('Please log in to like posts')
       return
@@ -149,9 +230,9 @@ export default function Home() {
       console.error('Error toggling like:', err)
       alert('Failed to update like: ' + err.message)
     }
-  }
+  }, [user, feedPosts])
 
-  const toggleComments = async (postId) => {
+  const toggleComments = useCallback(async (postId) => {
     setShowComments(prev => ({
       ...prev,
       [postId]: !prev[postId]
@@ -177,9 +258,9 @@ export default function Home() {
         console.error('Error loading comments:', err)
       }
     }
-  }
+  }, [showComments])
 
-  const handleCommentAdded = (postId, newComment) => {
+  const handleCommentAdded = useCallback((postId, newComment) => {
     // Add the new comment to the post's comment list
     setFeedPosts(prev => prev.map(post => 
       post.id === postId 
@@ -190,7 +271,7 @@ export default function Home() {
           }
         : post
     ))
-  }
+  }, [])
 
   const handleAiAnalysis = async (post) => {
     try {
@@ -557,7 +638,7 @@ export default function Home() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.2 }}
       >
-      <CreatePost user={user} onPostCreated={handlePostCreated} />
+      <MemoizedCreatePost user={user} onPostCreated={handlePostCreated} />
       </motion.div>
       
       {/* Enhanced Feed Filter & Sort Tabs */}
@@ -693,7 +774,7 @@ export default function Home() {
           </Card>
         ) : (
           <div className="space-y-6">
-            {feedPosts.map((post, index) => (
+            {filteredAndSortedPosts.map((post, index) => (
               <motion.div
                 key={post.id}
                 initial={{ opacity: 0, y: 50 }}

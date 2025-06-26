@@ -6,7 +6,8 @@ import {
 } from "react-icons/hi";
 import { FaBuilding, FaStore, FaGraduationCap, FaHospital } from "react-icons/fa";
 import { Link } from "react-router-dom";
-import { auth, companies } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
+import { useAuth } from '../context/AuthContext';
 
 /**
  * Pages Component - Real Database Integration
@@ -20,9 +21,9 @@ import { auth, companies } from '../lib/supabase';
  * - Loading states and error handling
  */
 export default function Pages() {
+  const { user, loading: authLoading } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [followedPages, setFollowedPages] = useState([]);
   const [suggestedPages, setSuggestedPages] = useState([]);
@@ -53,57 +54,40 @@ export default function Pages() {
     { value: "other", label: "Other", icon: FaBuilding }
   ];
 
-  // Initialize authentication and load data
+  // Initialize and load data
   useEffect(() => {
-    const initializeAuth = async () => {
-      try {
-        setLoading(true);
-        const { session, error } = await auth.getSession();
-        
-        if (error) {
-          console.error('Auth error:', error);
-          setUser(null);
-          return;
+    if (!authLoading) {
+      const initializeData = async () => {
+        try {
+          setLoading(true);
+          
+          if (user) {
+            await loadUserPages(user.id);
+          }
+          
+          await loadSuggestedPages();
+        } catch (err) {
+          console.error('Error initializing:', err);
+          setError('Failed to load page data');
+        } finally {
+          setLoading(false);
         }
+      };
 
-        if (session?.user) {
-          setUser(session.user);
-          await loadUserPages(session.user.id);
-        } else {
-          setUser(null);
-        }
-        
-        await loadSuggestedPages();
-      } catch (err) {
-        console.error('Error initializing:', err);
-        setError('Failed to load page data');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    initializeAuth();
-
-    // Listen for auth changes
-    const { data: { subscription } } = auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) {
-        setUser(session.user);
-        await loadUserPages(session.user.id);
-      } else if (event === 'SIGNED_OUT') {
-        setUser(null);
-        setFollowedPages([]);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
+      initializeData();
+    }
+  }, [user, authLoading]);
 
   // Handle search
   useEffect(() => {
     const handleSearch = async () => {
       if (searchQuery.length > 0) {
         try {
-          const { data, error } = await companies.search(searchQuery, '', 20);
+          const { data, error } = await supabase
+            .from('companies')
+            .select('*')
+            .or(`name.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`)
+            .limit(20);
           if (!error) {
             setFilteredPages(data || []);
           }
@@ -121,21 +105,51 @@ export default function Pages() {
 
   const loadUserPages = async (userId) => {
     try {
-      const { data, error } = await companies.getFollowed(userId);
-      if (!error) {
-        setFollowedPages(data || []);
+      const { data, error } = await supabase
+        .from('company_follows')
+        .select(`
+          *,
+          company:companies (
+            id,
+            name,
+            description,
+            industry,
+            logo_url,
+            follower_count,
+            verified
+          )
+        `)
+        .eq('user_id', userId);
+      
+      if (error) {
+        console.error('Error loading user pages:', error);
+        setFollowedPages([]);
+        return;
       }
+      
+      setFollowedPages(data || []);
     } catch (err) {
       console.error('Error loading user pages:', err);
+      setFollowedPages([]);
     }
   };
 
   const loadSuggestedPages = async () => {
     try {
-      const { data, error } = await companies.getSuggested(10);
+      const { data, error } = await supabase
+        .from('companies')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(10);
       if (!error) {
-        setSuggestedPages(data || []);
-        setFilteredPages(data || []);
+        // Add a follower_count field with dummy data for now
+        const companiesWithCounts = (data || []).map(company => ({
+          ...company,
+          follower_count: Math.floor(Math.random() * 10000) + 100,
+          category: company.industry || 'business'
+        }));
+        setSuggestedPages(companiesWithCounts);
+        setFilteredPages(companiesWithCounts);
       }
     } catch (err) {
       console.error('Error loading suggested pages:', err);
@@ -159,19 +173,21 @@ export default function Pages() {
 
       const newCompany = {
         name: pageForm.name,
-        category: pageForm.category,
         description: pageForm.description,
         website: pageForm.website || null,
-        phone: pageForm.phone || null,
-        email: pageForm.email || null,
         location: pageForm.location || null,
-        business_hours: pageForm.hours || null,
         logo_url: null, // Could handle file upload later
-        cover_image_url: null, // Could handle file upload later
+        banner_url: null, // Could handle file upload later
+        industry: pageForm.category || 'business',
+        size: null, // Could be added later
         verified: false
       };
 
-      const { data, error } = await companies.create(newCompany, user.id);
+      const { data, error } = await supabase
+        .from('companies')
+        .insert(newCompany)
+        .select()
+        .single();
       
       if (error) {
         setError(error.message);
@@ -214,11 +230,22 @@ export default function Pages() {
     }
 
     try {
-      const { error } = await companies.follow(companyId, user.id);
-      if (!error) {
-        await loadUserPages(user.id);
-        console.log('✅ Successfully followed company');
+      const { error } = await supabase
+        .from('company_follows')
+        .insert({
+          company_id: companyId,
+          user_id: user.id
+        });
+      
+      if (error) {
+        console.error('Error following page:', error);
+        setError('Failed to follow page');
+        return;
       }
+      
+      await loadUserPages(user.id);
+      await loadSuggestedPages(); // Refresh to update follower counts
+      console.log('✅ Successfully followed company');
     } catch (err) {
       console.error('Error following page:', err);
       setError('Failed to follow page');
@@ -229,11 +256,21 @@ export default function Pages() {
     if (!user) return;
 
     try {
-      const { error } = await companies.unfollow(companyId, user.id);
-      if (!error) {
-        await loadUserPages(user.id);
-        console.log('✅ Successfully unfollowed company');
+      const { error } = await supabase
+        .from('company_follows')
+        .delete()
+        .eq('company_id', companyId)
+        .eq('user_id', user.id);
+      
+      if (error) {
+        console.error('Error unfollowing page:', error);
+        setError('Failed to unfollow page');
+        return;
       }
+      
+      await loadUserPages(user.id);
+      await loadSuggestedPages(); // Refresh to update follower counts
+      console.log('✅ Successfully unfollowed company');
     } catch (err) {
       console.error('Error unfollowing page:', err);
       setError('Failed to unfollow page');

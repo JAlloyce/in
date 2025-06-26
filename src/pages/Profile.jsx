@@ -8,7 +8,7 @@ import {
   HiTrendingUp, HiViewGrid
 } from 'react-icons/hi';
 import { useAuth } from '../context/AuthContext';
-import { profiles, posts, connections, experiences, education, skills } from '../lib/supabase';
+import { posts, supabase } from '../lib/supabase';
 import AdminSettings from "../components/profile/AdminSettings";
 import { Button, Card, Avatar } from "../components/ui";
 import { motion, AnimatePresence } from 'framer-motion';
@@ -179,8 +179,12 @@ export default function Profile({ isEditable = true, userData }) {
         setLoading(true);
         
         // Load user profile
-        const { data: profile, error: profileError } = await profiles.get(user.id);
-        if (profileError) throw profileError;
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+        if (profileError) console.warn('Failed to load profile:', profileError);
         
         // Load user posts with debug logging
         console.log('🔍 Profile: Loading posts for user ID:', user.id);
@@ -193,19 +197,34 @@ export default function Profile({ isEditable = true, userData }) {
         }
         
         // Load user connections
-        const { data: connectionsData, error: connectionsError } = await connections.getConnections(user.id);
-        if (connectionsError) throw connectionsError;
+        const { data: connectionsData, error: connectionsError } = await supabase
+          .from('connections')
+          .select('*')
+          .or(`user_id.eq.${user.id},connected_user_id.eq.${user.id}`)
+          .eq('status', 'accepted');
+        if (connectionsError) console.warn('Failed to load connections:', connectionsError);
 
         // Load user experiences
-        const { data: experiencesData, error: experiencesError } = await experiences.getByUser(user.id);
+        const { data: experiencesData, error: experiencesError } = await supabase
+          .from('experiences')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('start_date', { ascending: false });
         if (experiencesError) console.warn('Failed to load experiences:', experiencesError);
 
         // Load user education
-        const { data: educationData, error: educationError } = await education.getByUser(user.id);
+        const { data: educationData, error: educationError } = await supabase
+          .from('education')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('start_date', { ascending: false });
         if (educationError) console.warn('Failed to load education:', educationError);
 
         // Load user skills
-        const { data: skillsData, error: skillsError } = await skills.getByUser(user.id);
+        const { data: skillsData, error: skillsError } = await supabase
+          .from('skills')
+          .select('*')
+          .eq('user_id', user.id);
         if (skillsError) console.warn('Failed to load skills:', skillsError);
 
         // Set profile data with OAuth metadata

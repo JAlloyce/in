@@ -53,19 +53,50 @@ export const posts = {
       .eq('user_id', userId)
     return { data, error }
   },
-  async like(postId, userId) {
-    const { error } = await supabase
-      .from('likes')
-      .insert({ post_id: postId, user_id: userId })
-    return { error }
+  async like(postId) {
+    try {
+      console.log('👍 Attempting to like post:', { postId });
+      
+      // Use current authenticated user for security
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
+        return { data: null, error: { message: 'User not authenticated' } };
+      }
+      
+      const { data, error } = await supabase
+        .from('likes')
+        .insert({ post_id: postId, user_id: user.id })
+        .select();
+        
+      console.log('Like result:', { data, error });
+      return { data, error };
+    } catch (err) {
+      console.error('Like exception:', err);
+      return { data: null, error: err };
+    }
   },
-  async unlike(postId, userId) {
-    const { error } = await supabase
-      .from('likes')
-      .delete()
-      .eq('post_id', postId)
-      .eq('user_id', userId)
-    return { error }
+  async unlike(postId) {
+    try {
+      console.log('👎 Attempting to unlike post:', { postId });
+      
+      // Use current authenticated user for security
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
+        return { data: null, error: { message: 'User not authenticated' } };
+      }
+      
+      const { data, error } = await supabase
+        .from('likes')
+        .delete()
+        .eq('post_id', postId)
+        .eq('user_id', user.id);
+        
+      console.log('Unlike result:', { data, error });
+      return { data, error };
+    } catch (err) {
+      console.error('Unlike exception:', err);
+      return { data: null, error: err };
+    }
   },
   async update(postId, userId, updates) {
     const { data, error } = await supabase
@@ -131,7 +162,116 @@ export const jobs = {
   }
 }
 
-export const comments = supabase.from('comments')
+export const comments = {
+  async create(comment) {
+    try {
+      console.log('💬 Creating comment:', comment);
+      
+      // Get current authenticated user
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
+        return { data: null, error: { message: 'User not authenticated' } };
+      }
+      
+      // Ensure author_id matches authenticated user
+      const commentData = {
+        ...comment,
+        author_id: user.id
+      };
+      
+      const { data, error } = await supabase
+        .from('comments')
+        .insert(commentData)
+        .select(`
+          *,
+          profiles!comments_author_id_fkey (
+            id,
+            name,
+            avatar_url,
+            headline
+          )
+        `)
+        .single();
+
+      console.log('Comment result:', { data, error });
+      
+      if (error) {
+        return { data: null, error };
+      }
+
+      return { data, error: null };
+    } catch (err) {
+      console.error('Comment exception:', err);
+      return { data: null, error: err };
+    }
+  },
+  
+  async getByPost(postId) {
+    try {
+      const { data, error } = await supabase
+        .from('comments')
+        .select(`
+          *,
+          profiles!comments_author_id_fkey (
+            id,
+            name,
+            avatar_url,
+            headline
+          )
+        `)
+        .eq('post_id', postId)
+        .order('created_at', { ascending: true });
+      
+      return { data, error };
+    } catch (err) {
+      console.error('Error fetching comments:', err);
+      return { data: null, error: err };
+    }
+  },
+
+  async update(commentId, updates) {
+    try {
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
+        return { data: null, error: { message: 'User not authenticated' } };
+      }
+
+      const { data, error } = await supabase
+        .from('comments')
+        .update(updates)
+        .eq('id', commentId)
+        .eq('author_id', user.id)
+        .select()
+        .single();
+
+      return { data, error };
+    } catch (err) {
+      console.error('Error updating comment:', err);
+      return { data: null, error: err };
+    }
+  },
+
+  async delete(commentId) {
+    try {
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
+        return { error: { message: 'User not authenticated' } };
+      }
+
+      const { error } = await supabase
+        .from('comments')
+        .delete()
+        .eq('id', commentId)
+        .eq('author_id', user.id);
+
+      return { error };
+    } catch (err) {
+      console.error('Error deleting comment:', err);
+      return { error: err };
+    }
+  }
+}
+
 export const profiles = supabase.from('profiles')
 export const companies = supabase.from('companies')
 export const connections = supabase.from('connections')

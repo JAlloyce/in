@@ -5,9 +5,11 @@ import {
   HiBookOpen, HiCog, HiFlag
 } from "react-icons/hi";
 import { Link } from "react-router-dom";
-import { communities, auth } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
+import { useAuth } from '../context/AuthContext';
 
 export default function Communities() {
+  const { user, loading: authLoading } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [communityForm, setCommunityForm] = useState({
@@ -21,7 +23,6 @@ export default function Communities() {
   const [createdCommunities, setCreatedCommunities] = useState([]);
   
   // Real data states
-  const [user, setUser] = useState(null);
   const [joinedCommunities, setJoinedCommunities] = useState([]);
   const [suggestedCommunities, setSuggestedCommunities] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -34,21 +35,19 @@ export default function Communities() {
 
   // Initialize communities
   useEffect(() => {
-    initializeCommunities();
-  }, []);
+    if (!authLoading) {
+      initializeCommunities();
+    }
+  }, [authLoading]);
 
   const initializeCommunities = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      // Get current user
-      const { session } = await auth.getSession();
-      if (session?.user) {
-        setUser(session.user);
-        
+      if (user) {
         // Load joined communities
-        await loadJoinedCommunities(session.user.id);
+        await loadJoinedCommunities(user.id);
       }
 
       // Load suggested communities
@@ -63,47 +62,72 @@ export default function Communities() {
   };
 
   const loadJoinedCommunities = async (userId) => {
-    const { data: joinedData, error: joinedError } = await communities.getJoined(userId);
-    
-    if (joinedError) {
-      console.error('Error loading joined communities:', joinedError);
-      return;
+    try {
+      const { data: joinedData, error: joinedError } = await supabase
+        .from('community_members')
+        .select(`
+          *,
+          community:communities (
+            id,
+            name,
+            description,
+            category,
+            member_count
+          )
+        `)
+        .eq('user_id', userId);
+      
+      if (joinedError) {
+        console.error('Error loading joined communities:', joinedError);
+        return;
+      }
+
+      // Transform joined communities data
+      const transformedJoined = (joinedData || []).map(membership => ({
+        id: membership.community?.id,
+        name: membership.community?.name || 'Unknown Community',
+        members: `${membership.community?.member_count || 0}`,
+        description: membership.community?.description || 'No description available',
+        category: membership.community?.category || "Community",
+        privacy: "public",
+        isAdmin: false,
+        posts: 0,
+        activity: "Active"
+      }));
+
+      setJoinedCommunities(transformedJoined);
+    } catch (err) {
+      console.error('Error loading joined communities:', err);
     }
-
-    // Transform joined communities data
-    const transformedJoined = joinedData.map(membership => ({
-      id: membership.community.id,
-      name: membership.community.name,
-      members: `${membership.community.member_count || 0}`,
-      description: membership.community.description,
-      category: "Community",
-      privacy: "public",
-      isAdmin: false, // We'd need to check if user is admin
-              posts: 0, // Communities table doesn't exist yet
-      activity: "Active"
-    }));
-
-    setJoinedCommunities(transformedJoined);
   };
 
   const loadSuggestedCommunities = async () => {
-    const { data: suggestedData, error: suggestedError } = await communities.getSuggested(20);
-    
-    if (suggestedError) {
-      console.error('Error loading suggested communities:', suggestedError);
-      return;
+    try {
+      const { data: suggestedData, error: suggestedError } = await supabase
+        .from('communities')
+        .select('*')
+        .eq('is_active', true)
+        .order('member_count', { ascending: false })
+        .limit(20);
+      
+      if (suggestedError) {
+        console.error('Error loading suggested communities:', suggestedError);
+        return;
+      }
+
+      // Transform suggested communities data
+      const transformedSuggested = (suggestedData || []).map(community => ({
+        id: community.id,
+        name: community.name || 'Unknown Community',
+        members: `${community.member_count || 0}`,
+        description: community.description || 'No description available',
+        category: community.category || "Community"
+      }));
+
+      setSuggestedCommunities(transformedSuggested);
+    } catch (err) {
+      console.error('Error loading suggested communities:', err);
     }
-
-    // Transform suggested communities data
-    const transformedSuggested = suggestedData.map(community => ({
-      id: community.id,
-      name: community.name,
-      members: `${community.member_count || 0}`,
-      description: community.description,
-      category: "Community"
-    }));
-
-    setSuggestedCommunities(transformedSuggested);
   };
 
   const filteredCommunities = suggestedCommunities.filter(community => 
@@ -123,13 +147,18 @@ export default function Communities() {
     }
 
     try {
-      const { data: newCommunity, error } = await communities.create({
-        name: communityForm.name,
-        description: communityForm.description,
-        category: communityForm.category,
-        rules: communityForm.rules,
-        is_active: true
-      }, user.id);
+      const { data: newCommunity, error } = await supabase
+        .from('communities')
+        .insert({
+          name: communityForm.name,
+          description: communityForm.description,
+          category: communityForm.category,
+          rules: communityForm.rules,
+          is_active: true,
+          created_by: user.id
+        })
+        .select()
+        .single();
 
       if (error) {
         console.error('Error creating community:', error);
@@ -144,7 +173,7 @@ export default function Communities() {
         members: "1",
         description: newCommunity.description,
         category: newCommunity.category,
-        privacy: "public", // Default since privacy_level doesn't exist in DB
+        privacy: "public",
         isAdmin: true,
         posts: 0,
         activity: "New",
@@ -175,7 +204,14 @@ export default function Communities() {
     }
 
     try {
-      const { error } = await communities.join(communityId, user.id);
+      const { error } = await supabase
+        .from('community_members')
+        .insert({
+          community_id: communityId,
+          user_id: user.id,
+          role: 'member'
+        });
+
       if (error) {
         console.error('Error joining community:', error);
         alert('Failed to join community');
@@ -189,7 +225,7 @@ export default function Communities() {
         setJoinedCommunities(prev => [{
           ...community,
           isAdmin: false,
-          posts: 0, // Communities table doesn't exist yet
+          posts: 0,
           activity: "Active"
         }, ...prev]);
       }
@@ -201,32 +237,53 @@ export default function Communities() {
     }
   };
 
-  const allJoinedCommunities = [...joinedCommunities, ...createdCommunities];
-
-  if (loading) {
+  // Loading State
+  if (authLoading || loading) {
     return (
       <div className="bg-white rounded-lg shadow p-6">
-        <div className="flex items-center justify-center py-12">
-          <div className="text-center">
-            <div className="w-8 h-8 border-2 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading communities...</p>
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 bg-gray-200 rounded w-1/3"></div>
+          <div className="h-10 bg-gray-200 rounded"></div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className="h-40 bg-gray-200 rounded"></div>
+            ))}
           </div>
         </div>
       </div>
     );
   }
 
+  // Error State
   if (error) {
     return (
       <div className="bg-white rounded-lg shadow p-6">
         <div className="text-center py-12">
-          <p className="text-red-600 mb-4">{error}</p>
+          <HiUserGroup className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Error Loading Communities</h3>
+          <p className="text-gray-600 mb-4">{error}</p>
           <button 
             onClick={initializeCommunities}
-            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
           >
             Try Again
           </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Not Authenticated State
+  if (!user) {
+    return (
+      <div className="bg-white rounded-lg shadow p-6">
+        <div className="text-center py-12">
+          <HiUserGroup className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Join Communities</h3>
+          <p className="text-gray-600 mb-4">Sign in to discover and join professional communities</p>
+          <Link to="/auth" className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+            Sign In
+          </Link>
         </div>
       </div>
     );
@@ -238,13 +295,14 @@ export default function Communities() {
         <h1 className="text-2xl font-bold mb-4 md:mb-0">Communities</h1>
         <button 
           onClick={() => setShowCreateModal(true)}
-          className="flex items-center bg-purple-600 text-white px-4 py-2 rounded-full font-medium hover:bg-purple-700 mb-4 md:mb-0 transition-colors"
+          className="flex items-center bg-blue-600 text-white px-4 py-2 rounded-full font-medium hover:bg-blue-700 mb-4 md:mb-0 transition-colors"
         >
           <HiPlus className="w-5 h-5 mr-1" />
           Create Community
         </button>
       </div>
 
+      {/* Search Bar */}
       <div className="relative mb-6">
         <HiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500" />
         <input
@@ -252,111 +310,86 @@ export default function Communities() {
           placeholder="Search communities..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 w-full"
+          className="pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
         />
       </div>
 
-      <div className="mb-8">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold">Your Communities</h2>
-          <button 
-            onClick={() => user && loadJoinedCommunities(user.id)}
-            className="text-purple-600 text-sm font-medium"
-          >
-            Refresh
-          </button>
-        </div>
-        {allJoinedCommunities.length > 0 ? (
+      {/* Joined Communities */}
+      {joinedCommunities.length > 0 && (
+        <div className="mb-8">
+          <h2 className="text-xl font-semibold mb-4">Your Communities</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {allJoinedCommunities.map(community => (
-              <Link 
-                to={`/community/${community.id}`} 
-                key={community.id}
-                className="border rounded-lg p-4 hover:shadow-md transition-shadow relative"
-              >
+            {joinedCommunities.map(community => (
+              <div key={community.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center">
                     <div className="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center mr-3">
                       <HiUserGroup className="w-6 h-6 text-purple-600" />
                     </div>
                     <div>
-                      <h3 className="font-bold text-gray-900">{community.name}</h3>
+                      <h3 className="font-semibold text-gray-900">{community.name}</h3>
                       <p className="text-sm text-gray-600">{community.members} members</p>
                     </div>
                   </div>
-                  {community.isAdmin && (
-                    <span className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded-full">
-                      Admin
-                    </span>
-                  )}
                 </div>
-                
-                <p className="text-sm text-gray-500 mb-3">{community.description}</p>
-                
-                <div className="flex items-center justify-between text-xs text-gray-500">
-                  <div className="flex items-center gap-4">
-                    <span className="flex items-center">
-                      <HiChat className="w-4 h-4 mr-1" />
-                      {community.posts} posts
-                    </span>
-                    <span className="flex items-center">
-                      {community.privacy === 'public' && <HiGlobe className="w-4 h-4 mr-1" />}
-                      {community.privacy === 'private' && <HiLockClosed className="w-4 h-4 mr-1" />}
-                      {community.privacy === 'secret' && <HiEyeOff className="w-4 h-4 mr-1" />}
-                      {community.privacy}
-                    </span>
-                  </div>
-                  <span className="text-green-600">{community.activity}</span>
+                <p className="text-gray-600 text-sm mb-3 line-clamp-2">{community.description}</p>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs bg-gray-100 px-2 py-1 rounded">{community.category}</span>
+                  <span className="text-xs text-green-600">{community.activity}</span>
                 </div>
-              </Link>
+              </div>
             ))}
           </div>
-        ) : (
-          <div className="text-center py-8 bg-gray-50 rounded-lg">
-            <HiUserGroup className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-            <h3 className="text-lg font-medium text-gray-900">No communities yet</h3>
-            <p className="text-gray-500">Join communities to connect with like-minded professionals</p>
-          </div>
-        )}
-      </div>
-
-      <div>
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold">
-            {searchQuery ? "Search Results" : "Discover Communities"}
-          </h2>
-          <button 
-            onClick={() => loadSuggestedCommunities()}
-            className="text-purple-600 text-sm font-medium"
-          >
-            Refresh
-          </button>
         </div>
+      )}
+
+      {/* Suggested Communities */}
+      <div>
+        <h2 className="text-xl font-semibold mb-4">
+          {joinedCommunities.length > 0 ? 'Discover More Communities' : 'Suggested Communities'}
+        </h2>
         
-        {filteredCommunities.length > 0 ? (
+        {filteredCommunities.length === 0 ? (
+          <div className="text-center py-12">
+            <HiUserGroup className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              {suggestedCommunities.length === 0 ? 'No Communities Yet' : 'No Results Found'}
+            </h3>
+            <p className="text-gray-600 mb-4">
+              {suggestedCommunities.length === 0 
+                ? 'Be the first to create a community!' 
+                : 'Try adjusting your search terms'}
+            </p>
+            {suggestedCommunities.length === 0 && (
+              <button 
+                onClick={() => setShowCreateModal(true)}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+              >
+                Create First Community
+              </button>
+            )}
+          </div>
+        ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {filteredCommunities.map(community => (
-              <div key={community.id} className="border rounded-lg p-4 hover:shadow-md">
-                <div className="flex items-center mb-3">
-                  <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center mr-3">
-                    <HiUserGroup className="w-5 h-5 text-purple-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold">{community.name}</h3>
-                    <p className="text-sm text-gray-500">{community.members} members</p>
+              <div key={community.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center">
+                    <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center mr-3">
+                      <HiUserGroup className="w-6 h-6 text-blue-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900">{community.name}</h3>
+                      <p className="text-sm text-gray-600">{community.members} members</p>
+                    </div>
                   </div>
                 </div>
-                <p className="text-sm text-gray-600 mb-3">{community.description}</p>
+                <p className="text-gray-600 text-sm mb-3 line-clamp-2">{community.description}</p>
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                    {community.category}
-                  </span>
+                  <span className="text-xs bg-gray-100 px-2 py-1 rounded">{community.category}</span>
                   <button 
-                    onClick={(e) => {
-                      e.preventDefault();
-                      handleJoinCommunity(community.id);
-                    }}
-                    className="bg-purple-100 hover:bg-purple-200 text-purple-700 px-4 py-2 rounded-md font-medium text-sm transition-colors"
+                    onClick={() => handleJoinCommunity(community.id)}
+                    className="text-blue-600 hover:text-blue-800 text-sm font-medium"
                   >
                     Join
                   </button>
@@ -364,84 +397,46 @@ export default function Communities() {
               </div>
             ))}
           </div>
-        ) : (
-          <div className="text-center py-8">
-            <HiUserGroup className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-            <h3 className="text-lg font-medium text-gray-900">No communities found</h3>
-            <p className="text-gray-500">
-              {searchQuery 
-                ? "No communities match your search" 
-                : "Explore popular communities below"}
-            </p>
-          </div>
         )}
       </div>
 
       {/* Create Community Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
-            <div className="flex justify-between items-center p-6 border-b">
-              <h2 className="text-2xl font-bold">Create Community</h2>
-              <button 
-                onClick={() => setShowCreateModal(false)}
-                className="p-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200"
-              >
-                <HiX className="w-5 h-5" />
-              </button>
-            </div>
-            
-            <div className="flex-1 overflow-y-auto p-6">
-              <div className="space-y-6">
-                {/* Cover Image */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Community Cover Image
-                  </label>
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-purple-400 transition-colors">
-                    <HiPhotograph className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-                    <p className="text-gray-600">Click to upload cover image</p>
-                    <p className="text-xs text-gray-500 mt-1">Recommended: 1200x630 pixels</p>
-                  </div>
-                </div>
+          <div className="bg-white rounded-lg max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold">Create Community</h2>
+                <button 
+                  onClick={() => setShowCreateModal(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <HiX className="w-6 h-6" />
+                </button>
+              </div>
 
-                {/* Community Name */}
+              <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Community Name *
                   </label>
                   <input
                     type="text"
                     value={communityForm.name}
                     onChange={(e) => setCommunityForm(prev => ({ ...prev, name: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Enter community name"
                   />
                 </div>
 
-                {/* Description */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Description *
-                  </label>
-                  <textarea
-                    value={communityForm.description}
-                    onChange={(e) => setCommunityForm(prev => ({ ...prev, description: e.target.value }))}
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    placeholder="Describe what this community is about..."
-                  />
-                </div>
-
-                {/* Category */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Category *
                   </label>
                   <select
                     value={communityForm.category}
                     onChange={(e) => setCommunityForm(prev => ({ ...prev, category: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="">Select a category</option>
                     {categories.map(cat => (
@@ -450,97 +445,47 @@ export default function Communities() {
                   </select>
                 </div>
 
-                {/* Privacy Settings */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-3">
-                    Privacy Settings
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Description *
                   </label>
-                  <div className="space-y-3">
-                    <label className="flex items-center">
-                      <input
-                        type="radio"
-                        name="privacy"
-                        value="public"
-                        checked={communityForm.privacy === 'public'}
-                        onChange={(e) => setCommunityForm(prev => ({ ...prev, privacy: e.target.value }))}
-                        className="mr-3"
-                      />
-                      <div className="flex items-center">
-                        <HiGlobe className="w-5 h-5 text-green-600 mr-2" />
-                        <div>
-                          <p className="font-medium">Public</p>
-                          <p className="text-sm text-gray-500">Anyone can see posts and members</p>
-                        </div>
-                      </div>
-                    </label>
-                    
-                    <label className="flex items-center">
-                      <input
-                        type="radio"
-                        name="privacy"
-                        value="private"
-                        checked={communityForm.privacy === 'private'}
-                        onChange={(e) => setCommunityForm(prev => ({ ...prev, privacy: e.target.value }))}
-                        className="mr-3"
-                      />
-                      <div className="flex items-center">
-                        <HiLockClosed className="w-5 h-5 text-yellow-600 mr-2" />
-                        <div>
-                          <p className="font-medium">Private</p>
-                          <p className="text-sm text-gray-500">Only members can see posts</p>
-                        </div>
-                      </div>
-                    </label>
-                    
-                    <label className="flex items-center">
-                      <input
-                        type="radio"
-                        name="privacy"
-                        value="secret"
-                        checked={communityForm.privacy === 'secret'}
-                        onChange={(e) => setCommunityForm(prev => ({ ...prev, privacy: e.target.value }))}
-                        className="mr-3"
-                      />
-                      <div className="flex items-center">
-                        <HiEyeOff className="w-5 h-5 text-red-600 mr-2" />
-                        <div>
-                          <p className="font-medium">Secret</p>
-                          <p className="text-sm text-gray-500">Only invited members can find and join</p>
-                        </div>
-                      </div>
-                    </label>
-                  </div>
+                  <textarea
+                    value={communityForm.description}
+                    onChange={(e) => setCommunityForm(prev => ({ ...prev, description: e.target.value }))}
+                    rows={3}
+                    className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Describe what your community is about"
+                  />
                 </div>
 
-                {/* Community Rules */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Community Rules (Optional)
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Community Rules
                   </label>
                   <textarea
                     value={communityForm.rules}
                     onChange={(e) => setCommunityForm(prev => ({ ...prev, rules: e.target.value }))}
-                    rows={4}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    placeholder="Set community guidelines and rules..."
+                    rows={3}
+                    className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Optional: Set community guidelines"
                   />
                 </div>
+
+                <div className="flex space-x-3 pt-4">
+                  <button
+                    onClick={handleCreateCommunity}
+                    className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 font-medium"
+                  >
+                    Create Community
+                  </button>
+                  <button
+                    onClick={() => setShowCreateModal(false)}
+                    className="flex-1 bg-gray-200 text-gray-800 py-2 px-4 rounded-md hover:bg-gray-300 font-medium"
+                  >
+                    Cancel
+                  </button>
+                </div>
               </div>
-            </div>
-            
-            <div className="p-6 border-t flex justify-end gap-3">
-              <button
-                onClick={() => setShowCreateModal(false)}
-                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleCreateCommunity}
-                className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-              >
-                Create Community
-              </button>
             </div>
           </div>
         </div>
