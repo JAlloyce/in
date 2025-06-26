@@ -1,7 +1,7 @@
 import { Link, useLocation } from "react-router-dom"
 import { HiUser, HiBookmark, HiClock, HiFlag, HiUserGroup, HiPlus, HiCog } from "react-icons/hi"
 import { useAuth } from "../../context/AuthContext"
-import { useState } from "react"
+import { useModal } from "../../context/ModalContext"
 import SettingsModal from "../settings/SettingsModal"
 
 /**
@@ -18,8 +18,8 @@ import SettingsModal from "../settings/SettingsModal"
 export default function Sidebar() {
   const location = useLocation();
   const { user, getUserDisplayName, getUserAvatarUrl } = useAuth();
+  const { isSettingsOpen, openSettings, closeSettings, isAnyModalOpen } = useModal();
   const isWorkspace = location.pathname.startsWith("/workspace");
-  const [showSettings, setShowSettings] = useState(false);
   
   if (isWorkspace) return null; // Hide app sidebar when in workspace
 
@@ -86,7 +86,7 @@ export default function Sidebar() {
               {/* Settings Button */}
               <li>
                 <button 
-                  onClick={() => setShowSettings(true)}
+                  onClick={openSettings}
                   className="flex items-center py-2 px-3 rounded hover:bg-gray-100 transition-colors group w-full text-left"
                 >
                   <HiCog className="w-5 h-5 mr-3 text-gray-500 group-hover:text-gray-600" />
@@ -106,10 +106,10 @@ export default function Sidebar() {
       </aside>
 
       {/* Settings Modal */}
-      {showSettings && (
+      {isSettingsOpen && (
         <SettingsModal 
-          isOpen={showSettings}
-          onClose={() => setShowSettings(false)}
+          isOpen={isSettingsOpen}
+          onClose={closeSettings}
         />
       )}
     </>

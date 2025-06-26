@@ -1,302 +1,231 @@
-import React, { useState } from 'react';
-import { HiOutlinePlus, HiOutlineChevronLeft, HiOutlineChevronRight, HiOutlineShare, HiOutlineChevronDown, HiOutlineChevronUp } from 'react-icons/hi';
+import React, { useState, useEffect } from 'react';
+import { HiOutlineCalendar, HiOutlineChartBar, HiOutlineClock } from 'react-icons/hi';
+import workspaceService from '../../services/workspace';
 
-export default function CalendarPanel({ onShareContent }) {
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [isScheduleVisible, setIsScheduleVisible] = useState(false);
-  const [events, setEvents] = useState([
-    { id: 1, date: new Date(2023, 9, 15), title: "Calculus Exam", type: "exam", completed: true },
-    { id: 2, date: new Date(2023, 9, 17), title: "Physics Lab Report Due", type: "assignment", completed: false },
-    { id: 3, date: new Date(2023, 9, 20), title: "Group Study Session", type: "study", completed: false },
-    { id: 4, date: new Date(2023, 9, 22), title: "AI Assistant: Review Progress", type: "ai", completed: false },
-  ]);
-  
-  const [newEvent, setNewEvent] = useState({ title: "", date: "", type: "study" });
-  const [showAddEvent, setShowAddEvent] = useState(false);
+export default function CalendarPanel() {
+  const [activityData, setActivityData] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [hoveredDate, setHoveredDate] = useState(null);
+  const [totalActivities, setTotalActivities] = useState(0);
 
-  const getDaysInMonth = (year, month) => {
-    return new Date(year, month + 1, 0).getDate();
-  };
+  useEffect(() => {
+    loadActivityData();
+  }, []);
 
-  const getFirstDayOfMonth = (year, month) => {
-    return new Date(year, month, 1).getDay();
-  };
-
-  const prevMonth = () => {
-    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
-  };
-
-  const nextMonth = () => {
-    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
-  };
-
-  const addEvent = () => {
-    if (newEvent.title && newEvent.date) {
-      const newEventObj = {
-        id: Date.now(),
-        title: newEvent.title,
-        date: new Date(newEvent.date),
-        type: newEvent.type,
-        completed: false
-      };
-      setEvents([...events, newEventObj]);
-      setNewEvent({ title: "", date: "", type: "study" });
-      setShowAddEvent(false);
-    }
-  };
-
-  const toggleEventCompletion = (id) => {
-    setEvents(events.map(event => 
-      event.id === id ? { ...event, completed: !event.completed } : event
-    ));
-  };
-
-  const getEventsForDay = (day) => {
-    return events.filter(event => 
-      event.date.getDate() === day &&
-      event.date.getMonth() === currentDate.getMonth() &&
-      event.date.getFullYear() === currentDate.getFullYear()
-    );
-  };
-
-  const getTypeClass = (type) => {
-    switch(type) {
-      case "exam": return "bg-red-100 text-red-800";
-      case "assignment": return "bg-blue-100 text-blue-800";
-      case "study": return "bg-green-100 text-green-800";
-      case "ai": return "bg-purple-100 text-purple-800";
-      default: return "bg-gray-100 text-gray-800";
-    }
-  };
-
-  const renderCalendar = () => {
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
-    const daysInMonth = getDaysInMonth(year, month);
-    const firstDay = getFirstDayOfMonth(year, month);
-    
-    const weeks = [];
-    let days = [];
-    
-    // Add empty cells for days before the first day of the month
-    for (let i = 0; i < firstDay; i++) {
-      days.push(<div key={`empty-${i}`} className="p-1 lg:p-2 border h-16 lg:h-24"></div>);
-    }
-    
-    // Add cells for each day of the month
-    for (let day = 1; day <= daysInMonth; day++) {
-      const dayEvents = getEventsForDay(day);
-      const isToday = new Date().getDate() === day && 
-                      new Date().getMonth() === month && 
-                      new Date().getFullYear() === year;
+  const loadActivityData = async () => {
+    try {
+      setLoading(true);
+      const analytics = await workspaceService.getActivityAnalytics(365); // Full year
       
-      days.push(
-        <div 
-          key={`day-${day}`} 
-          className={`p-1 lg:p-2 border h-16 lg:h-24 ${isToday ? 'bg-blue-50' : ''}`}
-        >
-          <div className="flex justify-between">
-            <span className={`text-sm lg:text-base font-medium ${isToday ? 'text-blue-600' : ''}`}>{day}</span>
+      // Process data for heatmap
+      const processedData = processActivityForHeatmap(analytics.dailyActivity);
+      setActivityData(processedData);
+      setTotalActivities(analytics.totalActivities);
+    } catch (error) {
+      console.error('Error loading activity data:', error);
+      setActivityData({});
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const processActivityForHeatmap = (dailyActivity) => {
+    const data = {};
+    const today = new Date();
+    const yearAgo = new Date(today);
+    yearAgo.setDate(today.getDate() - 365);
+
+    // Create data for last 365 days
+    for (let d = new Date(yearAgo); d <= today; d.setDate(d.getDate() + 1)) {
+      const dateStr = d.toDateString();
+      data[dateStr] = dailyActivity[dateStr] || 0;
+    }
+
+    return data;
+  };
+
+  const getActivityLevel = (count) => {
+    if (count === 0) return 'none';
+    if (count <= 2) return 'low';
+    if (count <= 5) return 'medium';
+    if (count <= 10) return 'high';
+    return 'very-high';
+  };
+
+  const getActivityColor = (level) => {
+    const colors = {
+      'none': 'bg-gray-100 dark:bg-gray-800',
+      'low': 'bg-blue-200 dark:bg-blue-900',      // Lightest Blue
+      'medium': 'bg-blue-400 dark:bg-blue-700',   // Medium Blue
+      'high': 'bg-blue-600 dark:bg-blue-500',     // Darker Blue
+      'very-high': 'bg-blue-800 dark:bg-blue-300' // Deepest Blue
+    };
+    return colors[level] || colors.none;
+  };
+
+  const renderActivityGrid = () => {
+    const weeks = [];
+    const dates = Object.keys(activityData).sort((a, b) => new Date(a) - new Date(b));
+    
+    // Group dates by weeks (starting Monday)
+    let currentWeek = [];
+    dates.forEach((dateStr, index) => {
+      const date = new Date(dateStr);
+      const dayOfWeek = (date.getDay() + 6) % 7; // Monday = 0, Sunday = 6
+      
+      // If it's Monday or first date, start new week
+      if (dayOfWeek === 0 || index === 0) {
+        if (currentWeek.length > 0) {
+          weeks.push([...currentWeek]);
+        }
+        currentWeek = [];
+      }
+      
+      currentWeek.push({ date: dateStr, count: activityData[dateStr] });
+      
+      // If it's the last date, push the week
+      if (index === dates.length - 1) {
+        weeks.push(currentWeek);
+      }
+    });
+
+    return (
+      <div className="flex flex-col gap-1">
+        {/* Month labels */}
+        <div className="flex justify-between text-xs text-gray-500 mb-2">
+          {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map(month => (
+            <span key={month}>{month}</span>
+          ))}
+        </div>
+        
+        {/* Activity grid */}
+        <div className="flex gap-1">
+          {/* Day labels */}
+          <div className="flex flex-col gap-1 mr-2">
+            <div className="h-3"></div> {/* Spacer for month labels */}
+            {['Mon', 'Wed', 'Fri'].map((day, index) => (
+              <div key={day} className="text-xs text-gray-500 h-3 flex items-center">
+                {index % 2 === 0 ? day : ''}
+              </div>
+            ))}
           </div>
-          <div className="mt-1 space-y-1 max-h-10 lg:max-h-16 overflow-y-auto">
-            {dayEvents.map(event => (
-              <div 
-                key={event.id} 
-                className={`text-xs px-1 lg:px-2 py-1 rounded truncate ${getTypeClass(event.type)} flex items-center`}
-              >
-                <input 
-                  type="checkbox" 
-                  checked={event.completed}
-                  onChange={() => toggleEventCompletion(event.id)}
-                  className="mr-1 w-3 h-3"
-                />
-                <span className={`${event.completed ? 'line-through' : ''} text-xs`}>
-                  {event.title}
-                </span>
+          
+          {/* Weeks grid */}
+          <div className="flex gap-1 overflow-x-auto">
+            {weeks.slice(-53).map((week, weekIndex) => ( // Show last 53 weeks
+              <div key={weekIndex} className="flex flex-col gap-1">
+                {Array.from({ length: 7 }, (_, dayIndex) => {
+                  const dayData = week.find((_, i) => i === dayIndex);
+                  if (!dayData) {
+                    return <div key={dayIndex} className="w-3 h-3"></div>;
+                  }
+                  
+                  const level = getActivityLevel(dayData.count);
+                  const date = new Date(dayData.date);
+                  
+                  return (
+                    <div
+                      key={dayData.date}
+                      className={`w-3 h-3 rounded-sm cursor-pointer transition-all duration-200 
+                        ${getActivityColor(level)} 
+                        ${hoveredDate === dayData.date ? 'ring-2 ring-blue-500 ring-opacity-50' : ''}
+                        hover:ring-2 hover:ring-blue-500 hover:ring-opacity-50`}
+                      onMouseEnter={() => setHoveredDate(dayData.date)}
+                      onMouseLeave={() => setHoveredDate(null)}
+                      onClick={() => setSelectedDate(dayData.date)}
+                      title={`${dayData.count} activities on ${date.toLocaleDateString()}`}
+                    />
+                  );
+                })}
               </div>
             ))}
           </div>
         </div>
-      );
-      
-      // Start a new row every 7 days
-      if ((firstDay + day) % 7 === 0 || day === daysInMonth) {
-        weeks.push(
-          <div key={`week-${day}`} className="grid grid-cols-7">
-            {days}
+        
+        {/* Legend */}
+        <div className="flex items-center justify-between text-xs text-gray-500 mt-3">
+          <span>Less</span>
+          <div className="flex gap-1">
+            {['none', 'low', 'medium', 'high', 'very-high'].map(level => (
+              <div
+                key={level}
+                className={`w-3 h-3 rounded-sm ${getActivityColor(level)}`}
+              />
+            ))}
+          </div>
+          <span>More</span>
+        </div>
           </div>
         );
-        days = [];
-      }
-    }
-    
-    return weeks;
   };
 
-  const handleShareCalendar = () => {
-    onShareContent({
-      id: "calendar-view",
-      type: 'calendar',
-      title: `Study Calendar - ${currentDate.toLocaleString('default', { month: 'long' })} ${currentDate.getFullYear()}`,
-      content: events
-    });
-  };
+  const getDateStats = () => {
+    if (!hoveredDate && !selectedDate) return null;
+    
+    const targetDate = hoveredDate || selectedDate;
+    const count = activityData[targetDate] || 0;
+    const date = new Date(targetDate);
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="p-3 lg:p-4 bg-white border-b">
-        <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center space-y-2 lg:space-y-0">
-          <h2 className="text-lg lg:text-xl font-bold">Study Calendar</h2>
-          <div className="flex flex-wrap gap-2">
-            <button 
-              className="bg-gray-100 px-3 py-2 rounded-lg flex items-center text-sm"
-              onClick={() => setIsScheduleVisible(!isScheduleVisible)}
-            >
-              {isScheduleVisible ? <HiOutlineChevronUp className="mr-1" /> : <HiOutlineChevronDown className="mr-1" />}
-              Schedule
-            </button>
-            <button 
-              className="bg-gray-100 px-3 py-1 lg:py-2 rounded-lg flex items-center text-sm"
-              onClick={handleShareCalendar}
-            >
-              <HiOutlineShare className="mr-1" />
-              Share
-            </button>
-            <button 
-              className="bg-blue-600 text-white px-3 py-1 lg:py-2 rounded-lg flex items-center text-sm"
-              onClick={() => setShowAddEvent(true)}
-            >
-              <HiOutlinePlus className="mr-1" />
-              <span className="hidden sm:inline">Add Event</span>
-              <span className="sm:hidden">Add</span>
-            </button>
+      <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+        <div className="flex items-center gap-2 text-sm">
+          <HiOutlineClock className="text-blue-500" />
+          <span className="font-medium">{date.toLocaleDateString()}</span>
           </div>
+        <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+          {count === 0 ? 'No learning activities' : 
+           count === 1 ? '1 learning activity' : 
+           `${count} learning activities`}
         </div>
       </div>
-      
-      {isScheduleVisible && (
-        <div className="p-3 lg:p-4 bg-blue-50 border-b">
-          <h3 className="font-semibold text-blue-800 mb-2">Weekly Schedule Overview</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
-            <div className="bg-white rounded-lg p-3">
-              <p className="font-medium text-blue-600">Monday & Wednesday</p>
-              <p className="text-gray-600">Calculus: 9:00 AM - 11:00 AM</p>
+    );
+  };
+
+  if (loading) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
             </div>
-            <div className="bg-white rounded-lg p-3">
-              <p className="font-medium text-green-600">Tuesday & Thursday</p>
-              <p className="text-gray-600">Physics: 1:00 PM - 3:00 PM</p>
-            </div>
-            <div className="bg-white rounded-lg p-3">
-              <p className="font-medium text-purple-600">Friday</p>
-              <p className="text-gray-600">Lab Sessions & Review</p>
-            </div>
+    );
+  }
+
+  return (
+    <div className="h-full flex flex-col p-4">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
+            <HiOutlineChartBar className="h-5 w-5 text-green-600 dark:text-green-400" />
           </div>
-        </div>
-      )}
-      
-      <div className="flex-1 overflow-auto p-2 lg:p-4 space-y-4">
-        <div className="bg-white rounded-lg shadow overflow-x-auto">
-          <div className="min-w-[600px]">
-            <div className="p-3 lg:p-4 flex justify-between items-center">
-              <button 
-                className="p-2 rounded-full hover:bg-gray-100"
-                onClick={prevMonth}
-              >
-                <HiOutlineChevronLeft className="w-4 h-4 lg:w-5 lg:h-5" />
-              </button>
-              <h3 className="text-base lg:text-lg font-bold">
-                {currentDate.toLocaleString('default', { month: 'long' })} {currentDate.getFullYear()}
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+              Learning Activity
               </h3>
-              <button 
-                className="p-2 rounded-full hover:bg-gray-100"
-                onClick={nextMonth}
-              >
-                <HiOutlineChevronRight className="w-4 h-4 lg:w-5 lg:h-5" />
-              </button>
-            </div>
-            
-            <div className="grid grid-cols-7 bg-gray-100 border-t border-l">
-              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                <div key={day} className="p-1 lg:p-2 text-center text-xs lg:text-sm font-medium border-r border-b">
-                  {day}
-                </div>
-              ))}
-            </div>
-            
-            <div className="border-l border-r">
-              {renderCalendar()}
-            </div>
-          </div>
-        </div>
-        
-        <div className="mt-6 bg-white rounded-lg shadow p-4">
-          <h3 className="font-bold mb-3">Schedule Image</h3>
-          <div className="border-2 border-dashed rounded-lg h-64 flex items-center justify-center bg-gray-50">
-            <div className="text-center">
-              <p className="text-gray-500 mb-2">Upload your timetable image</p>
-              <button className="bg-blue-600 text-white px-4 py-2 rounded-lg">
-                Upload Image
-              </button>
-            </div>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              {totalActivities} activities in the last year
+            </p>
           </div>
         </div>
       </div>
       
-      {showAddEvent && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-4 lg:p-6 w-full max-w-md">
-            <h3 className="text-lg font-bold mb-4">Add New Event</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">Event Title</label>
-                <input
-                  type="text"
-                  value={newEvent.title}
-                  onChange={(e) => setNewEvent({...newEvent, title: e.target.value})}
-                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter event title"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Date</label>
-                <input
-                  type="date"
-                  value={newEvent.date}
-                  onChange={(e) => setNewEvent({...newEvent, date: e.target.value})}
-                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Type</label>
-                <select
-                  value={newEvent.type}
-                  onChange={(e) => setNewEvent({...newEvent, type: e.target.value})}
-                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="study">Study Session</option>
-                  <option value="exam">Exam</option>
-                  <option value="assignment">Assignment</option>
-                  <option value="ai">AI Assistant</option>
-                </select>
-              </div>
+      {/* Activity Heatmap */}
+      <div className="flex-1 min-h-0">
+        <div className="bg-white dark:bg-gray-900 rounded-xl p-4 h-full overflow-auto">
+          {Object.keys(activityData).length > 0 ? (
+            <>
+              {renderActivityGrid()}
+              {getDateStats()}
+            </>
+          ) : (
+            <div className="flex flex-col items-center justify-center h-full text-gray-500">
+              <HiOutlineCalendar className="h-12 w-12 mb-3" />
+              <p className="text-lg font-medium">No activity data yet</p>
+              <p className="text-sm">Start learning to see your progress!</p>
             </div>
-            <div className="flex space-x-3 mt-6">
-              <button
-                onClick={() => setShowAddEvent(false)}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={addEvent}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-              >
-                Add Event
-              </button>
-            </div>
-          </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }

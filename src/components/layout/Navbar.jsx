@@ -6,7 +6,8 @@ import {
   HomeIcon, 
   UserGroupIcon, 
   BriefcaseIcon,
-  PlusCircleIcon
+  PlusCircleIcon,
+  CubeIcon
 } from '@heroicons/react/24/solid'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Link, useLocation } from 'react-router-dom'
@@ -15,11 +16,12 @@ import { Avatar, Button } from '../ui'
 import LoginForm from '../auth/LoginForm'
 
 const navigation = [
-  { name: 'Home', href: '/', icon: HomeIcon },
-  { name: 'Network', href: '/network', icon: UserGroupIcon },
-  { name: 'Jobs', href: '/jobs', icon: BriefcaseIcon },
-  { name: 'Messaging', href: '/messaging', icon: ChatBubbleLeftIcon },
-  { name: 'Notifications', href: '/notifications', icon: BellIcon },
+  { name: 'Home', href: '/', icon: HomeIcon, authRequired: false },
+  { name: 'Network', href: '/network', icon: UserGroupIcon, authRequired: true },
+  { name: 'Jobs', href: '/jobs', icon: BriefcaseIcon, authRequired: false },
+  { name: 'Messaging', href: '/messaging', icon: ChatBubbleLeftIcon, authRequired: true },
+  { name: 'Notifications', href: '/notifications', icon: BellIcon, authRequired: true },
+  { name: 'Workspace', href: '/workspace', icon: CubeIcon, authRequired: false },
 ]
 
 export default function Navbar() {
@@ -119,7 +121,7 @@ export default function Navbar() {
 
           {/* Desktop Navigation */}
           <div className="hidden lg:flex items-center space-x-1">
-            {navigation.map((item) => {
+            {navigation.filter(item => !item.authRequired || user).map((item) => {
               const isActive = location.pathname === item.href
               return (
                 <motion.div key={item.name} whileHover={{ y: -2 }} whileTap={{ y: 0 }}>
@@ -258,7 +260,7 @@ export default function Navbar() {
             
           <div className="mt-6 flow-root">
             <div className="space-y-2">
-              {navigation.map((item) => (
+              {navigation.filter(item => !item.authRequired || user).map((item) => (
                 <motion.div key={item.name} whileTap={{ scale: 0.95 }}>
                       <Link
                     to={item.href}

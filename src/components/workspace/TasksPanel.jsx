@@ -1,309 +1,140 @@
-import React, { useState } from 'react';
-import { HiOutlineCheck, HiOutlinePlus, HiOutlineChevronDown, HiOutlineChevronRight, HiOutlineRefresh, HiOutlineShare } from 'react-icons/hi';
+import React, { useState, useEffect } from 'react';
+import { HiOutlineCheck, HiOutlineChevronDown, HiOutlineRefresh } from 'react-icons/hi';
+import { AnimatePresence, motion } from 'framer-motion';
+import workspaceService from '../../services/workspace';
 
-export default function TasksPanel({ onShareContent }) {
-  const [tasks, setTasks] = useState([
-    {
-      id: 1,
-      title: "Complete Calculus Problem Set",
-      topic: "Calculus",
-      dueDate: "2023-10-18",
-      completed: false,
-      subtasks: [
-        { id: 101, title: "Problem 1: Limits", completed: true },
-        { id: 102, title: "Problem 2: Derivatives", completed: true },
-        { id: 103, title: "Problem 3: Applications", completed: false },
-        { id: 104, title: "Problem 4: Optimization", completed: false }
-      ],
-      expanded: true
-    },
-    {
-      id: 2,
-      title: "Physics Lab Report",
-      topic: "Physics",
-      dueDate: "2023-10-20",
-      completed: false,
-      subtasks: [
-        { id: 201, title: "Introduction", completed: false },
-        { id: 202, title: "Methodology", completed: false },
-        { id: 203, title: "Results", completed: false },
-        { id: 204, title: "Conclusion", completed: false }
-      ],
-      expanded: false
-    },
-    {
-      id: 3,
-      title: "Read Chapter 5: Data Structures",
-      topic: "Computer Science",
-      dueDate: "2023-10-22",
-      completed: false,
-      subtasks: [
-        { id: 301, title: "Arrays", completed: false },
-        { id: 302, title: "Linked Lists", completed: false },
-        { id: 303, title: "Stacks and Queues", completed: false }
-      ],
-      expanded: false
+export default function TasksPanel({ tasks: propTasks = [], onTaskComplete, topics = [] }) {
+  const [tasks, setTasks] = useState(propTasks);
+  const [loading, setLoading] = useState(false);
+  const [expandedTopics, setExpandedTopics] = useState([]);
+
+  useEffect(() => {
+    setTasks(propTasks);
+    if (propTasks.length > 0 && topics.length > 0) {
+      const topicIdsWithTasks = [...new Set(propTasks.map(t => t.topic_id).filter(Boolean))];
+      setExpandedTopics(topicIdsWithTasks);
     }
-  ]);
+  }, [propTasks, topics]);
 
-  const [newTask, setNewTask] = useState({ title: "", topic: "", dueDate: "" });
-  const [showAddTask, setShowAddTask] = useState(false);
-
-  const toggleTask = (id) => {
-    setTasks(tasks.map(task => 
-      task.id === id ? { ...task, expanded: !task.expanded } : task
-    ));
+  const refreshTasks = async () => {
+    setLoading(true);
+    const workspaceData = await workspaceService.fetchWorkspaceData();
+    setTasks(workspaceData.tasks);
+    setLoading(false);
   };
 
-  const toggleSubtask = (taskId, subtaskId) => {
-    setTasks(tasks.map(task => {
-      if (task.id === taskId) {
-        const updatedSubtasks = task.subtasks.map(subtask => 
-          subtask.id === subtaskId 
-            ? { ...subtask, completed: !subtask.completed } 
-            : subtask
-        );
-        
-        // Check if all subtasks are completed
-        const allCompleted = updatedSubtasks.every(st => st.completed);
-        
-        return {
-          ...task,
-          subtasks: updatedSubtasks,
-          completed: allCompleted
-        };
-      }
-      return task;
-    }));
-  };
-
-  const toggleTaskCompletion = (id) => {
-    setTasks(tasks.map(task => 
-      task.id === id 
-        ? { 
-            ...task, 
-            completed: !task.completed,
-            subtasks: task.subtasks.map(st => ({ ...st, completed: !task.completed }))
-          } 
-        : task
-    ));
-  };
-
-  const addTask = () => {
-    if (newTask.title.trim()) {
-      const newTaskObj = {
-        id: Date.now(),
-        title: newTask.title,
-        topic: newTask.topic,
-        dueDate: newTask.dueDate,
-        completed: false,
-        subtasks: [],
-        expanded: true
-      };
-      setTasks([...tasks, newTaskObj]);
-      setNewTask({ title: "", topic: "", dueDate: "" });
-      setShowAddTask(false);
-    }
-  };
-
-  const getProgress = (task) => {
-    if (task.subtasks.length === 0) return task.completed ? 100 : 0;
-    
-    const completed = task.subtasks.filter(st => st.completed).length;
-    return Math.round((completed / task.subtasks.length) * 100);
-  };
-
-  const regenerateTask = (id) => {
-    const task = tasks.find(t => t.id === id);
-    if (task) {
-      alert(`AI is regenerating subtasks for: "${task.title}"`);
-      // In a real app, this would call an AI API
-    }
-  };
-
-  const handleShareTask = (task) => {
-    onShareContent({
-      id: task.id,
-      type: 'task',
-      title: task.title,
-      content: task
+  const handleToggleTask = async (taskId, currentStatus) => {
+    const newStatus = currentStatus === 'completed' ? 'pending' : 'completed';
+    await workspaceService.updateTask(taskId, { 
+      status: newStatus,
+      completed_at: newStatus === 'completed' ? new Date().toISOString() : null 
     });
+    
+    setTasks(currentTasks => currentTasks.map(task => 
+      task.id === taskId ? { ...task, status: newStatus } : task
+    ));
+    
+    if (onTaskComplete) onTaskComplete(taskId, newStatus);
   };
+  
+  const toggleTopicExpansion = (topicId) => {
+    setExpandedTopics(prev => 
+      prev.includes(topicId) 
+        ? prev.filter(id => id !== topicId)
+        : [...prev, topicId]
+    );
+  };
+
+  const tasksByTopic = topics
+    .map(topic => ({
+      ...topic,
+      tasks: tasks.filter(task => task.topic_id === topic.id)
+    }))
+    .filter(topic => topic.tasks.length > 0);
+    
+  const unassignedTasks = tasks.filter(task => !task.topic_id);
+
+  const totalTasks = tasks.length;
+  const completedTasks = tasks.filter(t => t.status === 'completed').length;
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="p-4 bg-white border-b">
+    <div className="flex flex-col h-full bg-gray-50/50">
+      <div className="p-4 bg-white border-b sticky top-0 z-10">
         <div className="flex justify-between items-center">
-          <h2 className="text-xl font-bold">Study Tasks</h2>
+          <div>
+            <h2 className="text-xl font-bold text-gray-800">My Task List</h2>
+            <p className="text-sm text-gray-500">{completedTasks} of {totalTasks} tasks completed</p>
+          </div>
           <button 
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center"
-            onClick={() => setShowAddTask(true)}
+            className="p-2 text-gray-500 hover:text-blue-600 rounded-full hover:bg-gray-100 transition-colors"
+            onClick={refreshTasks}
+            disabled={loading}
           >
-            <HiOutlinePlus className="mr-1" />
-            <span>New Task</span>
+            <HiOutlineRefresh className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
           </button>
         </div>
       </div>
       
-      <div className="flex-1 overflow-auto p-4">
-        <div className="space-y-4 min-w-[300px]">
-          {tasks.map(task => (
-            <div key={task.id} className="bg-white rounded-lg shadow">
-              <div className="p-4 border-b">
-                <div className="flex items-start">
-                  <button 
-                    className="mr-3 mt-1"
-                    onClick={() => toggleTaskCompletion(task.id)}
-                  >
-                    {task.completed ? (
-                      <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center">
-                        <HiOutlineCheck className="text-white" />
-                      </div>
-                    ) : (
-                      <div className="w-6 h-6 rounded-full border border-gray-300"></div>
-                    )}
-                  </button>
-                  
-                  <div className="flex-1">
-                    <div className="flex justify-between">
-                      <h3 className={`font-medium ${task.completed ? 'line-through text-gray-500' : ''}`}>
-                        {task.title}
-                      </h3>
-                      <div className="flex space-x-2">
-                        <button 
-                          className="text-gray-500 hover:text-blue-600"
-                          onClick={() => handleShareTask(task)}
-                          title="Share Task"
-                        >
-                          <HiOutlineShare />
-                        </button>
-                        <button 
-                          className="text-gray-500 hover:text-blue-600"
-                          onClick={() => regenerateTask(task.id)}
-                          title="Regenerate with AI"
-                        >
-                          <HiOutlineRefresh />
-                        </button>
-                        <button 
-                          className="text-gray-500 hover:text-gray-700"
-                          onClick={() => toggleTask(task.id)}
-                        >
-                          {task.expanded ? <HiOutlineChevronDown /> : <HiOutlineChevronRight />}
-                        </button>
-                      </div>
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {tasksByTopic.map(topic => (
+          <div key={topic.id} className="bg-white p-4 rounded-lg shadow-sm border">
+            <div 
+              className="flex justify-between items-center cursor-pointer"
+              onClick={() => toggleTopicExpansion(topic.id)}
+            >
+              <h3 className="font-bold text-gray-700">{topic.title}</h3>
+              <HiOutlineChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${expandedTopics.includes(topic.id) ? 'rotate-180' : ''}`} />
                     </div>
                     
-                    <div className="flex items-center text-sm text-gray-500 mt-1">
-                      <span className="mr-3">{task.topic}</span>
-                      {task.dueDate && (
-                        <span>Due: {new Date(task.dueDate).toLocaleDateString()}</span>
-                      )}
-                    </div>
-                    
-                    {task.subtasks.length > 0 && (
-                      <div className="mt-2">
-                        <div className="flex justify-between text-xs mb-1">
-                          <span>Progress</span>
-                          <span>{getProgress(task)}%</span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div 
-                            className="bg-blue-600 h-2 rounded-full" 
-                            style={{ width: `${getProgress(task)}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-              
-              {task.expanded && task.subtasks.length > 0 && (
-                <div className="p-4 bg-gray-50">
-                  <div className="mb-3 text-sm font-medium">Subtasks:</div>
-                  <ul className="space-y-2">
-                    {task.subtasks.map(subtask => (
-                      <li key={subtask.id} className="flex items-center">
-                        <button 
-                          className="mr-3"
-                          onClick={() => toggleSubtask(task.id, subtask.id)}
-                        >
-                          {subtask.completed ? (
-                            <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center">
-                              <HiOutlineCheck className="text-white text-xs" />
-                            </div>
-                          ) : (
-                            <div className="w-5 h-5 rounded-full border border-gray-300"></div>
-                          )}
-                        </button>
-                        <span className={`${subtask.completed ? 'line-through text-gray-500' : ''}`}>
-                          {subtask.title}
-                        </span>
-                      </li>
+            <AnimatePresence>
+              {expandedTopics.includes(topic.id) && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0, marginTop: 0 }}
+                  animate={{ height: 'auto', opacity: 1, marginTop: '1rem' }}
+                  exit={{ height: 0, opacity: 0, marginTop: 0 }}
+                  transition={{ duration: 0.3, ease: "easeInOut" }}
+                  className="overflow-hidden"
+                >
+                  <div className="space-y-2">
+                    {topic.tasks.map(task => (
+                      <TaskItem key={task.id} task={task} onToggle={handleToggleTask} />
                     ))}
-                  </ul>
-                  
-                  <div className="mt-4 flex justify-end">
-                    <button className="text-blue-600">Add Subtask</button>
                   </div>
-                </div>
+                </motion.div>
               )}
+            </AnimatePresence>
             </div>
           ))}
-        </div>
-      </div>
-      
-      {/* Add Task Modal */}
-      {showAddTask && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
-            <h3 className="text-lg font-bold mb-4">Create New Task</h3>
-            <div className="mb-4">
-              <label className="block text-sm font-medium mb-1">Task Title</label>
-              <input
-                type="text"
-                value={newTask.title}
-                onChange={(e) => setNewTask({...newTask, title: e.target.value})}
-                placeholder="Enter task title"
-                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div className="mb-4">
-              <label className="block text-sm font-medium mb-1">Topic</label>
-              <input
-                type="text"
-                value={newTask.topic}
-                onChange={(e) => setNewTask({...newTask, topic: e.target.value})}
-                placeholder="Related topic (optional)"
-                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div className="mb-4">
-              <label className="block text-sm font-medium mb-1">Due Date</label>
-              <input
-                type="date"
-                value={newTask.dueDate}
-                onChange={(e) => setNewTask({...newTask, dueDate: e.target.value})}
-                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div className="flex justify-end space-x-2">
-              <button 
-                className="px-4 py-2 border rounded-lg"
-                onClick={() => setShowAddTask(false)}
-              >
-                Cancel
-              </button>
-              <button 
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg"
-                onClick={addTask}
-              >
-                Create Task
-              </button>
+        
+        {unassignedTasks.length > 0 && (
+          <div className="bg-white p-4 rounded-lg shadow-sm border">
+            <h3 className="font-bold text-gray-700">General Tasks</h3>
+            <div className="mt-4 space-y-2">
+              {unassignedTasks.map(task => (
+                <TaskItem key={task.id} task={task} onToggle={handleToggleTask} />
+              ))}
             </div>
           </div>
+        )}
+        
+        {tasks.length === 0 && !loading && (
+          <div className="text-center py-10 text-gray-500">
+            <p>No tasks found.</p>
+            <p className="text-sm">Tasks generated from your learning topics will appear here.</p>
         </div>
       )}
+      </div>
     </div>
   );
 }
+
+const TaskItem = ({ task, onToggle }) => (
+  <div className="flex items-center p-2 rounded-md hover:bg-gray-100 transition-colors">
+    <button onClick={() => onToggle(task.id, task.status)} className="mr-3">
+      <HiOutlineCheck className={`w-5 h-5 transition-all ${task.status === 'completed' ? 'text-green-500 bg-green-100 rounded-full p-0.5' : 'text-gray-400'}`}/>
+    </button>
+    <span className={`flex-1 text-sm ${task.status === 'completed' ? 'line-through text-gray-400' : 'text-gray-700'}`}>
+      {task.title}
+    </span>
+  </div>
+);

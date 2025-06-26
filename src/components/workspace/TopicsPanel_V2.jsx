@@ -3,36 +3,24 @@ import {
   HiOutlinePlus, 
   HiOutlineX, 
   HiOutlineSparkles, 
-  HiOutlineCalendar, 
-  HiOutlineShare, 
-  HiOutlineRefresh,
   HiOutlineChevronDown,
-  HiOutlineChevronRight,
   HiOutlineTrash,
   HiOutlineExclamation,
   HiOutlineDocument,
   HiOutlinePhotograph,
   HiOutlineEye,
-  HiOutlineDownload,
   HiOutlineCheckCircle,
   HiOutlineArrowRight
 } from 'react-icons/hi';
 import { AnimatePresence, motion } from 'framer-motion';
-import { supabase } from '../../lib/supabase';
 import workspaceService from '../../services/workspace';
-import AITaskGenerator from './AITaskGenerator';
 import ocrService from '../../services/ocr';
+import AITaskGenerator from './AITaskGenerator';
 
-/**
- * A comprehensive panel for managing learning topics, materials, and tasks.
- * It functions as the core of the Learning Management System.
- */
-export default function TopicsPanel({ topics: propTopics = [], onAiRequest, onShareContent, onRefresh, user, tasks = [] }) {
+export default function TopicsPanelV2({ topics: propTopics = [], onAiRequest, onShareContent, onRefresh, user, tasks = [] }) {
   const [topics, setTopics] = useState(propTopics);
   const [selectedTopicId, setSelectedTopicId] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
-
-  // Modal States
   const [showCreateTopicModal, setShowCreateTopicModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [topicToDelete, setTopicToDelete] = useState(null);
@@ -104,13 +92,13 @@ export default function TopicsPanel({ topics: propTopics = [], onAiRequest, onSh
       <div className="p-4">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-bold text-gray-800">Learning Topics</h2>
-            <button 
+          <button
             onClick={() => setShowCreateTopicModal(true)}
             className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-            >
+          >
             <HiOutlinePlus />
             New
-            </button>
+          </button>
         </div>
         <div className="space-y-2">
           {topics.length > 0 ? topics.map(topic => (
@@ -131,10 +119,10 @@ export default function TopicsPanel({ topics: propTopics = [], onAiRequest, onSh
               <button onClick={() => setShowCreateTopicModal(true)} className="mt-2 text-blue-600 font-medium">Create one to start!</button>
             </div>
           )}
-          </div>
+        </div>
       </div>
-      </div>
-    );
+    </div>
+  );
 
   return (
     <div className="bg-white rounded-lg shadow-sm border h-full flex overflow-hidden">
@@ -164,7 +152,7 @@ export default function TopicsPanel({ topics: propTopics = [], onAiRequest, onSh
           </div>
         </div>
       )}
-      
+
       {showCreateTopicModal && (
         <CreateTopicModal 
           onClose={() => setShowCreateTopicModal(false)}
@@ -188,11 +176,9 @@ export default function TopicsPanel({ topics: propTopics = [], onAiRequest, onSh
           onClose={() => setShowAIGenerator(false)}
         />
       )}
-            </div>
+    </div>
   );
 }
-
-// --- Sub-components for better organization ---
 
 const TopicListItem = ({ topic, isSelected, onSelect, onDelete }) => {
   const completedCount = topic.materials?.filter(m => m.completed).length || 0;
@@ -214,27 +200,25 @@ const TopicListItem = ({ topic, isSelected, onSelect, onDelete }) => {
         <div className="flex-1 min-w-0">
           <p className={`font-bold truncate ${isSelected ? 'text-blue-600' : 'text-gray-800'}`}>{topic.title}</p>
           <p className="text-sm text-gray-500 truncate mt-1">{topic.description || 'No description'}</p>
-                    </div>
+        </div>
         <button onClick={onDelete} className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-100 rounded-full ml-2 flex-shrink-0">
           <HiOutlineTrash className="w-4 h-4" />
-                    </button>
-                  </div>
+        </button>
+      </div>
       <div className="mt-3">
         <div className="flex justify-between items-center text-xs text-gray-500 mb-1">
-                          <span>Progress</span>
+          <span>Progress</span>
           <span>{progress}%</span>
-                        </div>
+        </div>
         <div className="w-full bg-gray-200 rounded-full h-1.5">
           <div className="bg-blue-500 h-1.5 rounded-full" style={{ width: `${progress}%` }}></div>
-                        </div>
-                      </div>
+        </div>
+      </div>
     </motion.div>
   );
 };
 
 const TopicDetails = ({ topic, tasks, isMobile, onBack, onShowAIGenerator, onToggleMaterialComplete }) => {
-  const [expandedMaterialId, setExpandedMaterialId] = useState(null);
-
   return (
     <motion.div
       initial={{ opacity: 0, x: isMobile ? '100%' : 0 }}
@@ -243,7 +227,6 @@ const TopicDetails = ({ topic, tasks, isMobile, onBack, onShowAIGenerator, onTog
       transition={{ type: 'tween', duration: 0.3 }}
       className="flex-1 flex flex-col bg-white overflow-y-auto absolute md:relative inset-0"
     >
-      {/* Header */}
       <div className="flex items-center justify-between p-4 border-b z-10 bg-white/80 backdrop-blur-sm sticky top-0">
         {isMobile && (
           <button onClick={onBack} className="flex items-center gap-1 text-blue-600 font-medium text-sm">
@@ -256,14 +239,13 @@ const TopicDetails = ({ topic, tasks, isMobile, onBack, onShowAIGenerator, onTog
           <HiOutlineSparkles />
           AI Gen
         </button>
-                        </div>
+      </div>
 
-      {/* Content */}
       <div className="p-6 space-y-6">
         <div>
           <h4 className="font-bold text-gray-700 mb-2">Description</h4>
           <p className="text-gray-600 text-sm bg-gray-50 p-3 rounded-md">{topic.description || 'No description provided.'}</p>
-                      </div>
+        </div>
         
         <div>
           <h4 className="font-bold text-gray-700 mb-3">Learning Materials</h4>
@@ -273,15 +255,13 @@ const TopicDetails = ({ topic, tasks, isMobile, onBack, onShowAIGenerator, onTog
                 key={material.id} 
                 material={material} 
                 onToggleComplete={() => onToggleMaterialComplete(material.id, material.completed)}
-                isExpanded={expandedMaterialId === material.id}
-                onExpand={() => setExpandedMaterialId(expandedMaterialId === material.id ? null : material.id)}
               />
             )) : (
               <p className="text-center text-sm text-gray-500 py-4">No materials yet.</p>
             )}
           </div>
         </div>
-        
+
         <div>
           <h4 className="font-bold text-gray-700 mb-3">Related Tasks</h4>
           <div className="space-y-2">
@@ -295,65 +275,28 @@ const TopicDetails = ({ topic, tasks, isMobile, onBack, onShowAIGenerator, onTog
               <p className="text-center text-sm text-gray-500 py-4">No tasks for this topic.</p>
             )}
           </div>
-          </div>
-          
-                            </div>
+        </div>
+      </div>
     </motion.div>
   );
 };
 
-const MaterialItem = ({ material, onToggleComplete, isExpanded, onExpand }) => (
-  <div className={`border rounded-lg transition-all duration-300 ${isExpanded ? 'bg-white shadow-md' : 'bg-gray-50'}`}>
-    <div className={`flex items-center p-3 cursor-pointer ${material.completed ? 'bg-green-50/50' : ''}`} onClick={onExpand}>
-       <button onClick={(e) => {
-        e.stopPropagation(); // Prevent expansion when completing
-        onToggleComplete();
-      }} className="mr-3 flex-shrink-0">
-        <HiOutlineCheckCircle className={`w-6 h-6 transition-colors ${material.completed ? 'text-green-500' : 'text-gray-300 hover:text-green-400'}`} />
-      </button>
-      
-      <div className="flex-1 min-w-0">
-        <p className={`font-medium truncate ${material.completed ? 'line-through text-gray-500' : 'text-gray-800'}`}>
-          {material.title}
-        </p>
-        <span className="text-xs text-gray-400 uppercase">{material.material_type}</span>
-                            </div>
-
-      <div className="flex items-center ml-4">
-        {material.url && (
-          <a href={material.url} target="_blank" rel="noopener noreferrer" 
-             onClick={(e) => e.stopPropagation()}
-             className="p-2 text-gray-400 hover:text-blue-500">
-            <HiOutlineEye />
-          </a>
-        )}
-        <HiOutlineChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-300 ${isExpanded ? 'transform rotate-180' : ''}`} />
-                        </div>
-                      </div>
-    <AnimatePresence>
-      {isExpanded && (
-        <motion.div
-          initial="collapsed"
-          animate="open"
-          exit="collapsed"
-          variants={{
-            open: { opacity: 1, height: 'auto', marginTop: '1rem', paddingBottom: '1rem' },
-            collapsed: { opacity: 0, height: 0, marginTop: 0, paddingBottom: 0 }
-          }}
-          transition={{ duration: 0.3, ease: [0.04, 0.62, 0.23, 0.98] }}
-          className="overflow-hidden"
-        >
-          <div className="px-5 text-sm text-gray-700">
-            <h5 className="font-semibold mb-2">Content:</h5>
-            {material.content ? (
-              <p className="whitespace-pre-wrap bg-gray-100 p-3 rounded-md">{material.content}</p>
-            ) : (
-              <p className="text-gray-500 italic">No detailed content available for this material.</p>
-                    )}
-                  </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+const MaterialItem = ({ material, onToggleComplete }) => (
+  <div className={`flex items-center p-3 border rounded-lg transition-all ${material.completed ? 'bg-green-50 border-green-200' : 'bg-white'}`}>
+    <button onClick={onToggleComplete} className="mr-3">
+      <HiOutlineCheckCircle className={`w-6 h-6 transition-colors ${material.completed ? 'text-green-500' : 'text-gray-300 hover:text-green-400'}`} />
+    </button>
+    <div className="flex-1 min-w-0">
+      <p className={`font-medium truncate ${material.completed ? 'line-through text-gray-500' : 'text-gray-800'}`}>
+        {material.title}
+      </p>
+      <span className="text-xs text-gray-400 uppercase">{material.material_type}</span>
+    </div>
+    {material.url && (
+      <a href={material.url} target="_blank" rel="noopener noreferrer" className="p-2 text-gray-400 hover:text-blue-500">
+        <HiOutlineEye />
+      </a>
+    )}
   </div>
 );
 
@@ -402,7 +345,7 @@ const CreateTopicModal = ({ onClose, onTopicCreated, user }) => {
           type: 'file',
           content: extractedText,
           url: publicUrl,
-          file_path: `${user.id}/${file.name}` // simplified path
+          file_path: `${user.id}/${file.name}`
         });
       }
       
@@ -434,7 +377,7 @@ const CreateTopicModal = ({ onClose, onTopicCreated, user }) => {
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-xl font-bold text-gray-900">Create New Topic</h3>
             <button onClick={onClose} className="p-2 text-gray-400 hover:bg-gray-100 rounded-full"><HiOutlineX /></button>
-                      </div>
+          </div>
           <div className="space-y-4">
             <input type="text" placeholder="Topic Title (e.g., React Hooks)" value={title} onChange={e => setTitle(e.target.value)} className="w-full p-3 border rounded-lg" autoFocus />
             <textarea placeholder="Description (optional)" value={description} onChange={e => setDescription(e.target.value)} rows="3" className="w-full p-3 border rounded-lg" />
@@ -504,7 +447,7 @@ const DeleteConfirmationModal = ({ topicName, onClose, onConfirm }) => {
           <button onClick={onClose} type="button" className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 sm:mt-0 sm:w-auto sm:text-sm">
             Cancel
           </button>
-    </div>
+        </div>
       </motion.div>
     </motion.div>
   );

@@ -1,90 +1,99 @@
--- Fix Foreign Key Relationships for Posts and Profiles
--- This script updates the foreign key constraints to properly link posts with profiles
+-- ===================================================================
+-- DATABASE FIX MIGRATION (FOREIGN KEYS & MISSING COLUMNS)
+-- ===================================================================
+-- This script fixes the workspace tables by adding missing columns
+-- and ensuring all foreign key relationships are correctly established.
 
--- 1. First, drop the existing foreign key constraint that points to auth.users
-ALTER TABLE public.posts 
-DROP CONSTRAINT IF EXISTS posts_author_id_fkey;
+-- Step 1: Add the missing 'completed' column to workspace_materials
+ALTER TABLE public.workspace_materials
+ADD COLUMN IF NOT EXISTS completed BOOLEAN DEFAULT FALSE;
 
--- 2. Add new foreign key constraint to profiles table
-ALTER TABLE public.posts 
-ADD CONSTRAINT posts_author_id_fkey 
-FOREIGN KEY (author_id) 
-REFERENCES public.profiles(id) 
-ON DELETE CASCADE;
+-- Step 2: Add the missing 'topic_id' foreign key to workspace_tasks
+-- First, drop the constraint if it exists, to prevent errors on re-run
+ALTER TABLE public.workspace_tasks DROP CONSTRAINT IF EXISTS workspace_tasks_topic_id_fkey;
 
--- 3. Do the same for comments table
-ALTER TABLE public.comments 
-DROP CONSTRAINT IF EXISTS comments_author_id_fkey;
+-- Add the foreign key constraint
+ALTER TABLE public.workspace_tasks
+ADD CONSTRAINT workspace_tasks_topic_id_fkey
+FOREIGN KEY (topic_id) REFERENCES public.workspace_topics(id) ON DELETE CASCADE;
 
-ALTER TABLE public.comments 
-ADD CONSTRAINT comments_author_id_fkey 
-FOREIGN KEY (author_id) 
-REFERENCES public.profiles(id) 
-ON DELETE CASCADE;
-
--- 4. Fix likes table as well
-ALTER TABLE public.likes 
-DROP CONSTRAINT IF EXISTS likes_user_id_fkey;
-
-ALTER TABLE public.likes 
-ADD CONSTRAINT likes_user_id_fkey 
-FOREIGN KEY (user_id) 
-REFERENCES public.profiles(id) 
-ON DELETE CASCADE;
-
--- 5. Update RLS policies for posts to use auth.uid() correctly
-DROP POLICY IF EXISTS "Users can create their own posts" ON public.posts;
-CREATE POLICY "Users can create their own posts" ON public.posts
-  FOR INSERT WITH CHECK (auth.uid() = author_id);
-
-DROP POLICY IF EXISTS "Users can update their own posts" ON public.posts;
-CREATE POLICY "Users can update their own posts" ON public.posts
-  FOR UPDATE USING (auth.uid() = author_id);
-
-DROP POLICY IF EXISTS "Users can delete their own posts" ON public.posts;
-CREATE POLICY "Users can delete their own posts" ON public.posts
-  FOR DELETE USING (auth.uid() = author_id);
-
-DROP POLICY IF EXISTS "Anyone can view posts" ON public.posts;
-CREATE POLICY "Anyone can view posts" ON public.posts
-  FOR SELECT USING (true);
-
--- 6. Ensure profiles are created for all existing users
-INSERT INTO public.profiles (id, name, avatar_url, headline)
-SELECT 
-  id,
-  COALESCE(raw_user_meta_data->>'full_name', email),
-  raw_user_meta_data->>'avatar_url',
-  'Professional at LinkedIn Clone'
-FROM auth.users
-WHERE id NOT IN (SELECT id FROM public.profiles)
-ON CONFLICT (id) DO NOTHING;
-
--- 7. Create a trigger to automatically create profiles for new users
-CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS trigger AS $$
+-- Step 3: Add the missing 'user_id' to workspace_materials (if it doesn't exist)
+-- This is crucial for RLS policies
+DO $$
 BEGIN
-  INSERT INTO public.profiles (id, name, avatar_url, headline)
-  VALUES (
-    NEW.id,
-    COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.email),
-    NEW.raw_user_meta_data->>'avatar_url',
-    'Professional at LinkedIn Clone'
-  );
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+        AND table_name = 'workspace_materials'
+        AND column_name = 'user_id'
+    ) THEN
+        ALTER TABLE public.workspace_materials ADD COLUMN user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE;
+    END IF;
+END $$;
 
--- Drop existing trigger if it exists
-DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 
--- Create the trigger
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+-- Step 4: Add the missing 'ai_generated' column to workspace_topics if it doesn't exist
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+        AND table_name = 'workspace_topics'
+        AND column_name = 'ai_generated'
+    ) THEN
+        ALTER TABLE public.workspace_topics ADD COLUMN ai_generated BOOLEAN DEFAULT FALSE;
+    END IF;
+END $$;
 
--- 8. Grant necessary permissions
+
+-- Grant permissions on the tables to the authenticated role
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.workspace_activities TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.workspace_tasks TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.workspace_topics TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.workspace_materials TO authenticated;
+
+-- Grant usage on the schema to the authenticated role
 GRANT USAGE ON SCHEMA public TO authenticated;
-GRANT ALL ON ALL TABLES IN SCHEMA public TO authenticated;
-GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO authenticated;
-GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO authenticated; 
+
+-- Re-apply RLS policies to ensure they are correct
+-- These will be re-created idempotently
+
+-- RLS for workspace_materials
+DROP POLICY IF EXISTS "Users can view their own materials" ON public.workspace_materials;
+CREATE POLICY "Users can view their own materials" ON public.workspace_materials
+    FOR SELECT USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can insert their own materials" ON public.workspace_materials;
+CREATE POLICY "Users can insert their own materials" ON public.workspace_materials
+    FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can update their own materials" ON public.workspace_materials;
+CREATE POLICY "Users can update their own materials" ON public.workspace_materials
+    FOR UPDATE USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can delete their own materials" ON public.workspace_materials;
+CREATE POLICY "Users can delete their own materials" ON public.workspace_materials
+    FOR DELETE USING (auth.uid() = user_id);
+
+-- RLS for workspace_tasks
+DROP POLICY IF EXISTS "Users can view their own tasks" ON public.workspace_tasks;
+CREATE POLICY "Users can view their own tasks" ON public.workspace_tasks
+    FOR SELECT USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can insert their own tasks" ON public.workspace_tasks;
+CREATE POLICY "Users can insert their own tasks" ON public.workspace_tasks
+    FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can update their own tasks" ON public.workspace_tasks;
+CREATE POLICY "Users can update their own tasks" ON public.workspace_tasks
+    FOR UPDATE USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can delete their own tasks" ON public.workspace_tasks;
+CREATE POLICY "Users can delete their own tasks" ON public.workspace_tasks
+    FOR DELETE USING (auth.uid() = user_id);
+
+
+-- Final confirmation message
+SELECT 'DATABASE_FIX_FOREIGN_KEYS migration applied successfully. The ''completed'' column has been added and other constraints are fixed.' as status; 
