@@ -82,11 +82,10 @@ export default function Messaging() {
         .select(`
           id,
           updated_at,
-          last_message,
-          participant_1,
-          participant_2
+          participant_1_id,
+          participant_2_id
         `)
-        .or(`participant_1.eq.${userId},participant_2.eq.${userId}`)
+        .or(`participant_1_id.eq.${userId},participant_2_id.eq.${userId}`)
         .order('updated_at', { ascending: false });
     
       if (conversationsError) {
@@ -105,7 +104,7 @@ export default function Messaging() {
       // or use mock data until the foreign keys are properly set up
       const transformedConversations = await Promise.all(
         conversationsData.map(async (conv) => {
-          const otherParticipantId = conv.participant_1 === userId ? conv.participant_2 : conv.participant_1;
+          const otherParticipantId = conv.participant_1_id === userId ? conv.participant_2_id : conv.participant_1_id;
           
           // Try to get other participant's profile
           let otherParticipant = { id: otherParticipantId, name: 'User', headline: 'Professional', avatar_url: null };
@@ -128,7 +127,7 @@ export default function Messaging() {
             name: otherParticipant.name || 'User',
             position: otherParticipant.headline || "Professional",
             company: "LinkedIn Member",
-            lastMessage: conv.last_message || "No messages yet",
+            lastMessage: "Start a conversation", // Since last_message doesn't exist
             time: formatTimestamp(conv.updated_at),
             unread: false, // TODO: Track read status
             avatar: otherParticipant.avatar_url,

@@ -117,8 +117,7 @@ export default function Notifications() {
           message,
           is_read,
           created_at,
-          sender_id,
-          metadata
+          sender_id
         `)
         .eq('recipient_id', user.id)
         .order('created_at', { ascending: false })
@@ -196,8 +195,7 @@ export default function Notifications() {
       message: notification.message,
       time: formatTimestamp(notification.created_at),
       unread: !notification.is_read,
-      sender: notification.sender || null,
-      metadata: notification.metadata || {}
+      sender: notification.sender || null
     };
   };
 

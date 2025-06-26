@@ -38,17 +38,18 @@ export default function Sidebar() {
     try {
       setLoading(true);
       
-      // Get user's posts to calculate impressions
+      // Get user's posts to calculate impressions (using likes_count as proxy for views)
       const { data: posts, error: postsError } = await supabase
         .from('posts')
-        .select('views_count')
+        .select('likes_count')
         .eq('author_id', user.id);
 
       if (postsError) {
         console.error('Error loading posts:', postsError);
       }
 
-      const totalImpressions = posts?.reduce((sum, post) => sum + (post.views_count || 0), 0) || 0;
+      // Use likes_count as a proxy for impressions since views_count doesn't exist
+      const totalImpressions = posts?.reduce((sum, post) => sum + (post.likes_count || 0) * 10, 0) || 0;
       
       // For profile viewers, we'll use a calculation based on connections and activity
       // In a real implementation, you'd track actual profile views
