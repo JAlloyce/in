@@ -4,9 +4,20 @@ import {
   HiFlag, HiSparkles, HiX, HiChevronLeft, HiChevronRight,
   HiOutlineBookmark, HiOutlineEyeOff, HiEmojiHappy, HiUserGroup
 } from "react-icons/hi"
+import { motion, AnimatePresence } from "framer-motion"
 import PostActions from "./PostActions"
 import Comment from "./Comment"
 
+/**
+ * Responsive Post Component
+ * 
+ * Features:
+ * - Mobile-first responsive design
+ * - Touch-optimized controls
+ * - Proper overflow handling
+ * - Accessibility compliant
+ * - Smooth animations
+ */
 export default function Post({
   userId,
   userName,
@@ -108,76 +119,106 @@ export default function Post({
   }
 
   return (
-    <div className="bg-white rounded-lg shadow mb-4">
-      <div className="p-4">
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex items-start space-x-3">
-            <div className="w-12 h-12 rounded-full bg-gray-300 flex-shrink-0"></div>
-            <div>
-              <div className="flex items-center">
-                <h3 className="font-semibold text-gray-900">{userName || 'Sarah Johnson'}</h3>
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="bg-white rounded-lg shadow border border-gray-200 mb-4 mobile-safe overflow-hidden"
+    >
+      {/* Post Header */}
+      <div className="p-4 pb-3">
+        <div className="flex items-start justify-between mb-3">
+          <div className="flex items-start space-x-3 flex-1 min-w-0">
+            <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-gray-300 flex-shrink-0"></div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center flex-wrap">
+                <h3 className="font-semibold text-gray-900 text-base truncate">
+                  {userName || 'Sarah Johnson'}
+                </h3>
                 {communityName && (
-                  <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                    <HiUserGroup className="inline mr-1" /> {communityName}
+                  <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full flex items-center">
+                    <HiUserGroup className="w-3 h-3 mr-1" /> 
+                    <span className="truncate max-w-20">{communityName}</span>
                   </span>
                 )}
               </div>
-              <p className="text-sm text-gray-500">{userRole || 'Senior Product Manager'} at {userCompany || 'InnovateX'}</p>
-              <p className="text-xs text-gray-400">{time || '2h'} • 🌍</p>
+              <p className="text-sm text-gray-500 truncate">
+                {userRole || 'Senior Product Manager'} at {userCompany || 'InnovateX'}
+              </p>
+              <p className="text-xs text-gray-400 mt-1">
+                {time || '2h'} • 🌍
+              </p>
             </div>
           </div>
           
-          {/* Post Header Menu */}
-          <div className="flex items-center space-x-2">
+          {/* Post Header Actions */}
+          <div className="flex items-center space-x-1 ml-2">
             <button 
-              className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100"
+              className="text-gray-400 hover:text-gray-600 p-2 rounded-lg hover:bg-gray-100 transition-colors touch-target focus-visible"
               onClick={handleBookmark}
-              title="Bookmark post"
+              aria-label="Bookmark post"
             >
               <HiOutlineBookmark className="w-5 h-5" />
             </button>
-            <div className="relative group">
+            <div className="relative">
               <button 
                 onClick={() => setShowDropdown(!showDropdown)}
-                className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100"
+                className="text-gray-400 hover:text-gray-600 p-2 rounded-lg hover:bg-gray-100 transition-colors touch-target focus-visible"
+                aria-label="More options"
               >
                 <HiDotsHorizontal className="w-5 h-5" />
               </button>
               
+              <AnimatePresence>
               {showDropdown && (
-                <div className="absolute right-0 mt-1 w-48 bg-white rounded-md shadow-lg py-1 z-10 hidden group-hover:block">
-                  <button className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                  <>
+                    {/* Backdrop for mobile */}
+                    <div 
+                      className="fixed inset-0 z-dropdown-backdrop md:hidden"
+                      onClick={() => setShowDropdown(false)}
+                    />
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg py-1 z-dropdown border border-gray-200"
+                    >
+                      <button className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 transition-colors touch-target">
+                        <HiOutlineBookmark className="w-4 h-4 mr-3" />
                     Save post
                   </button>
-                  <button className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                      <button className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 transition-colors touch-target">
+                        <HiOutlineEyeOff className="w-4 h-4 mr-3" />
                     Not interested
                   </button>
-                  <button className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                    <HiFlag className="w-4 h-4 mr-2" />
+                      <button className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 transition-colors touch-target">
+                        <HiFlag className="w-4 h-4 mr-3" />
                     Report post
                   </button>
-                </div>
+                    </motion.div>
+                  </>
               )}
+              </AnimatePresence>
+            </div>
             </div>
           </div>
         </div>
 
+      {/* Post Content */}
+      <div className="px-4 pb-3">
         <div className="mb-4">
-          <p className="text-gray-800 leading-relaxed mb-4">
-            {content || `Excited to share that our team just launched a new feature that will help thousands of users streamline
-            their workflow! 🚀
-            <br />
-            <br />
+          <p className="text-gray-800 leading-relaxed text-base">
+            {content || `Excited to share that our team just launched a new feature that will help thousands of users streamline their workflow! 🚀
+
             The journey wasn't easy, but seeing the positive impact on our community makes every late night worth it.
-            <br />
-            <br />
+
             #ProductLaunch #TeamWork #Innovation`}
           </p>
+        </div>
 
-          {/* Image Carousel */}
-          <div className="relative rounded-lg overflow-hidden bg-gray-100">
+        {/* Image Carousel - Mobile Optimized */}
+        <div className="relative rounded-lg overflow-hidden bg-gray-100 mb-4">
             <div className="aspect-video bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center">
-              <span className="text-white text-lg font-medium">
+            <span className="text-white text-base md:text-lg font-medium px-4 text-center">
                 {images[currentImageIndex].placeholder}
               </span>
             </div>
@@ -185,111 +226,173 @@ export default function Post({
             {images.length > 1 && (
               <>
                 <button 
-                  className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-75 transition-opacity"
+                className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black/50 text-white p-2 rounded-full hover:bg-black/75 transition-all touch-target focus-visible"
                   onClick={() => setCurrentImageIndex((prev) => (prev > 0 ? prev - 1 : images.length - 1))}
+                aria-label="Previous image"
                 >
-                  <HiChevronLeft className="w-5 h-5" />
+                <HiChevronLeft className="w-4 h-4 md:w-5 md:h-5" />
                 </button>
                 <button 
-                  className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-75 transition-opacity"
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black/50 text-white p-2 rounded-full hover:bg-black/75 transition-all touch-target focus-visible"
                   onClick={() => setCurrentImageIndex((prev) => (prev < images.length - 1 ? prev + 1 : 0))}
+                aria-label="Next image"
                 >
-                  <HiChevronRight className="w-5 h-5" />
+                <HiChevronRight className="w-4 h-4 md:w-5 md:h-5" />
                 </button>
                 <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-1">
                   {images.map((_, index) => (
                     <button
                       key={index}
+                    className={`w-2 h-2 rounded-full transition-all touch-target ${
+                      index === currentImageIndex ? 'bg-white' : 'bg-white/50'
+                    }`}
                       onClick={() => setCurrentImageIndex(index)}
-                      className={`w-2 h-2 rounded-full transition-colors ${
-                        index === currentImageIndex ? "bg-white" : "bg-white bg-opacity-50 hover:bg-opacity-75"
-                      }`}
+                    aria-label={`Go to image ${index + 1}`}
                     />
                   ))}
                 </div>
               </>
             )}
-          </div>
         </div>
 
-        <div className="flex items-center justify-between text-sm text-gray-500 mb-3">
-          <span>{likes || 67} reactions • {comments || 12} comments</span>
-          <span>5 shares</span>
+        {/* Post Stats */}
+        <div className="flex items-center justify-between text-sm text-gray-500 mb-3 px-1">
+          <span>{likes || 24} likes</span>
+          <button 
+            onClick={() => setShowComments(!showComments)}
+            className="hover:text-gray-700 transition-colors touch-target"
+          >
+            {comments || postComments.length} comments
+          </button>
         </div>
       </div>
 
-      {/* AI Insight Section */}
-      {showAi && (
-        <div className="border-t border-gray-200">
-          <div className="p-4 bg-blue-50 relative">
+      {/* Post Actions */}
+      <div className="border-t border-gray-200 px-4 py-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-1 md:space-x-2">
             <button 
-              onClick={() => setShowAi(false)}
-              className="absolute top-3 right-3 text-gray-500 hover:text-gray-700"
+              onClick={() => setLiked(!liked)}
+              className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-all touch-target focus-visible ${
+                liked 
+                  ? 'text-blue-600 bg-blue-50 hover:bg-blue-100' 
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
             >
-              <HiX className="w-5 h-5" />
+              <HiThumbUp className="w-4 h-4 md:w-5 md:h-5" />
+              <span className="text-sm font-medium hidden sm:inline">Like</span>
             </button>
             
-            <div className="flex items-center mb-2">
-              <HiSparkles className="w-5 h-5 text-yellow-500 mr-2" />
-              <h4 className="font-medium">AI Insight</h4>
-            </div>
+            <button
+              onClick={() => setShowComments(!showComments)}
+              className="flex items-center space-x-2 px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-all touch-target focus-visible"
+            >
+              <HiChat className="w-4 h-4 md:w-5 md:h-5" />
+              <span className="text-sm font-medium hidden sm:inline">Comment</span>
+            </button>
             
-            {aiLoading ? (
-              <div className="space-y-3">
-                <div className="h-4 bg-gray-200 rounded animate-pulse"></div>
-                <div className="h-4 bg-gray-200 rounded animate-pulse w-3/4"></div>
-                <div className="h-4 bg-gray-200 rounded animate-pulse w-2/3"></div>
+            <button className="flex items-center space-x-2 px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-all touch-target focus-visible">
+              <HiShare className="w-4 h-4 md:w-5 md:h-5" />
+              <span className="text-sm font-medium hidden sm:inline">Share</span>
+            </button>
+          </div>
+          
+          <button
+            onClick={handleGetAiInsight}
+            className="flex items-center space-x-2 px-3 py-2 rounded-lg text-purple-600 hover:bg-purple-50 transition-all touch-target focus-visible"
+          >
+            <HiSparkles className="w-4 h-4 md:w-5 md:h-5" />
+            <span className="text-sm font-medium hidden md:inline">AI Insight</span>
+          </button>
+        </div>
+      </div>
+
+      {/* AI Insight Panel */}
+      <AnimatePresence>
+        {showAi && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="border-t border-gray-200 bg-purple-50 overflow-hidden"
+          >
+            <div className="p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="font-medium text-purple-900 flex items-center">
+                  <HiSparkles className="w-4 h-4 mr-2" />
+                  AI Insight
+                </h4>
+                <button
+                  onClick={() => setShowAi(false)}
+                  className="text-purple-600 hover:text-purple-800 p-1 rounded-lg hover:bg-purple-100 transition-colors touch-target focus-visible"
+                  aria-label="Close AI insight"
+                >
+                  <HiX className="w-4 h-4" />
+                </button>
               </div>
-            ) : aiInsight && (
+              
+              {aiLoading ? (
+                <div className="flex items-center space-x-3">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-purple-600"></div>
+                  <span className="text-sm text-purple-700">Analyzing post...</span>
+                </div>
+              ) : aiInsight ? (
               <div className="space-y-3">
-                <p><strong>Summary:</strong> {aiInsight.summary}</p>
-                <p><strong>Sentiment:</strong> {aiInsight.sentiment}</p>
+                  <div>
+                    <h5 className="text-sm font-medium text-purple-900 mb-1">Summary</h5>
+                    <p className="text-sm text-purple-800">{aiInsight.summary}</p>
+                  </div>
+                  <div>
+                    <h5 className="text-sm font-medium text-purple-900 mb-1">Sentiment</h5>
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                      {aiInsight.sentiment}
+                    </span>
+                  </div>
                 <div>
-                  <strong>Key Points:</strong>
-                  <ul className="list-disc pl-5 mt-1">
-                    {aiInsight.keyPoints.map((point, i) => (
-                      <li key={i}>{point}</li>
+                    <h5 className="text-sm font-medium text-purple-900 mb-2">Key Points</h5>
+                    <ul className="text-sm text-purple-800 space-y-1">
+                      {aiInsight.keyPoints.map((point, index) => (
+                        <li key={index} className="flex items-start">
+                          <span className="inline-block w-1 h-1 bg-purple-600 rounded-full mt-2 mr-2 flex-shrink-0"></span>
+                          {point}
+                        </li>
                     ))}
                   </ul>
                 </div>
               </div>
-            )}
+              ) : null}
           </div>
-        </div>
-      )}
-
-      <PostActions 
-        liked={liked} 
-        onLike={() => setLiked(!liked)}
-        onComment={() => setShowComments(!showComments)}
-        onAiInsight={handleGetAiInsight}
-      />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Comments Section */}
+      <AnimatePresence>
       {showComments && (
-        <div className="border-t border-gray-200">
-          <div className="p-3">
-            <div className="flex items-center space-x-3">
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="border-t border-gray-200 overflow-hidden"
+          >
+            <div className="p-4">
+              {/* Comment Input */}
+              <div className="flex space-x-3 mb-4">
               <div className="w-8 h-8 rounded-full bg-gray-300 flex-shrink-0"></div>
-              <div className="flex-1 relative">
+                <div className="flex-1">
+                  <div className="flex items-center space-x-2">
                 <input
+                      type="text"
                   value={commentText}
                   onChange={(e) => setCommentText(e.target.value)}
-                  placeholder="Add a comment..."
-                  className="w-full border-b border-gray-300 py-2 pr-20 focus:outline-none focus:border-blue-500 text-sm"
+                      placeholder="Write a comment..."
+                      className="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base mobile-safe"
+                      style={{ fontSize: '16px' }} // Prevent iOS zoom
                 />
-                <div className="absolute right-0 top-1/2 transform -translate-y-1/2 flex items-center space-x-2">
-                  <button className="text-gray-500 hover:text-gray-700">
-                    <HiEmojiHappy className="w-5 h-5" />
-                  </button>
                   <button 
                     onClick={handleAddComment}
                     disabled={!commentText.trim()}
-                    className={`font-medium px-2 ${
-                      commentText.trim() 
-                        ? "text-blue-600 hover:text-blue-700" 
-                        : "text-gray-300 cursor-not-allowed"
-                    }`}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors touch-target focus-visible"
                   >
                     Post
                   </button>
@@ -297,8 +400,9 @@ export default function Post({
               </div>
             </div>
 
-            <div className="mt-4 space-y-1">
-              {postComments.map(comment => (
+              {/* Comments List */}
+              <div className="space-y-4">
+                {postComments.map((comment) => (
                 <Comment 
                   key={comment.id}
                   user={comment.user}
@@ -311,9 +415,10 @@ export default function Post({
               ))}
             </div>
           </div>
-        </div>
+          </motion.div>
       )}
-    </div>
+      </AnimatePresence>
+    </motion.div>
   )
 }
 

@@ -9,13 +9,14 @@ import { Button, Card, Avatar, Input } from '../ui'
 import { motion, AnimatePresence } from 'framer-motion'
 
 /**
- * CreatePost Component - Real-time Post Creation
+ * Responsive CreatePost Component
  * 
- * Connected to Supabase backend with:
- * - Real user authentication
- * - File upload to Supabase storage
- * - Post creation with media support
- * - Professional LinkedIn-style interface
+ * Features:
+ * - Mobile-first responsive design
+ * - Touch-optimized controls
+ * - Proper form handling for mobile
+ * - Accessibility compliant
+ * - iOS keyboard optimizations
  */
 export default function CreatePost({ user, onPostCreated }) {
   const [showModal, setShowModal] = useState(false)
@@ -108,7 +109,7 @@ export default function CreatePost({ user, onPostCreated }) {
       // Upload media files if any
       const mediaUrls = await uploadMedia()
 
-      // Create the post (removed visibility field)
+      // Create the post
       const postData = {
         author_id: user.id,
         content: content.trim(),
@@ -183,11 +184,11 @@ export default function CreatePost({ user, onPostCreated }) {
 
   if (!user) {
     return (
-      <Card className="text-center">
+      <Card className="text-center mobile-safe">
         <HiChat className="w-12 h-12 text-gray-400 mx-auto mb-4" />
         <h3 className="text-heading-3 mb-2">Share with your network</h3>
                         <p className="text-body text-gray-600 mb-4">Join Intru to start sharing your thoughts and experiences</p>
-        <Button variant="primary" size="md">
+        <Button variant="primary" size="md" className="touch-target">
           Sign In
         </Button>
       </Card>
@@ -200,292 +201,227 @@ export default function CreatePost({ user, onPostCreated }) {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
+        className="bg-white rounded-lg shadow border border-gray-200 p-4 md:p-6 mobile-safe"
       >
-        <Card className="hover:shadow-lg transition-shadow duration-300">
-          <div className="flex items-center gap-4 p-6">
+        <div className="flex items-start space-x-3">
             <Avatar 
               src={user?.user_metadata?.avatar_url}
               name={user?.user_metadata?.full_name || user?.email}
-              size="lg"
+            size="md"
             />
             
-            <motion.button
+          <div className="flex-1">
+            <button
               onClick={() => setShowModal(true)}
-              className="flex-1 text-left px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 
-                        hover:from-blue-50 hover:to-purple-50 rounded-full text-gray-600 
-                        hover:text-gray-800 transition-all duration-300 border border-gray-200 
-                        hover:border-blue-200 hover:shadow-md"
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
+              className="w-full text-left p-3 md:p-4 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors touch-target focus-visible mobile-safe"
+              aria-label="Start a post"
             >
-              <span className="text-lg">What's on your mind?</span>
-            </motion.button>
-          </div>
-
-          <div className="grid grid-cols-3 gap-2 px-6 pb-6 border-t border-gray-100 pt-4">
-            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-              <Button 
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowModal(true)}
-                leftIcon={<HiPhotograph className="icon-system-sm text-blue-600" />}
-                className="w-full justify-center hover:bg-blue-50 text-blue-600 hover:text-blue-700"
-              >
-                Photo
-              </Button>
-            </motion.div>
-            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-              <Button 
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowModal(true)}
-                leftIcon={<HiVideoCamera className="icon-system-sm text-green-600" />}
-                className="w-full justify-center hover:bg-green-50 text-green-600 hover:text-green-700"
-              >
-                Video
-              </Button>
-            </motion.div>
-            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-              <Button 
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowModal(true)}
-                leftIcon={<HiCalendar className="icon-system-sm text-orange-600" />}
-                className="w-full justify-center hover:bg-orange-50 text-orange-600 hover:text-orange-700"
-              >
-                Event
-              </Button>
-            </motion.div>
-          </div>
-        </Card>
-      </motion.div>
-
-      {/* Modal for creating post */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+              <span className="text-gray-500 text-base">What's on your mind?</span>
+            </button>
             
-            {/* Modal Header */}
-            <div className="flex items-center justify-between p-6 border-b">
-              <h2 className="text-xl font-bold text-gray-900">Create a post</h2>
+            {/* Action Buttons - Mobile Optimized */}
+            <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
+              <div className="flex space-x-2 md:space-x-4 overflow-x-auto scrollbar-hide">
               <button 
-                onClick={handleCancel}
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                  onClick={() => setShowModal(true)}
+                  className="flex items-center space-x-2 px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors touch-target focus-visible"
+                  aria-label="Add photo"
               >
-                <HiX className="w-6 h-6 text-gray-500" />
+                  <HiPhotograph className="w-5 h-5 text-blue-500" />
+                  <span className="text-sm font-medium hidden sm:block">Photo</span>
               </button>
-            </div>
-
-            {/* Modal Content */}
-            <div className="flex-1 overflow-y-auto p-6">
-              
-              {/* User Info */}
-              <div className="flex items-center gap-3 mb-4">
-                {user?.user_metadata?.avatar_url ? (
-                  <img 
-                    src={user.user_metadata.avatar_url} 
-                    alt="Your avatar"
-                    className="w-12 h-12 rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center">
-                    <span className="text-gray-600 font-semibold">
-                      {(user.user_metadata?.full_name || user.email)?.charAt(0).toUpperCase()}
-                    </span>
-                  </div>
-                )}
                 
-                <div>
-                  <h3 className="font-semibold text-gray-900">
-                    {user.user_metadata?.full_name || user.email}
-                  </h3>
-                  <div className="flex items-center gap-2">
-                    <button className="flex items-center gap-1 text-sm text-gray-600 hover:bg-gray-100 px-2 py-1 rounded">
-                      <HiGlobe className="w-4 h-4" />
-                      <span>Public</span>
+                <button 
+                  onClick={() => setShowModal(true)}
+                  className="flex items-center space-x-2 px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors touch-target focus-visible"
+                  aria-label="Add video"
+                >
+                  <HiVideoCamera className="w-5 h-5 text-green-500" />
+                  <span className="text-sm font-medium hidden sm:block">Video</span>
                     </button>
-                  </div>
-                </div>
-              </div>
 
-              {/* Post Type Selection */}
-              <div className="flex gap-2 mb-4">
                 <button
-                  onClick={() => setPostType("user")}
-                  className={`px-3 py-1 rounded-full text-sm transition-colors ${
-                    postType === "user" 
-                      ? "bg-blue-100 text-blue-700" 
-                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                  }`}
+                  onClick={() => setShowModal(true)}
+                  className="flex items-center space-x-2 px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors touch-target focus-visible"
+                  aria-label="Add event"
                 >
-                  Personal
+                  <HiCalendar className="w-5 h-5 text-orange-500" />
+                  <span className="text-sm font-medium hidden sm:block">Event</span>
                 </button>
-                <button
-                  onClick={() => setPostType("community")}
-                  className={`flex items-center gap-1 px-3 py-1 rounded-full text-sm transition-colors ${
-                    postType === "community" 
-                      ? "bg-purple-100 text-purple-700" 
-                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                  }`}
-                >
-                  <HiUsers className="w-4 h-4" />
-                  Community
-                </button>
-                <button
-                  onClick={() => setPostType("page")}
-                  className={`flex items-center gap-1 px-3 py-1 rounded-full text-sm transition-colors ${
-                    postType === "page" 
-                      ? "bg-blue-100 text-blue-700" 
-                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                  }`}
-                >
-                  <FaBuilding className="w-4 h-4" />
-                  Company
-                </button>
-              </div>
-
-              {/* Error Display */}
-              {error && (
-                <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
-                  {error}
-                </div>
-              )}
-
-              {/* Text Content */}
-              <textarea
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                placeholder="What do you want to talk about?"
-                className="w-full min-h-[120px] p-3 border-none resize-none focus:outline-none text-lg placeholder-gray-500"
-                disabled={uploading}
-              />
-
-              {/* Media Preview */}
-              {mediaPreview.length > 0 && (
-                <div className="mt-4 space-y-4">
-                  {mediaPreview.map((preview, index) => (
-                    <div key={index} className="relative">
-                      {preview.type === 'image' && (
-                        <div className="relative">
-                          <img 
-                            src={preview.url} 
-                            alt="Preview"
-                            className="w-full max-h-64 object-cover rounded-lg"
-                          />
-                          <button
-                            onClick={() => removeMedia(index)}
-                            className="absolute top-2 right-2 p-1 bg-black bg-opacity-50 rounded-full hover:bg-opacity-70"
-                          >
-                            <HiX className="w-4 h-4 text-white" />
-                          </button>
-                        </div>
-                      )}
-                      
-                      {preview.type === 'video' && (
-                        <div className="relative">
-                          <video 
-                            src={preview.url} 
-                            controls
-                            className="w-full max-h-64 rounded-lg"
-                          />
-                          <button
-                            onClick={() => removeMedia(index)}
-                            className="absolute top-2 right-2 p-1 bg-black bg-opacity-50 rounded-full hover:bg-opacity-70"
-                          >
-                            <HiX className="w-4 h-4 text-white" />
-                          </button>
-                        </div>
-                      )}
-
-                      {preview.type === 'document' && (
-                        <div className="flex items-center justify-between p-3 bg-gray-100 rounded-lg">
-                          <span className="text-sm text-gray-700">{preview.name}</span>
-                          <button
-                            onClick={() => removeMedia(index)}
-                            className="p-1 hover:bg-gray-200 rounded"
-                          >
-                            <HiX className="w-4 h-4 text-gray-500" />
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Media Upload Actions */}
-              <div className="flex items-center gap-4 mt-6 pt-4 border-t border-gray-200">
-                <label className="flex items-center gap-2 px-3 py-2 hover:bg-gray-100 rounded-lg cursor-pointer transition-colors">
-                  <HiPhotograph className="w-5 h-5 text-gray-600" />
-                  <span className="text-sm text-gray-600">Photo</span>
-                  <input
-                    type="file"
-                    multiple
-                    accept="image/*"
-                    onChange={handleMediaSelect}
-                    className="hidden"
-                    disabled={uploading}
-                  />
-                </label>
-
-                <label className="flex items-center gap-2 px-3 py-2 hover:bg-gray-100 rounded-lg cursor-pointer transition-colors">
-                  <HiVideoCamera className="w-5 h-5 text-gray-600" />
-                  <span className="text-sm text-gray-600">Video</span>
-                  <input
-                    type="file"
-                    multiple
-                    accept="video/*"
-                    onChange={handleMediaSelect}
-                    className="hidden"
-                    disabled={uploading}
-                  />
-                </label>
-
-                <button className="flex items-center gap-2 px-3 py-2 hover:bg-gray-100 rounded-lg transition-colors">
-                  <HiEmojiHappy className="w-5 h-5 text-gray-600" />
-                  <span className="text-sm text-gray-600">Feeling</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Modal Footer */}
-            <div className="p-6 border-t">
-              <div className="flex items-center justify-between">
-                <div className="text-sm text-gray-500">
-                  {content.length > 0 && (
-                    <span>{content.length} characters</span>
-                  )}
-                </div>
                 
-                <div className="flex gap-3">
-                  <button
-                    onClick={handleCancel}
-                    className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                    disabled={uploading}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleSubmit}
-                    disabled={!content.trim() || uploading}
-                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
-                  >
-                    {uploading ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                        <span>Posting...</span>
-                      </>
-                    ) : (
-                      <span>Post</span>
-                    )}
-                  </button>
-                </div>
+                <button
+                  onClick={() => setShowModal(true)}
+                  className="flex items-center space-x-2 px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors touch-target focus-visible"
+                  aria-label="Write article"
+                >
+                  <FaBuilding className="w-4 h-4 text-purple-500" />
+                  <span className="text-sm font-medium hidden sm:block">Article</span>
+                </button>
               </div>
             </div>
           </div>
         </div>
+      </motion.div>
+
+      {/* Create Post Modal - Mobile Optimized */}
+      <AnimatePresence>
+        {showModal && (
+          <div className="fixed inset-0 z-modal-backdrop bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-lg w-full max-w-lg max-h-[90vh] flex flex-col mobile-safe"
+            >
+              {/* Modal Header */}
+              <div className="flex items-center justify-between p-4 md:p-6 border-b">
+                <h2 className="text-lg md:text-xl font-semibold text-gray-900">Create a post</h2>
+                <button
+                  onClick={handleCancel}
+                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors touch-target focus-visible"
+                  aria-label="Close modal"
+                >
+                  <HiX className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Modal Content */}
+              <div className="flex-1 overflow-y-auto p-4 md:p-6">
+                {/* User Info */}
+                <div className="flex items-center space-x-3 mb-4">
+                  <Avatar 
+                    src={user?.user_metadata?.avatar_url}
+                    name={user?.user_metadata?.full_name || user?.email}
+                    size="md"
+                  />
+                  <div className="flex-1">
+                    <h3 className="font-medium text-gray-900 text-base">
+                      {user?.user_metadata?.full_name || user?.email?.split('@')[0]}
+                    </h3>
+                    <select 
+                      value={postType}
+                      onChange={(e) => setPostType(e.target.value)}
+                      className="mt-1 text-sm bg-gray-100 border border-gray-200 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 touch-target"
+                    >
+                      <option value="user">Anyone</option>
+                      <option value="connections">Connections only</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Content Textarea */}
+                <div className="mb-4">
+              <textarea
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                placeholder="What do you want to talk about?"
+                    rows={4}
+                    className="w-full p-3 text-base bg-white border border-gray-200 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder-gray-500 mobile-safe"
+                    style={{ fontSize: '16px' }} // Prevent iOS zoom
+                  />
+                  <div className="flex justify-between items-center mt-2">
+                    <span className="text-sm text-gray-500">
+                      {content.length}/2000
+                    </span>
+                    <button 
+                      type="button"
+                      className="p-1 text-gray-400 hover:text-gray-600 touch-target"
+                      aria-label="Add emoji"
+                    >
+                      <HiEmojiHappy className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+
+              {/* Media Preview */}
+              {mediaPreview.length > 0 && (
+                  <div className="mb-4">
+                    <div className="grid grid-cols-2 gap-2">
+                  {mediaPreview.map((preview, index) => (
+                        <div key={index} className="relative group">
+                          {preview.type === 'image' ? (
+                          <img 
+                            src={preview.url} 
+                            alt="Preview"
+                              className="w-full h-32 object-cover rounded-lg"
+                          />
+                          ) : preview.type === 'video' ? (
+                          <video 
+                            src={preview.url} 
+                              className="w-full h-32 object-cover rounded-lg"
+                            controls
+                            />
+                          ) : (
+                            <div className="w-full h-32 bg-gray-100 rounded-lg flex items-center justify-center">
+                              <span className="text-sm text-gray-600">{preview.name}</span>
+                        </div>
+                      )}
+                          <button
+                            onClick={() => removeMedia(index)}
+                            className="absolute top-2 right-2 p-1 bg-black/50 text-white rounded-full hover:bg-black/70 transition-colors touch-target"
+                            aria-label="Remove media"
+                          >
+                            <HiX className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                </div>
+              )}
+
+                {/* Media Upload */}
+                <div className="border border-dashed border-gray-300 rounded-lg p-4 mb-4">
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*,video/*"
+                    onChange={handleMediaSelect}
+                    className="hidden"
+                    id="media-upload"
+                  />
+                  <label
+                    htmlFor="media-upload"
+                    className="flex flex-col items-center justify-center cursor-pointer touch-target"
+                  >
+                    <HiPhotograph className="w-8 h-8 text-gray-400 mb-2" />
+                    <span className="text-sm text-gray-600">Add photos or videos</span>
+                </label>
+            </div>
+
+                {/* Error Message */}
+                {error && (
+                  <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
+                    {error}
+                  </div>
+                  )}
+                </div>
+                
+              {/* Modal Footer */}
+              <div className="p-4 md:p-6 border-t bg-gray-50">
+                <div className="flex space-x-3">
+                  <Button
+                    variant="secondary"
+                    onClick={handleCancel}
+                    disabled={uploading}
+                    className="flex-1 touch-target"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="primary"
+                    onClick={handleSubmit}
+                    disabled={!content.trim() || uploading}
+                    loading={uploading}
+                    className="flex-1 touch-target"
+                  >
+                    {uploading ? 'Posting...' : 'Post'}
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
+        </div>
       )}
+      </AnimatePresence>
     </>
   )
 }

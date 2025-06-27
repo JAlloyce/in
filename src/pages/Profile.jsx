@@ -14,129 +14,123 @@ import { Button, Card, Avatar } from "../components/ui";
 import { motion, AnimatePresence } from 'framer-motion';
 
 /**
- * Enhanced Profile Page Component - Modern LinkedIn Profile
+ * Responsive Profile Page Component
  * 
  * Features:
- * - Modern glass morphism design with animations
- * - Improved responsive layout with proper grid system
- * - Enhanced profile sections with better visual hierarchy
- * - Interactive elements with smooth hover effects
- * - Better mobile experience with touch-optimized elements
- * - Professional polish with Embassy-inspired styling
+ * - Mobile-first responsive design
+ * - Touch-optimized controls
+ * - Proper overflow handling
+ * - Accessibility compliant
+ * - Smooth animations optimized for mobile
  */
 
 const ProfileSection = ({ title, children, onEdit, onAdd, isExpanded, toggleExpand }) => (
   <motion.div 
-    className="bg-white/95 backdrop-blur-sm rounded-xl shadow-soft border border-white/20 p-6 mb-6"
+    className="bg-white rounded-lg shadow border border-gray-200 p-4 md:p-6 mb-4 md:mb-6 mobile-safe"
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
-    whileHover={{ y: -2, shadow: "0 8px 25px rgba(0,0,0,0.1)" }}
     transition={{ duration: 0.3 }}
   >
-    <div className="flex justify-between items-center mb-4">
-      <h2 className="font-bold text-gray-900 text-lg">{title}</h2>
-      <div className="flex items-center space-x-2">
+    <div className="flex justify-between items-center mb-3 md:mb-4">
+      <h2 className="font-bold text-gray-900 text-base md:text-lg">{title}</h2>
+      <div className="flex items-center space-x-1">
         {toggleExpand && (
-          <motion.button 
+          <button 
             onClick={toggleExpand} 
-            className="text-gray-500 hover:text-blue-600 p-2 rounded-lg hover:bg-blue-50 transition-all"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+            className="text-gray-500 hover:text-blue-600 p-2 rounded-lg hover:bg-blue-50 transition-all touch-target focus-visible"
+            aria-label={isExpanded ? 'Collapse section' : 'Expand section'}
           >
             {isExpanded ? <HiChevronUp className="w-5 h-5" /> : <HiChevronDown className="w-5 h-5" />}
-          </motion.button>
+          </button>
         )}
         {onAdd && (
-          <motion.button 
+          <button 
             onClick={onAdd} 
-            className="text-gray-500 hover:text-blue-600 p-2 rounded-lg hover:bg-blue-50 transition-all"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+            className="text-gray-500 hover:text-blue-600 p-2 rounded-lg hover:bg-blue-50 transition-all touch-target focus-visible"
+            aria-label="Add item"
           >
             <HiPlus className="w-5 h-5" />
-          </motion.button>
+          </button>
         )}
         {onEdit && (
-          <motion.button 
+          <button 
             onClick={onEdit} 
-            className="text-gray-500 hover:text-blue-600 p-2 rounded-lg hover:bg-blue-50 transition-all"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+            className="text-gray-500 hover:text-blue-600 p-2 rounded-lg hover:bg-blue-50 transition-all touch-target focus-visible"
+            aria-label="Edit section"
           >
             <HiPencil className="w-4 h-4" />
-          </motion.button>
+          </button>
         )}
       </div>
     </div>
     
     <AnimatePresence>
-    {isExpanded && (
+      {isExpanded && (
         <motion.div 
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: 'auto' }}
           exit={{ opacity: 0, height: 0 }}
           transition={{ duration: 0.3 }}
-          className="space-y-4"
+          className="space-y-3 md:space-y-4"
         >
-        {children}
+          {children}
         </motion.div>
-    )}
+      )}
     </AnimatePresence>
   </motion.div>
 );
 
 const ExperienceItem = ({ role, company, duration, description, location }) => (
   <motion.div 
-    className="flex pb-4 border-b border-gray-100 last:border-0 last:pb-0"
+    className="flex flex-col sm:flex-row pb-4 border-b border-gray-100 last:border-0 last:pb-0"
     initial={{ opacity: 0, x: -20 }}
     animate={{ opacity: 1, x: 0 }}
     transition={{ duration: 0.4 }}
   >
-    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl mr-4 flex-shrink-0 flex items-center justify-center shadow-soft">
-      <HiBriefcase className="w-6 h-6 text-white" />
+    <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg mb-3 sm:mb-0 sm:mr-4 flex-shrink-0 flex items-center justify-center shadow-sm">
+      <HiBriefcase className="w-5 h-5 md:w-6 md:h-6 text-white" />
     </div>
     <div className="flex-1 min-w-0">
-      <h3 className="font-bold text-gray-900 text-lg">{role}</h3>
-      <p className="text-blue-600 font-medium">{company}</p>
-      <p className="text-gray-500 text-sm mt-1">{duration} · {location}</p>
-      <p className="text-gray-600 mt-3 leading-relaxed">{description}</p>
+      <h3 className="font-bold text-gray-900 text-base md:text-lg">{role}</h3>
+      <p className="text-blue-600 font-medium text-sm md:text-base">{company}</p>
+      <p className="text-gray-500 text-xs md:text-sm mt-1">{duration} · {location}</p>
+      <p className="text-gray-600 mt-2 md:mt-3 leading-relaxed text-sm md:text-base">{description}</p>
     </div>
   </motion.div>
 );
 
 const EducationItem = ({ institution, degree, duration }) => (
   <motion.div 
-    className="flex pb-4 border-b border-gray-100 last:border-0 last:pb-0"
+    className="flex flex-col sm:flex-row pb-4 border-b border-gray-100 last:border-0 last:pb-0"
     initial={{ opacity: 0, x: -20 }}
     animate={{ opacity: 1, x: 0 }}
     transition={{ duration: 0.4 }}
   >
-    <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-xl mr-4 flex-shrink-0 flex items-center justify-center shadow-soft">
-      <HiAcademicCap className="w-6 h-6 text-white" />
+    <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-lg mb-3 sm:mb-0 sm:mr-4 flex-shrink-0 flex items-center justify-center shadow-sm">
+      <HiAcademicCap className="w-5 h-5 md:w-6 md:h-6 text-white" />
     </div>
     <div className="flex-1 min-w-0">
-      <h3 className="font-bold text-gray-900 text-lg">{institution}</h3>
-      <p className="text-green-600 font-medium">{degree}</p>
-      <p className="text-gray-500 text-sm mt-1">{duration}</p>
+      <h3 className="font-bold text-gray-900 text-base md:text-lg">{institution}</h3>
+      <p className="text-green-600 font-medium text-sm md:text-base">{degree}</p>
+      <p className="text-gray-500 text-xs md:text-sm mt-1">{duration}</p>
     </div>
   </motion.div>
 );
 
 const SkillItem = ({ skill, endorsements }) => (
   <motion.div 
-    className="flex justify-between items-center py-3 px-4 bg-gray-50 rounded-lg hover:bg-blue-50 transition-colors"
-    whileHover={{ scale: 1.02 }}
+    className="flex justify-between items-center py-3 px-3 md:px-4 bg-gray-50 rounded-lg hover:bg-blue-50 transition-colors mobile-safe"
     initial={{ opacity: 0, y: 10 }}
     animate={{ opacity: 1, y: 0 }}
     transition={{ duration: 0.3 }}
   >
-    <div className="flex items-center">
-      <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg mr-3 flex items-center justify-center">
-        <HiSparkles className="w-4 h-4 text-white" />
+    <div className="flex items-center flex-1 min-w-0">
+      <div className="w-6 h-6 md:w-8 md:h-8 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg mr-3 flex items-center justify-center flex-shrink-0">
+        <HiSparkles className="w-3 h-3 md:w-4 md:h-4 text-white" />
       </div>
-      <span className="font-medium text-gray-800">{skill}</span>
+      <span className="font-medium text-gray-800 text-sm md:text-base truncate">{skill}</span>
     </div>
-    <span className="text-sm font-bold bg-blue-100 text-blue-700 px-3 py-1 rounded-full">
+    <span className="text-xs md:text-sm font-bold bg-blue-100 text-blue-700 px-2 md:px-3 py-1 rounded-full ml-2 flex-shrink-0">
       {endorsements}
     </span>
   </motion.div>
@@ -816,19 +810,19 @@ export default function Profile({ isEditable = true, userData }) {
 
   return (
     <motion.div 
-      className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8"
+      className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mobile-safe"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.6 }}
     >
-      {/* Enhanced Profile Header with Glass Morphism */}
+      {/* Mobile-Optimized Profile Header */}
       <motion.div 
-        className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-soft border border-white/20 mb-8 overflow-hidden"
+        className="bg-white rounded-lg shadow border border-gray-200 mb-6 md:mb-8 overflow-hidden"
         initial={{ y: -50, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.7 }}
       >
-        <div className="h-56 bg-gradient-to-br from-blue-500 via-purple-600 to-indigo-700 rounded-t-2xl relative overflow-hidden">
+        <div className="h-40 md:h-56 bg-gradient-to-br from-blue-500 via-purple-600 to-indigo-700 relative overflow-hidden">
           {/* Animated Background Pattern */}
           <div className="absolute inset-0 opacity-20">
             <div className="absolute top-0 left-0 w-full h-full">
@@ -853,7 +847,7 @@ export default function Profile({ isEditable = true, userData }) {
           </div>
           
           <motion.div 
-            className="absolute -bottom-20 left-8"
+            className="absolute -bottom-16 md:-bottom-20 left-4 md:left-8"
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.5, delay: 0.3 }}
@@ -861,32 +855,31 @@ export default function Profile({ isEditable = true, userData }) {
             <Avatar 
               src={profileData?.avatar_url}
               name={profileData?.name}
-              size="2xl"
-              className="border-4 border-white shadow-soft"
+              size="xl md:2xl"
+              className="border-3 md:border-4 border-white shadow-lg"
             />
           </motion.div>
           
           {isEditable && (
-            <motion.button 
-              className="absolute top-6 right-6 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white p-3 rounded-full transition-all"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+            <button 
+              className="absolute top-4 md:top-6 right-4 md:right-6 bg-white/20 hover:bg-white/30 text-white p-2 md:p-3 rounded-full transition-all touch-target focus-visible"
+              aria-label="Edit profile"
             >
-              <HiPencil className="w-5 h-5" />
-            </motion.button>
+              <HiPencil className="w-4 h-4 md:w-5 md:h-5" />
+            </button>
           )}
         </div>
         
         <motion.div 
-          className="pt-24 px-8 pb-8"
+          className="pt-20 md:pt-24 px-4 md:px-8 pb-6 md:pb-8"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.4 }}
         >
-          <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-6">
-            <div className="flex-1">
+          <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-4 md:gap-6">
+            <div className="flex-1 min-w-0">
               <motion.h1 
-                className="text-4xl font-bold text-gray-900 mb-2"
+                className="text-2xl md:text-4xl font-bold text-gray-900 mb-2 truncate"
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.5, delay: 0.5 }}
@@ -894,7 +887,7 @@ export default function Profile({ isEditable = true, userData }) {
                 {profileData?.name}
               </motion.h1>
               <motion.p 
-                className="text-gray-600 text-xl mb-3"
+                className="text-gray-600 text-lg md:text-xl mb-3 line-clamp-2"
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.5, delay: 0.6 }}
@@ -902,22 +895,22 @@ export default function Profile({ isEditable = true, userData }) {
                 {profileData?.headline}
               </motion.p>
               <motion.p 
-                className="text-gray-500 flex items-center mb-4"
+                className="text-gray-500 flex items-center mb-4 text-sm md:text-base"
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.5, delay: 0.7 }}
               >
-                <HiLocationMarker className="w-5 h-5 mr-2 text-blue-500" />
-                {profileData?.location}
+                <HiLocationMarker className="w-4 h-4 md:w-5 md:h-5 mr-2 text-blue-500 flex-shrink-0" />
+                <span className="truncate">{profileData?.location}</span>
               </motion.p>
               <motion.div 
-                className="flex flex-wrap gap-6 text-gray-500"
+                className="flex flex-wrap gap-4 md:gap-6 text-gray-500 text-sm md:text-base"
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.5, delay: 0.8 }}
               >
                 <span className="flex items-center font-medium">
-                  <HiUserGroup className="w-5 h-5 mr-2 text-blue-500" />
+                  <HiUserGroup className="w-4 h-4 md:w-5 md:h-5 mr-2 text-blue-500 flex-shrink-0" />
                   {profileData?.connections}+ connections
                 </span>
                 <span className="font-medium">{profileData?.followers} followers</span>
@@ -925,33 +918,33 @@ export default function Profile({ isEditable = true, userData }) {
             </div>
             
             <motion.div 
-              className="flex flex-col sm:flex-row gap-3 lg:flex-shrink-0"
+              className="flex flex-col sm:flex-row gap-2 md:gap-3 lg:flex-shrink-0 mt-4 lg:mt-0"
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.5, delay: 0.9 }}
             >
             {isEditable ? (
                 <>
-                  <Button variant="primary" size="lg" className="transform hover:scale-105 transition-all">
-                  Open to work
+                  <Button variant="primary" size="md" className="touch-target">
+                    Open to work
                   </Button>
                   <Button 
                     variant="outline" 
-                    size="lg"
-                  onClick={() => setShowAdminPanel(true)}
-                    className="transform hover:scale-105 transition-all flex items-center gap-2"
-                >
-                    <HiCog className="w-5 h-5" />
-                  Settings
+                    size="md"
+                    onClick={() => setShowAdminPanel(true)}
+                    className="touch-target flex items-center gap-2"
+                  >
+                    <HiCog className="w-4 h-4 md:w-5 md:h-5" />
+                    Settings
                   </Button>
                 </>
             ) : (
                 <>
-                  <Button variant="primary" size="lg" className="transform hover:scale-105 transition-all">
-                  Connect
+                  <Button variant="primary" size="md" className="touch-target">
+                    Connect
                   </Button>
-                  <Button variant="outline" size="lg" className="transform hover:scale-105 transition-all">
-                  Message
+                  <Button variant="outline" size="md" className="touch-target">
+                    Message
                   </Button>
                 </>
             )}

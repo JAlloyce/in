@@ -126,9 +126,9 @@ function AppContent() {
           </ErrorBoundary>
         ) : (
           // Standard 3-column layout for other pages
-          <div className="container-system">
+          <div className="container-system mobile-safe">
             <motion.div 
-              className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4 lg:gap-6 py-6"
+              className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 lg:gap-8 py-4 md:py-6"
               variants={containerVariants}
               initial="hidden"
               animate="visible"

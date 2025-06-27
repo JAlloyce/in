@@ -1,12 +1,23 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { 
-  HiUserAdd, HiUserGroup, HiCalendar, 
-  HiSearch, HiChevronDown, HiDotsVertical, HiTrash, HiUser, HiFlag
-} from "react-icons/hi";
+  HiUser, 
+  HiUserGroup, 
+  HiPlusCircle, 
+  HiMagnifyingGlass,
+  HiChevronDown, 
+  HiEllipsisVertical,
+  HiTrash, 
+  HiFlag,
+  HiOutlineExclamationTriangle,
+  HiCheckCircle,
+  HiXCircle,
+  HiUserPlus,
+  HiCalendarDays
+} from 'react-icons/hi2';
 import { Link } from "react-router-dom";
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
-import { ErrorBoundary } from '../components/ui';
+import { useNotification } from '../context/NotificationContext';
 
 /**
  * Network Page - Real Database Connection Management
@@ -20,6 +31,7 @@ import { ErrorBoundary } from '../components/ui';
  */
 export default function Network() {
   const { user, isAuthenticated, loading: authLoading } = useAuth();
+  const { showSuccess, showError, showWarning } = useNotification();
   const [filter, setFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
@@ -85,6 +97,10 @@ export default function Network() {
 
       // Transform the data to match our UI format
       const transformedConnections = connectionsData.map(conn => {
+        if (!conn.requester || !conn.receiver) {
+          console.warn('Missing profile data for connection:', conn.id);
+          return null;
+        }
         const otherUser = conn.requester.id === userId ? conn.receiver : conn.requester;
         return {
           id: conn.id,
@@ -94,7 +110,7 @@ export default function Network() {
           avatar_url: otherUser.avatar_url,
           connected: formatTimestamp(conn.created_at)
         };
-      });
+      }).filter(Boolean);
 
       setUserConnections(transformedConnections);
       console.log('✅ Loaded connections:', transformedConnections.length);
@@ -240,16 +256,17 @@ export default function Network() {
         .eq('id', connectionId);
       if (error) {
         console.error('Error removing connection:', error);
-        alert('Failed to remove connection');
+        showError('Failed to remove connection');
         return;
       }
 
       // Remove from local state
       setUserConnections(prev => prev.filter(conn => conn.id !== connectionId));
       setShowConnectionMenu(null);
+      showSuccess('Connection removed successfully');
     } catch (err) {
       console.error('Error removing connection:', err);
-      alert('Failed to remove connection');
+      showError('Failed to remove connection');
     }
   };
 
@@ -262,7 +279,7 @@ export default function Network() {
 
       if (error) {
         console.error('Error accepting connection:', error);
-        alert('Failed to accept connection request');
+        showError('Failed to accept connection request');
         return;
       }
 
@@ -272,10 +289,10 @@ export default function Network() {
         loadPendingRequests(user.id)
       ]);
 
-      alert('Connection request accepted!');
+      showSuccess('Connection request accepted!');
     } catch (err) {
       console.error('Error accepting connection:', err);
-      alert('Failed to accept connection request');
+      showError('Failed to accept connection request');
     }
   };
 
@@ -288,64 +305,48 @@ export default function Network() {
 
       if (error) {
         console.error('Error rejecting connection:', error);
-        alert('Failed to reject connection request');
+        showError('Failed to reject connection request');
         return;
       }
 
-      // Remove from pending received requests
-      setPendingReceived(prev => prev.filter(req => req.id !== connectionId));
-      alert('Connection request rejected');
+      await loadPendingRequests(user.id);
+      showSuccess('Connection request rejected');
     } catch (err) {
       console.error('Error rejecting connection:', err);
-      alert('Failed to reject connection request');
+      showError('Failed to reject connection request');
     }
   };
 
   const handleSendConnectionRequest = async (receiverId) => {
-    console.log('🔍 DEBUG: handleSendConnectionRequest called with:', {
-      receiverId,
-      user: user?.id,
-      userEmail: user?.email,
-      userMetadata: user?.user_metadata
-    });
-
     if (!user) {
-      alert('Please log in to send connection requests');
+      showWarning('Please log in to send connection requests');
       return;
     }
 
     if (!receiverId) {
-      console.error('❌ receiverId is null/undefined');
-      alert('Invalid recipient for connection request');
+      showError('Invalid recipient for connection request');
       return;
     }
 
     try {
-      console.log('📝 Inserting connection request:', {
-          requester_id: user.id,
-          receiver_id: receiverId,
-          status: 'pending'
-        });
-
-      // TEMPORARILY: Use RPC to avoid notification schema trigger issues
-      const { data, error: connectionError } = await supabase.rpc('create_connection_safely', {
-        req_id: user.id,
-        rec_id: receiverId
+      const { data, error: connectionError } = await supabase.rpc('create_connection_request', {
+        requester_id: user.id,
+        receiver_id: receiverId
       });
-      
+
       if (connectionError) {
-        console.error('RPC Error sending connection request:', connectionError);
-        alert('Failed to send connection request: ' + connectionError.message);
+        console.error('Error sending connection request:', connectionError);
+        showError('Failed to send connection request: ' + connectionError.message);
         return;
       }
       
       // Check if the function returned an error
-      if (data && data.error) {
+      if (data?.error) {
         console.error('Function returned error:', data);
         if (data.code === '23505') {
-          alert('Connection request already sent or you are already connected!');
+          showWarning('Connection request already sent or you are already connected!');
         } else {
-          alert('Failed to send connection request: ' + data.error);
+          showError('Failed to send connection request: ' + data.error);
         }
         return;
       }
@@ -357,10 +358,10 @@ export default function Network() {
 
       // Remove from suggestions
       setSuggestions(prev => prev.filter(s => s.id !== receiverId));
-      alert('Connection request sent!');
+      showSuccess('Connection request sent!');
     } catch (err) {
       console.error('Error sending connection request:', err);
-      alert('Failed to send connection request');
+      showError('Failed to send connection request');
     }
   };
 
@@ -401,7 +402,7 @@ export default function Network() {
             className="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100 transition-all"
             onClick={() => setShowConnectionMenu(showConnectionMenu === connection.id ? null : connection.id)}
           >
-            <HiDotsVertical className="w-5 h-5" />
+            <HiEllipsisVertical className="w-5 h-5" />
           </button>
           
           {showConnectionMenu === connection.id && (
@@ -431,7 +432,7 @@ export default function Network() {
                 
                 <button
                   onClick={() => {
-                    alert(`Reported ${connection.name}`);
+                    showSuccess(`Reported ${connection.name}`);
                     setShowConnectionMenu(null);
                   }}
                   className="flex items-center w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-100 transition-colors"
@@ -521,7 +522,7 @@ export default function Network() {
             </div>
             
             <div className="relative w-full sm:w-64">
-              <HiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500" />
+              <HiMagnifyingGlass className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500" />
               <input
                 type="text"
                 placeholder="Search connections..."
@@ -763,7 +764,7 @@ export default function Network() {
           
           <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
             <div className="flex items-center space-x-3">
-              <HiUserAdd className="w-6 h-6 text-green-600" />
+              <HiUserPlus className="w-6 h-6 text-green-600" />
               <span className="font-medium">Suggestions</span>
             </div>
             <span className="text-xl font-bold text-green-600">{suggestions.length}</span>
@@ -771,7 +772,7 @@ export default function Network() {
           
           <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
             <div className="flex items-center space-x-3">
-              <HiCalendar className="w-6 h-6 text-purple-600" />
+              <HiCalendarDays className="w-6 h-6 text-purple-600" />
               <span className="font-medium">Events</span>
             </div>
             <span className="text-xl font-bold text-purple-600">3</span>

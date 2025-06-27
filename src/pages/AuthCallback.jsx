@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { auth } from '../lib/supabase'
+import { auth, supabase } from '../lib/supabase'
 
 /**
  * OAuth Callback Page
@@ -12,6 +12,52 @@ export default function AuthCallback() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const navigate = useNavigate()
+
+  // Extract common session establishment logic
+  const handleSessionEstablishment = async (flowType) => {
+    console.log(`✅ ${flowType} authentication initiated...`);
+    
+    // Retry mechanism for session establishment
+    let retries = 0;
+    const maxRetries = 5;
+    let session = null;
+    
+    while (retries < maxRetries && !session) {
+      const result = await auth.getSession();
+      session = result.session;
+      if (!session) {
+        const delay = Math.min(1000 * Math.pow(2, retries), 5000);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        retries++;
+      }
+    }
+    
+    if (!session?.user) {
+      throw new Error('Authentication completed but no session was created');
+    }
+    
+    console.log(`✅ ${flowType} authentication successful:`, session.user.email);
+    console.log('Provider:', session.user.app_metadata?.provider);
+    
+    // Poll the DB until the "profiles" row exists (instead of a fixed timeout)
+    let profileCreated = false;
+    let attempts = 0;
+    while (!profileCreated && attempts < 10) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', session.user.id)
+        .single();
+      if (profile) {
+        profileCreated = true;
+      } else {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        attempts++;
+      }
+    }
+    
+    return session;
+  };
 
   useEffect(() => {
     const handleAuthCallback = async () => {
@@ -34,65 +80,11 @@ export default function AuthCallback() {
         const accessToken = hashParams.get('access_token')
         
         if (code) {
-          console.log('✅ OAuth code received, exchanging for session...')
-          
-          // For OAuth callback, we need to wait a moment for the session to be established
-          await new Promise(resolve => setTimeout(resolve, 1000))
-          
-          const { session, error: sessionError } = await auth.getSession()
-
-          if (sessionError) {
-            console.error('Session error after OAuth:', sessionError)
-            setError('Failed to establish session after OAuth')
-            setLoading(false)
-            return
-          }
-
-          if (session?.user) {
-            console.log('✅ OAuth authentication successful:', session.user.email)
-            console.log('Provider:', session.user.app_metadata?.provider)
-            console.log('User metadata:', session.user.user_metadata)
-            
-            // Give time for database triggers to create profile
-            await new Promise(resolve => setTimeout(resolve, 2000))
-            
-            // Redirect to home page after successful authentication
-            navigate('/', { replace: true })
-          } else {
-            console.warn('⚠️ No session found after code exchange')
-            setError('Authentication completed but no session was created')
-            setLoading(false)
-          }
+          await handleSessionEstablishment('OAuth code exchange');
+          navigate('/', { replace: true });
         } else if (accessToken) {
-          console.log('✅ Access token received (implicit flow)...')
-          
-          // For implicit flow, the session should be automatically established
-          // Wait a moment for the session to be available
-          await new Promise(resolve => setTimeout(resolve, 1000))
-          
-          const { session, error: sessionError } = await auth.getSession()
-
-          if (sessionError) {
-            console.error('Session error after implicit flow:', sessionError)
-            setError('Failed to establish session')
-            setLoading(false)
-            return
-          }
-
-          if (session?.user) {
-            console.log('✅ Implicit flow authentication successful:', session.user.email)
-            console.log('Provider:', session.user.app_metadata?.provider)
-            
-            // Give time for database triggers to create profile
-            await new Promise(resolve => setTimeout(resolve, 2000))
-            
-            // Redirect to home page after successful authentication
-            navigate('/', { replace: true })
-          } else {
-            console.warn('⚠️ No session found after implicit flow')
-            setError('Authentication completed but no session was created')
-            setLoading(false)
-          }
+          await handleSessionEstablishment('Implicit flow');
+          navigate('/', { replace: true });
         } else {
           // No code parameter - might be a direct access
           console.log('ℹ️ No OAuth code found, checking existing session...')
@@ -109,7 +101,7 @@ export default function AuthCallback() {
         }
       } catch (err) {
         console.error('OAuth callback error:', err)
-        setError('Authentication failed. Please try again.')
+        setError(err.message || 'Authentication failed. Please try again.')
         setLoading(false)
       }
     }

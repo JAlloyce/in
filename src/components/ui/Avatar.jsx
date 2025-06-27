@@ -22,12 +22,12 @@ const Avatar = forwardRef(({
   const [imageError, setImageError] = useState(false)
 
   const sizeClasses = {
-    xs: 'w-6 h-6 text-xs',
-    sm: 'w-8 h-8 text-sm',
-    md: 'w-10 h-10 text-base',
-    lg: 'w-12 h-12 text-lg',
-    xl: 'w-16 h-16 text-xl',
-    '2xl': 'w-20 h-20 text-2xl'
+    xs: 'w-6 h-6 text-xs min-w-[24px] min-h-[24px]',
+    sm: 'w-8 h-8 text-sm min-w-[32px] min-h-[32px]',
+    md: 'w-10 h-10 text-base min-w-[40px] min-h-[40px]',
+    lg: 'w-12 h-12 text-lg min-w-[48px] min-h-[48px]',
+    xl: 'w-16 h-16 text-xl min-w-[64px] min-h-[64px]',
+    '2xl': 'w-20 h-20 text-2xl min-w-[80px] min-h-[80px]'
   }
 
   const variantClasses = {
@@ -68,7 +68,7 @@ const Avatar = forwardRef(({
     'transition-all duration-200'
   ]
 
-  const clickableClasses = onClick ? 'cursor-pointer hover:opacity-80' : ''
+  const clickableClasses = onClick ? 'cursor-pointer hover:opacity-80 touch-target focus-visible mobile-safe' : ''
 
   const allClasses = [
     ...baseClasses,

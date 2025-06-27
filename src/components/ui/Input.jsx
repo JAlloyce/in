@@ -31,9 +31,9 @@ const Input = forwardRef(({
   ]
 
   const sizeClasses = {
-    sm: 'h-8 px-3 text-sm',
-    md: 'h-10 px-4 text-sm',
-    lg: 'h-12 px-5 text-base'
+    sm: 'h-10 px-3 text-base min-h-[44px]',
+    md: 'h-11 px-4 text-base min-h-[44px]',
+    lg: 'h-12 px-5 text-lg min-h-[44px]'
   }
 
   const variantClasses = {

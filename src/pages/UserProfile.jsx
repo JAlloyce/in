@@ -183,7 +183,7 @@ export default function UserProfile() {
         throw new Error(error.message);
       }
 
-      if (data && data.error) {
+      if (data?.error) {
         throw new Error(data.error);
       }
 
@@ -279,8 +279,7 @@ export default function UserProfile() {
             <span>Request Pending</span>
           </div>
         );
-      case 'none':
-      default:
+        default:
         return (
           <button
             onClick={handleSendConnectionRequest}

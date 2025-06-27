@@ -26,6 +26,13 @@ export default function TasksPanel({ tasks: propTasks = [], onTaskComplete, topi
     }
   }, [propTasks, topics]);
 
+  useEffect(() => {
+    if (error) {
+      const timeoutId = setTimeout(() => setError(null), 5000);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [error]);
+
   const refreshTasks = async () => {
     setLoading(true);
     try {
@@ -34,7 +41,6 @@ export default function TasksPanel({ tasks: propTasks = [], onTaskComplete, topi
     } catch (error) {
       console.error('Failed to refresh tasks:', error);
       setError('Failed to refresh tasks. Please try again.');
-      setTimeout(() => setError(null), 5000);
     } finally {
       setLoading(false);
     }
@@ -63,7 +69,6 @@ export default function TasksPanel({ tasks: propTasks = [], onTaskComplete, topi
       
       console.error('Failed to update task:', error);
       setError('Failed to update task. Please try again.');
-      setTimeout(() => setError(null), 5000);
     }
   };
 
@@ -75,7 +80,6 @@ export default function TasksPanel({ tasks: propTasks = [], onTaskComplete, topi
     } catch (error) {
       console.error('Failed to create task:', error);
       setError('Failed to create task. Please try again.');
-      setTimeout(() => setError(null), 5000);
     }
   };
   
@@ -335,6 +339,8 @@ const CreateTaskModal = ({ topics, onClose, onTaskCreated }) => {
   const [dueDate, setDueDate] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  
+  const minDate = useMemo(() => new Date().toISOString().split('T')[0], []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -476,7 +482,7 @@ const CreateTaskModal = ({ topics, onClose, onTaskCreated }) => {
                     type="date"
                     value={dueDate}
                     onChange={(e) => setDueDate(e.target.value)}
-                    min={new Date().toISOString().split('T')[0]}
+                    min={minDate}
                     className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>

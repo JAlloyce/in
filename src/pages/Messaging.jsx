@@ -25,12 +25,13 @@ import {
   HiSearch, HiPaperClip, HiEmojiHappy, HiMicrophone, 
   HiPaperAirplane, HiDotsVertical, HiOutlinePhone, 
   HiOutlineReply, HiOutlineDuplicate, HiX, HiOutlineUserCircle,
-  HiFlag, HiEyeOff, HiLogin, HiTrash, HiDotsHorizontal
+  HiFlag, HiEyeOff, HiLogin, HiTrash, HiDotsHorizontal, HiArrowLeft
 } from "react-icons/hi"
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { ErrorBoundary } from '../components/ui';
 import { Link, useLocation } from 'react-router-dom';
+import { useNotification } from '../context/NotificationContext';
 
 /**
  * Messaging Page Component - Real-time Database Communication Hub
@@ -44,6 +45,7 @@ import { Link, useLocation } from 'react-router-dom';
  */
 export default function Messaging() {
   const { user, profile, isAuthenticated, loading: authLoading } = useAuth();
+  const { showSuccess, showError, showWarning } = useNotification();
   const location = useLocation();
   
   const [conversations, setConversations] = useState([]);
@@ -363,7 +365,7 @@ export default function Messaging() {
         console.error('❌ Failed to store message in database:', dbError);
         // Remove the optimistic message since it failed to save
         setConversationMessages(prev => prev.filter(msg => msg.id !== newMessage.id));
-        alert('Failed to send message. Please try again.');
+        showError('Failed to send message. Please try again.');
         return;
       } else {
         console.log('✅ Message stored in database:', insertedMessage);
@@ -379,6 +381,7 @@ export default function Messaging() {
       console.error('Failed to send message:', err);
       // Remove the optimistic message if sending failed
       setConversationMessages(prev => prev.filter(msg => msg.id !== newMessage.id));
+      showError('Failed to send message. Please try again.');
     }
   };
 
@@ -540,8 +543,7 @@ export default function Messaging() {
       console.log('🗑️ Deleting message:', messageId);
       
       // Confirm deletion
-      const confirmed = window.confirm('Are you sure you want to delete this message?');
-      if (!confirmed) return;
+      if (!window.confirm('Are you sure you want to delete this message?')) return;
       
       // Update message in database to mark as deleted (content-based approach)
       const { error: updateError } = await supabase
@@ -554,7 +556,7 @@ export default function Messaging() {
       
       if (updateError) {
         console.error('❌ Error deleting message:', updateError);
-        alert('Failed to delete message. Please try again.');
+        showError('Failed to delete message. Please try again.');
         return;
       }
       
@@ -578,9 +580,10 @@ export default function Messaging() {
       }
       
       console.log('✅ Message deleted successfully');
+      showSuccess('Message deleted successfully');
     } catch (err) {
       console.error('❌ Error in deleteMessage:', err);
-      alert('Failed to delete message: ' + err.message);
+      showError('Failed to delete message: ' + err.message);
     }
   };
 
@@ -592,10 +595,9 @@ export default function Messaging() {
       console.log('🗑️ Deleting conversation:', conversationId);
       
       // Confirm deletion
-      const confirmed = window.confirm(
-        'Are you sure you want to delete this entire conversation? This action cannot be undone.'
-      );
-      if (!confirmed) return;
+      if (!window.confirm('Are you sure you want to delete this entire conversation? This action cannot be undone.')) {
+        return;
+      }
       
       // First, check if the user is a participant in this conversation
       const { data: conversation, error: checkError } = await supabase
@@ -606,14 +608,14 @@ export default function Messaging() {
       
       if (checkError || !conversation) {
         console.error('❌ Error finding conversation:', checkError);
-        alert('Conversation not found or access denied.');
+        showWarning('Conversation not found or access denied.');
         return;
       }
       
       // Verify user is a participant
       if (conversation.participant_1_id !== user.id && conversation.participant_2_id !== user.id) {
         console.error('❌ User is not a participant in this conversation');
-        alert('You can only delete conversations you are part of.');
+        showWarning('You can only delete conversations you are part of.');
         return;
       }
       
@@ -627,7 +629,7 @@ export default function Messaging() {
       
       if (messagesError) {
         console.error('❌ Error deleting messages:', messagesError);
-        alert('Failed to delete conversation messages: ' + messagesError.message);
+        showError('Failed to delete conversation messages: ' + messagesError.message);
         return;
       }
       
@@ -641,7 +643,7 @@ export default function Messaging() {
       
       if (conversationError) {
         console.error('❌ Error deleting conversation:', conversationError);
-        alert('Failed to delete conversation: ' + conversationError.message);
+        showError('Failed to delete conversation: ' + conversationError.message);
         return;
       }
       
@@ -656,15 +658,13 @@ export default function Messaging() {
       }
       
       // Refresh conversations list to ensure consistency with database
-      setTimeout(() => {
-        loadConversations(user.id);
-      }, 500);
+      await loadConversations(user.id);
       
       console.log('✅ Conversation deleted successfully');
-      alert('Conversation deleted successfully');
+      showSuccess('Conversation deleted successfully');
     } catch (err) {
       console.error('❌ Error in deleteConversation:', err);
-      alert('Failed to delete conversation: ' + err.message);
+      showError('Failed to delete conversation: ' + err.message);
     }
   };
 
@@ -705,8 +705,8 @@ export default function Messaging() {
       <div className="min-h-screen bg-gray-50">
         <div className="max-w-7xl mx-auto bg-white">
           <div className="flex h-screen">
-            {/* Conversations Sidebar */}
-            <div className="w-80 border-r border-gray-200 flex flex-col">
+            {/* Conversations Sidebar - Responsive behavior */}
+            <div className={`${activeConversation ? 'hidden md:flex' : 'flex'} w-full md:w-80 flex-col border-r border-gray-200`}>
               {/* Header */}
               <div className="p-4 border-b border-gray-200">
                 <h1 className="text-xl font-semibold text-gray-900 mb-4">Messages</h1>
@@ -719,7 +719,8 @@ export default function Messaging() {
                     placeholder="Search conversations..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent touch-target"
+                    style={{ fontSize: '16px' }}
                   />
                 </div>
               </div>
@@ -740,23 +741,23 @@ export default function Messaging() {
                   filteredConversations.map((conversation) => (
                     <div
                       key={conversation.id}
-                      className={`relative group p-4 hover:bg-gray-50 cursor-pointer border-b border-gray-100 transition-colors ${
+                      className={`relative group p-5 hover:bg-gray-50 cursor-pointer border-b border-gray-100 transition-colors ${
                         activeConversation?.id === conversation.id ? 'bg-blue-50 border-blue-200' : ''
                       }`}
                     >
                       <div 
                         onClick={() => openConversation(conversation)}
-                        className="flex items-center space-x-3"
+                        className="flex items-center gap-4"
                       >
-                        <div className="relative">
+                        <div className="relative flex-shrink-0">
                           {conversation.avatar ? (
                             <img
                               src={conversation.avatar}
                               alt={conversation.name}
-                              className="w-12 h-12 rounded-full object-cover"
+                              className="w-12 h-12 md:w-14 md:h-14 rounded-full object-cover"
                             />
                           ) : (
-                            <div className="w-12 h-12 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
+                            <div className="w-12 h-12 md:w-14 md:h-14 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
                               <span className="text-white font-semibold text-lg">
                                 {conversation.name.charAt(0).toUpperCase()}
                               </span>
@@ -769,11 +770,11 @@ export default function Messaging() {
                         
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between">
-                            <h3 className="font-medium text-gray-900 truncate">{conversation.name}</h3>
-                            <span className="text-xs text-gray-500">{conversation.time}</span>
+                            <h3 className="font-medium text-lg text-gray-900 truncate">{conversation.name}</h3>
+                            <span className="text-sm text-gray-500 flex-shrink-0 ml-2">{conversation.time}</span>
                           </div>
                           <p className="text-sm text-gray-500 truncate">{conversation.position}</p>
-                          <p className="text-sm text-gray-600 truncate mt-1">{conversation.lastMessage}</p>
+                          <p className="text-base text-gray-600 truncate mt-1">{conversation.lastMessage}</p>
                         </div>
                       </div>
                       
@@ -783,8 +784,9 @@ export default function Messaging() {
                           e.stopPropagation();
                           deleteConversation(conversation.id);
                         }}
-                        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-all duration-200"
+                        className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-all duration-200 touch-target focus-visible"
                         title="Delete conversation"
+                        aria-label="Delete conversation"
                       >
                         <HiTrash className="w-4 h-4" />
                       </button>
@@ -794,13 +796,21 @@ export default function Messaging() {
               </div>
             </div>
 
-            {/* Chat Area */}
-            <div className="flex-1 flex flex-col">
-              {activeConversation ? (
-                <>
-                  {/* Chat Header */}
-                  <div className="p-4 border-b border-gray-200 bg-white">
-                    <div className="flex items-center justify-between">
+            {/* Chat Area - Full screen on mobile when active */}
+            {activeConversation && (
+              <div className="flex-1 flex flex-col bg-white fixed inset-0 md:static z-40 md:z-auto">
+                {/* Chat Header */}
+                <div className="p-4 border-b border-gray-200 bg-white relative">
+                  {/* Back button for mobile */}
+                  <button 
+                    onClick={closeConversation}
+                    className="md:hidden absolute left-4 top-1/2 transform -translate-y-1/2 p-2 rounded-full bg-gray-100 hover:bg-gray-200 touch-target focus-visible"
+                    aria-label="Back to conversations"
+                  >
+                    <HiArrowLeft className="w-5 h-5 text-gray-700" />
+                  </button>
+                  
+                  <div className="flex items-center justify-between md:justify-start pl-12 md:pl-0">
                       <div className="flex items-center space-x-3">
                         {activeConversation.avatar ? (
                           <img
@@ -822,20 +832,22 @@ export default function Messaging() {
                         </div>
                       </div>
                       
-                      <div className="flex items-center space-x-2">
-                        <button className="p-2 text-gray-600 hover:bg-gray-100 rounded-md">
+                      <div className="flex items-center space-x-1 md:space-x-2">
+                        <button className="p-2 md:p-3 text-gray-600 hover:bg-gray-100 rounded-md touch-target focus-visible">
                           <HiOutlinePhone className="w-5 h-5" />
                         </button>
                         <button 
                           onClick={() => deleteConversation(activeConversation.id)}
-                          className="p-2 text-gray-600 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors"
+                          className="p-2 md:p-3 text-gray-600 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors touch-target focus-visible"
                           title="Delete conversation"
+                          aria-label="Delete conversation"
                         >
                           <HiTrash className="w-5 h-5" />
                         </button>
                         <button 
                           onClick={closeConversation}
-                          className="p-2 text-gray-600 hover:bg-gray-100 rounded-md"
+                          className="hidden md:block p-2 md:p-3 text-gray-600 hover:bg-gray-100 rounded-md touch-target focus-visible"
+                          aria-label="Close conversation"
                         >
                           <HiX className="w-5 h-5" />
                         </button>
@@ -843,9 +855,9 @@ export default function Messaging() {
                     </div>
                   </div>
 
-                  {/* Messages */}
+                  {/* Messages - Enhanced mobile spacing */}
                   <div 
-                    className="flex-1 overflow-y-auto p-4 space-y-2"
+                    className="flex-1 overflow-y-auto p-4 space-y-4"
                   >
                     {conversationMessages.map((msg, index) => {
                       const isOwnMessage = msg.isOwnMessage;
@@ -854,8 +866,8 @@ export default function Messaging() {
                         (new Date(msg.created_at) - new Date(conversationMessages[index - 1]?.created_at)) > 300000; // 5 min gap
                       
                       return (
-                        <div key={msg.id} className={`flex mt-2 group ${isOwnMessage ? 'justify-end' : 'justify-start'}`}>
-                          <div className={`max-w-[75%] w-fit flex flex-col gap-1 ${isOwnMessage ? 'items-end' : 'items-start'}`}>
+                        <div key={msg.id} className={`flex mt-4 group ${isOwnMessage ? 'justify-end' : 'justify-start'}`}>
+                          <div className={`w-fit flex flex-col gap-1 ${isOwnMessage ? 'items-end' : 'items-start'}`} style={{ maxWidth: 'min(75vw, 500px)' }}>
                             {showHeader && (
                               <div className={`flex items-center gap-2 text-xs px-3 ${isOwnMessage ? 'justify-end flex-row-reverse' : ''}`}>
                                 <span className="font-medium">{msg.sender_name}</span>
@@ -870,13 +882,18 @@ export default function Messaging() {
                             )}
                             <div className="relative flex items-center gap-2">
                               <div
-                                className={`py-2 px-3 rounded-xl text-sm w-fit relative ${
+                                className={`py-3 px-4 rounded-2xl text-base w-fit relative ${
                                   msg.isDeleted 
                                     ? 'bg-gray-200 text-gray-500 italic'
                                     : isOwnMessage 
-                                      ? 'bg-blue-600 text-white rounded-br-sm' 
-                                      : 'bg-gray-100 text-gray-900 rounded-bl-sm'
+                                      ? 'bg-blue-600 text-white rounded-br-none' 
+                                      : 'bg-gray-100 text-gray-900 rounded-bl-none'
                                 }`}
+                                style={{
+                                  maxWidth: 'min(75vw, 500px)',
+                                  wordBreak: 'break-word',
+                                  whiteSpace: 'pre-wrap'
+                                }}
                               >
                                 {msg.content}
                               </div>
@@ -888,8 +905,9 @@ export default function Messaging() {
                                     e.stopPropagation();
                                     deleteMessage(msg.id);
                                   }}
-                                  className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-500 transition-all duration-200"
+                                  className="opacity-0 group-hover:opacity-100 p-2 text-gray-400 hover:text-red-500 transition-all duration-200 touch-target focus-visible"
                                   title="Delete message"
+                                  aria-label="Delete message"
                                 >
                                   <HiTrash className="w-4 h-4" />
                                 </button>
@@ -910,16 +928,15 @@ export default function Messaging() {
                     <div ref={messagesEndRef} />
                   </div>
 
-                  {/* Message Input */}
+                  {/* Message Input - Enhanced for mobile */}
                   <div className="p-4 border-t border-gray-200 bg-white">
-                    <div className="flex items-center space-x-3">
-                      <button className="p-2 text-gray-600 hover:bg-gray-100 rounded-md">
+                    <div className="flex items-center gap-2">
+                      <button className="p-2 text-gray-600 hover:bg-gray-100 rounded-md touch-target focus-visible">
                         <HiPaperClip className="w-5 h-5" />
                       </button>
                       
                       <div className="flex-1 relative">
-                        <input
-                          type="text"
+                        <textarea
                           placeholder="Type a message..."
                           value={message}
                           onChange={(e) => setMessage(e.target.value)}
@@ -929,35 +946,38 @@ export default function Messaging() {
                               handleSendMessage();
                             }
                           }}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-full focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          rows={1}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-full focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none min-h-[44px] max-h-32"
+                          style={{ lineHeight: '1.25rem', fontSize: '16px' }}
                         />
                       </div>
                       
-                      <button className="p-2 text-gray-600 hover:bg-gray-100 rounded-md">
+                      <button className="p-2 text-gray-600 hover:bg-gray-100 rounded-md touch-target focus-visible">
                         <HiEmojiHappy className="w-5 h-5" />
                       </button>
                       
                       <button
                         onClick={handleSendMessage}
                         disabled={!message.trim()}
-                        className="p-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        className="p-3 bg-blue-600 text-white rounded-full hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors touch-target focus-visible"
                       >
                         <HiPaperAirplane className="w-5 h-5" />
                       </button>
                     </div>
                   </div>
-                </>
-              ) : (
-                /* No Conversation Selected */
-                <div className="flex-1 flex items-center justify-center bg-gray-50">
-                  <div className="text-center">
-                    <HiOutlineUserCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">Select a conversation</h3>
-                    <p className="text-gray-600">Choose a conversation from the sidebar to start messaging</p>
-                  </div>
                 </div>
-              )}
-            </div>
+            )}
+            
+            {/* No Conversation Selected - Only show when no active conversation */}
+            {!activeConversation && (
+              <div className="flex-1 flex items-center justify-center bg-gray-50">
+                <div className="text-center">
+                  <HiOutlineUserCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">Select a conversation</h3>
+                  <p className="text-gray-600">Choose a conversation from the sidebar to start messaging</p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
