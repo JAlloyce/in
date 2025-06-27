@@ -26,6 +26,7 @@ export default function Sidebar() {
   const { isSettingsOpen, openSettings, closeSettings, isAnyModalOpen } = useModal();
   const [userStats, setUserStats] = useState({ profileViewers: 0, postImpressions: 0 });
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const isWorkspace = location.pathname.startsWith("/workspace");
   
@@ -50,6 +51,7 @@ export default function Sidebar() {
 
       if (postsError) {
         console.error('Error loading posts:', postsError);
+        setError('Failed to load post data');
       }
 
       // Use likes_count as a proxy for impressions since views_count doesn't exist
@@ -65,6 +67,8 @@ export default function Sidebar() {
 
       if (connectionsError) {
         console.error('Error loading connections:', connectionsError);
+        setError('Failed to load connection data');
+        return;
       }
 
       // Calculate profile viewers based on actual data without random component
@@ -76,11 +80,14 @@ export default function Sidebar() {
       });
     } catch (error) {
       console.error('Error loading user stats:', error);
+      setError('Failed to load user statistics');
     } finally {
       setLoading(false);
     }
   };
 
+  const PUBLIC_MENU_PATHS = ['/', '/jobs', '/pages'];
+  
   const menuItems = [
     { icon: HiUser, text: "Your Profile", path: "/profile", color: "text-blue-500" },
     { icon: HiUserGroup, text: "Communities", path: "/communities", color: "text-purple-500" },
@@ -111,7 +118,7 @@ export default function Sidebar() {
             
             <div className="border-t">
               <ul className="p-4 space-y-2">
-                {menuItems.filter(item => item.path === '/' || item.path === '/jobs' || item.path === '/pages').map((item, index) => (
+                {menuItems.filter(item => PUBLIC_MENU_PATHS.includes(item.path)).map((item, index) => (
                   <li key={index}>
                     <Link 
                       to={item.path}
@@ -161,18 +168,32 @@ export default function Sidebar() {
               </p>
 
               <div className="border-t pt-3 space-y-1">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Profile viewers</span>
-                  <span className="text-blue-600 font-medium">
-                    {loading ? '...' : userStats.profileViewers}
-                  </span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Post impressions</span>
-                  <span className="text-blue-600 font-medium">
-                    {loading ? '...' : userStats.postImpressions}
-                  </span>
-                </div>
+                {error ? (
+                  <div className="text-xs text-red-600 bg-red-50 p-2 rounded border border-red-200">
+                    {error}
+                    <button 
+                      onClick={() => setError(null)}
+                      className="ml-2 text-red-500 hover:text-red-700"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Profile viewers</span>
+                      <span className="text-blue-600 font-medium">
+                        {loading ? '...' : userStats.profileViewers}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Post impressions</span>
+                      <span className="text-blue-600 font-medium">
+                        {loading ? '...' : userStats.postImpressions}
+                      </span>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>

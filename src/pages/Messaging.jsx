@@ -37,6 +37,7 @@ export default function Messaging() {
   const [searchQuery, setSearchQuery] = useState("");
   const [toastMessage, setToastMessage] = useState(null);
   const messagesEndRef = useRef(null);
+  const subscriptionRef = useRef(null);
   
   // Real-time subscription
   const [subscription, setSubscription] = useState(null);
@@ -283,7 +284,8 @@ export default function Messaging() {
 
     } catch (err) {
       console.error('Error sending message:', err);
-      alert('Failed to send message');
+      setToastMessage('Failed to send message');
+      setTimeout(() => setToastMessage(null), 3000);
     } finally {
       setSendingMessage(false);
     }
@@ -308,8 +310,9 @@ export default function Messaging() {
     await loadMessages(conversation.id);
     
     // Set up real-time subscription for this conversation
-    if (subscription) {
-      subscription.unsubscribe();
+    if (subscriptionRef.current) {
+      subscriptionRef.current.unsubscribe();
+      subscriptionRef.current = null;
     }
     
     const newSubscription = supabase
@@ -338,7 +341,7 @@ export default function Messaging() {
       )
       .subscribe();
     
-    setSubscription(newSubscription);
+    subscriptionRef.current = newSubscription;
   };
 
   const closeConversation = () => {
@@ -349,9 +352,9 @@ export default function Messaging() {
     setConversationMessages([]);
     
     // Unsubscribe from real-time updates
-    if (subscription) {
-      subscription.unsubscribe();
-      setSubscription(null);
+    if (subscriptionRef.current) {
+      subscriptionRef.current.unsubscribe();
+      subscriptionRef.current = null;
     }
   };
 

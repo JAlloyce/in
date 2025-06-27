@@ -14,8 +14,9 @@ import workspaceService from '../../services/workspace';
 export default function TasksPanel({ tasks: propTasks = [], onTaskComplete, topics = [] }) {
   const [tasks, setTasks] = useState(propTasks);
   const [loading, setLoading] = useState(false);
-  const [expandedTopics, setExpandedTopics] = useState([]);
+  const [error, setError] = useState(null);
   const [showCreateTaskModal, setShowCreateTaskModal] = useState(false);
+  const [expandedTopics, setExpandedTopics] = useState([]);
 
   useEffect(() => {
     setTasks(propTasks);
@@ -54,8 +55,8 @@ export default function TasksPanel({ tasks: propTasks = [], onTaskComplete, topi
       ));
       
       console.error('Failed to update task:', error);
-      // You could add a toast notification here
-      alert('Failed to update task. Please try again.');
+      setError('Failed to update task. Please try again.');
+      setTimeout(() => setError(null), 5000);
     }
   };
 
@@ -122,6 +123,19 @@ export default function TasksPanel({ tasks: propTasks = [], onTaskComplete, topi
             style={{ width: `${completionPercentage}%` }}
           ></div>
         </div>
+
+        {/* Error Display */}
+        {error && (
+          <div className="mt-3 text-sm text-red-600 bg-red-50 p-3 rounded border border-red-200">
+            {error}
+            <button 
+              onClick={() => setError(null)}
+              className="ml-2 text-red-500 hover:text-red-700"
+            >
+              ×
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Tasks Content */}
