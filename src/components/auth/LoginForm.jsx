@@ -1,11 +1,13 @@
 import React, { useState } from 'react'
-import { auth } from '../../lib/supabase'
+import { supabase } from '../../lib/supabase'
+import { useAuth } from '../../context/AuthContext'
 import { FaGoogle, FaGithub, FaLinkedin } from 'react-icons/fa'
 
 export default function LoginForm({ onClose }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [debugInfo, setDebugInfo] = useState('')
+  const { signInWithProvider } = useAuth()
 
   const handleOAuthLogin = async (provider) => {
     try {
@@ -13,34 +15,27 @@ export default function LoginForm({ onClose }) {
       setError('')
       setDebugInfo('Starting OAuth flow...')
       
-      const redirectUrl = `${window.location.origin}/auth/callback`
-      
       console.log('🔍 OAuth Debug Info:')
       console.log('Provider:', provider)
       console.log('Current origin:', window.location.origin)
-      console.log('Redirect URL will be:', redirectUrl)
-      console.log('Full redirect URL:', redirectUrl)
       
-      let result
-      if (provider === 'google') {
-        setDebugInfo(`Calling auth.signInWithGoogle() with redirect: ${redirectUrl}`)
-        result = await auth.signInWithGoogle(redirectUrl)
-      } else if (provider === 'github') {
-        setDebugInfo(`Calling auth.signInWithGitHub() with redirect: ${redirectUrl}`)
-        result = await auth.signInWithGitHub(redirectUrl)
-      }
+      setDebugInfo(`Calling signInWithProvider('${provider}')...`)
+      
+      // Use the AuthContext method which properly handles OAuth
+      const result = await signInWithProvider(provider)
 
       console.log('🔍 OAuth Result:', result)
 
       if (result.error) {
         console.error('❌ OAuth Error Details:', result.error)
         setError(`OAuth Error: ${result.error.message}`)
-        setDebugInfo(`Error Code: ${result.error.code || 'N/A'}\nError Message: ${result.error.message}\nRedirect URL used: ${redirectUrl}`)
+        setDebugInfo(`Error: ${result.error.message}`)
       } else {
         console.log('✅ OAuth initiated successfully')
-        console.log('🔗 OAuth URL:', result.data?.url)
         setDebugInfo('OAuth URL generated, redirecting...')
-        // On success, user will be redirected by OAuth flow
+        // The AuthContext will handle the redirect
+        // Close the modal after successful initiation
+        if (onClose) onClose()
       }
     } catch (err) {
       console.error('❌ Exception during OAuth:', err)
@@ -54,7 +49,7 @@ export default function LoginForm({ onClose }) {
   const testSupabaseConnection = async () => {
     try {
       setDebugInfo('Testing Supabase connection...')
-      const { data, error } = await auth.getSession()
+      const { data, error } = await supabase.auth.getSession()
       if (error) {
         setDebugInfo(`Supabase connection failed: ${error.message}`)
       } else {

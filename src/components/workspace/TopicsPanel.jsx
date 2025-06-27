@@ -20,7 +20,7 @@ import {
 import { AnimatePresence, motion } from 'framer-motion';
 import { supabase } from '../../lib/supabase';
 import workspaceService from '../../services/workspace';
-import AITaskGenerator from './AITaskGenerator';
+import AILearningAssistant from './AILearningAssistant';
 import ocrService from '../../services/ocr';
 
 /**
@@ -36,7 +36,7 @@ export default function TopicsPanel({ topics: propTopics = [], onAiRequest, onSh
   const [showCreateTopicModal, setShowCreateTopicModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [topicToDelete, setTopicToDelete] = useState(null);
-  const [showAIGenerator, setShowAIGenerator] = useState(false);
+  const [showAILearningAssistant, setShowAILearningAssistant] = useState(false);
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth <= 768);
@@ -75,7 +75,7 @@ export default function TopicsPanel({ topics: propTopics = [], onAiRequest, onSh
     if (!selectedTopicId) return;
     await workspaceService.addAiGeneratedContent(selectedTopicId, aiResults);
     if (onRefresh) onRefresh();
-    setShowAIGenerator(false);
+    setShowAILearningAssistant(false);
     alert('AI content added successfully!');
   };
 
@@ -149,7 +149,7 @@ export default function TopicsPanel({ topics: propTopics = [], onAiRequest, onSh
             tasks={tasks.filter(t => t.topic_id === selectedTopic.id)}
             isMobile={isMobile}
             onBack={() => setSelectedTopicId(null)}
-            onShowAIGenerator={() => setShowAIGenerator(true)}
+            onShowAIGenerator={() => setShowAILearningAssistant(true)}
             onToggleMaterialComplete={handleToggleMaterialComplete}
           />
         )}
@@ -181,11 +181,11 @@ export default function TopicsPanel({ topics: propTopics = [], onAiRequest, onSh
         />
       )}
 
-      {showAIGenerator && selectedTopic && (
-        <AITaskGenerator
+      {showAILearningAssistant && selectedTopic && (
+        <AILearningAssistant
           topic={selectedTopic}
           onTasksGenerated={handleAITasksGenerated}
-          onClose={() => setShowAIGenerator(false)}
+          onClose={() => setShowAILearningAssistant(false)}
         />
       )}
             </div>

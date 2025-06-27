@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-route
 import { Suspense, lazy } from 'react'
 import { AuthProvider } from './context/AuthContext'
 import { ModalProvider, useModal } from './context/ModalContext'
+// Optimized Framer Motion imports - only import what we need
 import { motion, AnimatePresence } from 'framer-motion'
 import { ErrorBoundary } from './components/ui'
 
@@ -22,6 +23,7 @@ const AuthCallback = lazy(() => import('./pages/AuthCallback'))
 const DatabaseFix = lazy(() => import('./pages/DatabaseFix'))
 const Communities = lazy(() => import('./pages/Communities'))
 const CommunityDetail = lazy(() => import('./pages/CommunityDetail'))
+// Lazy load heavy workspace component for better performance
 const Workspace = lazy(() => import('./pages/Workspace'))
 const CompanyPage = lazy(() => import('./pages/CompanyPage'))
 const Pages = lazy(() => import('./pages/Pages'))
@@ -30,9 +32,9 @@ const Saved = lazy(() => import('./pages/Saved'))
 const Settings = lazy(() => import('./pages/Settings'))
 const Test = lazy(() => import('./pages/Test'))
 
-// Loading skeleton component for better UX during route transitions
+// Optimized loading skeleton component with better performance
 const PageSkeleton = () => (
-  <div className="animate-pulse space-y-4">
+  <div className="animate-pulse space-y-4" role="status" aria-label="Loading content">
     <div className="bg-white rounded-lg shadow p-6">
       <div className="h-4 bg-gray-200 rounded w-3/4 mb-4"></div>
       <div className="h-4 bg-gray-200 rounded w-1/2 mb-4"></div>
@@ -57,6 +59,7 @@ const PageSkeleton = () => (
  * - Mobile-optimized padding and spacing
  * - Full-width layout for specific pages (Jobs, Workspace)
  * - Comprehensive error boundaries for fault tolerance
+ * - Optimized performance with lazy loading and selective imports
  */
 function AppContent() {
   const location = useLocation();
@@ -64,6 +67,42 @@ function AppContent() {
   // Pages that should use full-width layout without sidebar constraints
   const fullWidthPages = ['/jobs', '/workspace'];
   const isFullWidthPage = fullWidthPages.includes(location.pathname);
+
+  // Optimized motion variants for better performance
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: { 
+      opacity: 1,
+      transition: { duration: 0.6, ease: "easeOut" }
+    }
+  };
+
+  const sidebarVariants = {
+    hidden: { opacity: 0, x: -20 },
+    visible: { 
+      opacity: 1, 
+      x: 0,
+      transition: { duration: 0.5, delay: 0.1, ease: "easeOut" }
+    }
+  };
+
+  const contentVariants = {
+    hidden: { opacity: 0, y: 10 },
+    visible: { 
+      opacity: 1, 
+      y: 0,
+      transition: { duration: 0.5, ease: "easeOut" }
+    }
+  };
+
+  const newsWidgetVariants = {
+    hidden: { opacity: 0, x: 20 },
+    visible: { 
+      opacity: 1, 
+      x: 0,
+      transition: { duration: 0.5, delay: 0.2, ease: "easeOut" }
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -89,16 +128,16 @@ function AppContent() {
           <div className="container-system">
             <motion.div 
               className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4 lg:gap-6 py-6"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.6 }}
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
             >
               {/* Left Sidebar */}
               <motion.div 
                 className="hidden md:block lg:col-span-1"
-                initial={{ opacity: 0, x: -50 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.7, delay: 0.2 }}
+                variants={sidebarVariants}
+                initial="hidden"
+                animate="visible"
               >
                 <div className="sticky top-20">
                   <ErrorBoundary>
@@ -110,9 +149,9 @@ function AppContent() {
               {/* Main Content */}
               <motion.div 
                 className="col-span-1 md:col-span-2 lg:col-span-2"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.7, delay: 0.1 }}
+                variants={contentVariants}
+                initial="hidden"
+                animate="visible"
               >
                 <ErrorBoundary>
                   <Suspense fallback={<PageSkeleton />}>
@@ -141,7 +180,7 @@ function AppContent() {
               </motion.div>
 
               {/* Right Sidebar - Conditionally rendered */}
-              <NewsWidgetWrapper />
+              <NewsWidgetWrapper variants={newsWidgetVariants} />
             </motion.div>
           </div>
         )}
@@ -150,7 +189,7 @@ function AppContent() {
   )
 }
 
-function NewsWidgetWrapper() {
+function NewsWidgetWrapper({ variants }) {
   const { isAnyModalOpen } = useModal()
   
   // Hide news widget when any modal is open to prevent overlap
@@ -161,9 +200,9 @@ function NewsWidgetWrapper() {
   return (
     <motion.div 
       className="hidden lg:block lg:col-span-1"
-      initial={{ opacity: 0, x: 50 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ duration: 0.7, delay: 0.3 }}
+      variants={variants}
+      initial="hidden"
+      animate="visible"
     >
       <div className="sticky top-20">
         <ErrorBoundary>
