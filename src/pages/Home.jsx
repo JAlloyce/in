@@ -206,7 +206,7 @@ export default function Home() {
       const post = feedPosts.find(p => p.id === postId)
       if (post.user_liked) {
         // Unlike the post
-        const { error } = await posts.unlike(postId, user.id)
+        const { error } = await posts.unlike(postId)
         if (error) throw error
         
         setFeedPosts(prev => prev.map(p => 
@@ -216,7 +216,7 @@ export default function Home() {
         ))
       } else {
         // Like the post
-        const { error } = await posts.like(postId, user.id)
+        const { error } = await posts.like(postId)
         if (error) throw error
         
         setFeedPosts(prev => prev.map(p => 
@@ -482,15 +482,13 @@ export default function Home() {
 
       {/* Post Actions */}
       <PostActions 
-        liked={post.user_liked}
-        onLike={() => handleLike(post.id)}
-        onComment={() => toggleComments(post.id)}
-        onShare={() => handleShare(post)}
-        onAiInsight={() => handleAiAnalysis(post)}
-        onBookmark={() => {}} // TODO: Implement bookmark functionality
-        isBookmarked={false} // TODO: Get from post data
-        onReport={() => alert('Post reported')}
-        onNotInterested={() => alert('Marked as not interested')}
+        postId={post.id}
+        likes={post.likes}
+        comments={post.comments}
+        shares={post.shares}
+        userLiked={post.user_liked}
+        onCommentToggle={() => toggleComments(post.id)}
+        post={post}
       />
 
       {/* AI Analysis */}
@@ -515,11 +513,34 @@ export default function Home() {
             {post.commentsList && post.commentsList.map(comment => (
               <Comment 
                 key={comment.id} 
-                user={comment.user?.name || 'Unknown User'}
+                id={comment.id}
+                user={comment.profiles?.name || comment.user?.name || 'Unknown User'}
+                userId={comment.author_id || comment.profiles?.id}
+                userAvatar={comment.profiles?.avatar_url || comment.user?.avatar_url}
+                role={comment.profiles?.headline || comment.user?.headline}
                 content={comment.content}
                 time={formatTimestamp(comment.created_at)}
                 likes={0}
                 liked={false}
+                postId={post.id}
+                parentId={comment.parent_id}
+                replies={comment.replies || []}
+                level={0}
+                onReplyAdded={(newReply) => {
+                  // Handle new reply - update the specific comment's replies
+                  setFeedPosts(prev => prev.map(p => 
+                    p.id === post.id 
+                      ? {
+                          ...p,
+                          commentsList: p.commentsList.map(c => 
+                            c.id === comment.id 
+                              ? { ...c, replies: [...(c.replies || []), newReply] }
+                              : c
+                          )
+                        }
+                      : p
+                  ));
+                }}
               />
             ))}
           </div>

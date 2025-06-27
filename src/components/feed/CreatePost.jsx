@@ -72,20 +72,34 @@ export default function CreatePost({ user, onPostCreated }) {
     if (mediaFiles.length === 0) return []
 
     const uploadedUrls = []
+    const uploadedFiles = [] // Track successful uploads for cleanup
     
     for (const [index, file] of mediaFiles.entries()) {
       const fileExt = file.name.split('.').pop()
       const fileName = `${user.id}/${Date.now()}_${index}_${Math.random().toString(36).substring(2)}.${fileExt}`
       
-      const { data, error } = await storage.uploadFile('post-media', fileName, file)
-      
-      if (error) {
-        console.error('Error uploading file:', error)
-        throw new Error(`Failed to upload ${file.name}`)
+      try {
+        const { data, error } = await storage.uploadFile('post-media', fileName, file)
+        
+        if (error) {
+          console.error('Error uploading file:', error)
+          // Clean up previously uploaded files
+          for (const uploadedFile of uploadedFiles) {
+            await storage.deleteFile('post-media', uploadedFile)
+          }
+          throw new Error(`Failed to upload ${file.name}`)
+        }
+        
+        const publicUrl = storage.getPublicUrl('post-media', fileName)
+        uploadedUrls.push(publicUrl)
+        uploadedFiles.push(fileName)
+      } catch (err) {
+        // Clean up on any error
+        for (const uploadedFile of uploadedFiles) {
+          await storage.deleteFile('post-media', uploadedFile)
+        }
+        throw err
       }
-      
-      const publicUrl = storage.getPublicUrl('post-media', fileName)
-      uploadedUrls.push(publicUrl)
     }
     
     return uploadedUrls

@@ -11,6 +11,9 @@ import { motion } from 'framer-motion';
  * - Reduced motion support
  */
 
+// Define static widths outside component to prevent re-creation
+const SKELETON_WIDTHS = ['60%', '75%', '85%', '65%', '90%'];
+
 const LoadingSpinner = ({ 
   size = 'md', 
   variant = 'primary', 
@@ -53,8 +56,10 @@ const LoadingSpinner = ({
       transition={{
         duration: 1,
         repeat: Infinity,
-        ease: "linear"
+        ease: "linear",
+        willChange: "transform"
       }}
+      style={{ willChange: "transform" }}
       aria-hidden="true"
     />
   );
@@ -119,8 +124,10 @@ export const InlineSpinner = ({ size = 'sm', variant = 'primary', className = ''
     transition={{
       duration: 1,
       repeat: Infinity,
-      ease: "linear"
+      ease: "linear",
+      willChange: "transform"
     }}
+    style={{ willChange: "transform" }}
     aria-hidden="true"
   />
 );
@@ -133,7 +140,7 @@ export const SkeletonLoader = ({ lines = 3, className = '' }) => (
         key={index}
         className="h-4 bg-gray-200 rounded animate-pulse"
         style={{
-          width: `${Math.random() * 40 + 60}%`
+          width: SKELETON_WIDTHS[index % SKELETON_WIDTHS.length]
         }}
         initial={{ opacity: 0.6 }}
         animate={{ opacity: [0.6, 1, 0.6] }}

@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { 
   HiSearch, HiPlus, HiX, HiPhotograph, HiGlobe, 
   HiLocationMarker, HiPhone, HiMail, HiClock,
-  HiStar, HiHeart, HiShare, HiEye, HiTrendingUp
+  HiStar, HiHeart, HiShare, HiEye, HiTrendingUp,
+  HiOfficeBuilding, HiUserGroup, HiBadgeCheck
 } from "react-icons/hi";
 import { FaBuilding, FaStore, FaGraduationCap, FaHospital } from "react-icons/fa";
 import { Link } from "react-router-dom";
@@ -10,7 +11,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 
 /**
- * Pages Component - Real Database Integration
+ * Pages Component - Modern Company/Organization Directory
  * 
  * Features:
  * - Real company/page data from Supabase
@@ -18,6 +19,7 @@ import { useAuth } from '../context/AuthContext';
  * - Follow/unfollow functionality
  * - Search companies with database queries
  * - Authentication protection
+ * - Modern, responsive UI design
  * - Loading states and error handling
  */
 export default function Pages() {
@@ -32,25 +34,27 @@ export default function Pages() {
   const [error, setError] = useState('');
   const [pageForm, setPageForm] = useState({
     name: "",
-    category: "",
+    industry: "",
     description: "",
     website: "",
     phone: "",
     email: "",
     location: "",
-    hours: "",
-    coverImage: null,
-    profileImage: null
+    business_hours: "",
+    logo_url: "",
+    cover_image_url: ""
   });
 
   const pageCategories = [
-    { value: "business", label: "Business", icon: FaBuilding },
+    { value: "technology", label: "Technology", icon: FaBuilding },
     { value: "retail", label: "Retail & Shopping", icon: FaStore },
     { value: "education", label: "Education", icon: FaGraduationCap },
     { value: "healthcare", label: "Healthcare", icon: FaHospital },
-    { value: "technology", label: "Technology", icon: FaBuilding },
+    { value: "finance", label: "Finance & Banking", icon: FaBuilding },
     { value: "nonprofit", label: "Non-Profit", icon: HiHeart },
     { value: "entertainment", label: "Entertainment", icon: HiStar },
+    { value: "manufacturing", label: "Manufacturing", icon: FaBuilding },
+    { value: "consulting", label: "Consulting", icon: FaBuilding },
     { value: "other", label: "Other", icon: FaBuilding }
   ];
 
@@ -86,7 +90,7 @@ export default function Pages() {
           const { data, error } = await supabase
             .from('companies')
             .select('*')
-            .or(`name.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`)
+            .or(`name.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,industry.ilike.%${searchQuery}%`)
             .limit(20);
           if (!error) {
             setFilteredPages(data || []);
@@ -106,17 +110,20 @@ export default function Pages() {
   const loadUserPages = async (userId) => {
     try {
       const { data, error } = await supabase
-        .from('company_follows')
+        .from('company_followers')
         .select(`
           *,
-          company:companies (
+          companies (
             id,
             name,
             description,
             industry,
             logo_url,
             follower_count,
-            verified
+            verified,
+            location,
+            website,
+            created_by
           )
         `)
         .eq('user_id', userId);
@@ -140,13 +147,13 @@ export default function Pages() {
         .from('companies')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(10);
+        .limit(12);
+      
       if (!error) {
-        // Add a follower_count field with dummy data for now
+        // Add follower count from the database
         const companiesWithCounts = (data || []).map(company => ({
           ...company,
-          follower_count: Math.floor(Math.random() * 10000) + 100,
-          category: company.industry || 'business'
+          follower_count: company.follower_count || 0
         }));
         setSuggestedPages(companiesWithCounts);
         setFilteredPages(companiesWithCounts);
@@ -162,8 +169,8 @@ export default function Pages() {
       return;
     }
 
-    if (!pageForm.name || !pageForm.category || !pageForm.description) {
-      setError("Please fill in all required fields");
+    if (!pageForm.name || !pageForm.industry || !pageForm.description) {
+      setError("Please fill in all required fields (Name, Industry, Description)");
       return;
     }
 
@@ -172,15 +179,19 @@ export default function Pages() {
       setError('');
 
       const newCompany = {
-        name: pageForm.name,
-        description: pageForm.description,
-        website: pageForm.website || null,
-        location: pageForm.location || null,
-        logo_url: null, // Could handle file upload later
-        banner_url: null, // Could handle file upload later
-        industry: pageForm.category || 'business',
-        size: null, // Could be added later
-        verified: false
+        name: pageForm.name.trim(),
+        description: pageForm.description.trim(),
+        website: pageForm.website?.trim() || null,
+        location: pageForm.location?.trim() || null,
+        industry: pageForm.industry,
+        phone: pageForm.phone?.trim() || null,
+        email: pageForm.email?.trim() || null,
+        business_hours: pageForm.business_hours?.trim() || null,
+        logo_url: null, // Remove placeholder URL
+        cover_image_url: null,
+        verified: false,
+        follower_count: 0,
+        created_by: user.id
       };
 
       const { data, error } = await supabase
@@ -190,29 +201,33 @@ export default function Pages() {
         .single();
       
       if (error) {
+        console.error('Database error:', error);
         setError(error.message);
         return;
       }
 
       if (data) {
-        // Reload user pages to include the new one
-        await loadUserPages(user.id);
+        // Automatically follow the created company
+        await handleFollowPage(data.id);
         
         // Reset form and close modal
         setPageForm({
           name: "",
-          category: "",
+          industry: "",
           description: "",
           website: "",
           phone: "",
           email: "",
           location: "",
-          hours: "",
-          coverImage: null,
-          profileImage: null
+          business_hours: "",
+          logo_url: "",
+          cover_image_url: ""
         });
         setShowCreateModal(false);
         setError('');
+        
+        // Refresh data
+        await loadSuggestedPages();
         console.log('✅ Page created successfully:', data.name);
       }
     } catch (err) {
@@ -220,6 +235,43 @@ export default function Pages() {
       setError('Failed to create page. Please try again.');
     } finally {
       setCreating(false);
+    }
+  };
+
+  const handleDeletePage = async (companyId) => {
+    if (!user) {
+      setError('Please sign in to delete a page');
+      return;
+    }
+
+    if (!window.confirm("Are you sure you want to delete this page? This action cannot be undone.")) {
+        return;
+    }
+
+    try {
+        await supabase
+            .from('company_followers')
+            .delete()
+            .eq('company_id', companyId);
+
+        const { error } = await supabase
+            .from('companies')
+            .delete()
+            .eq('id', companyId)
+            .eq('created_by', user.id); 
+
+        if (error) {
+            console.error('Error deleting page:', error);
+            setError('Failed to delete page');
+            return;
+        }
+
+        console.log('✅ Page deleted successfully');
+        await loadUserPages(user.id);
+        await loadSuggestedPages();
+    } catch (err) {
+        console.error('Error deleting page:', err);
+        setError('Failed to delete page. Please try again.');
     }
   };
 
@@ -231,7 +283,7 @@ export default function Pages() {
 
     try {
       const { error } = await supabase
-        .from('company_follows')
+        .from('company_followers')
         .insert({
           company_id: companyId,
           user_id: user.id
@@ -243,8 +295,11 @@ export default function Pages() {
         return;
       }
       
+      // Update follower count
+      await supabase.rpc('increment_follower_count', { p_company_id: companyId });
+      
       await loadUserPages(user.id);
-      await loadSuggestedPages(); // Refresh to update follower counts
+      await loadSuggestedPages();
       console.log('✅ Successfully followed company');
     } catch (err) {
       console.error('Error following page:', err);
@@ -257,7 +312,7 @@ export default function Pages() {
 
     try {
       const { error } = await supabase
-        .from('company_follows')
+        .from('company_followers')
         .delete()
         .eq('company_id', companyId)
         .eq('user_id', user.id);
@@ -268,8 +323,11 @@ export default function Pages() {
         return;
       }
       
+      // Update follower count
+      await supabase.rpc('decrement_follower_count', { p_company_id: companyId });
+      
       await loadUserPages(user.id);
-      await loadSuggestedPages(); // Refresh to update follower counts
+      await loadSuggestedPages();
       console.log('✅ Successfully unfollowed company');
     } catch (err) {
       console.error('Error unfollowing page:', err);
@@ -285,19 +343,23 @@ export default function Pages() {
   const formatFollowerCount = (count) => {
     if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`;
     if (count >= 1000) return `${(count / 1000).toFixed(1)}K`;
-    return count.toString();
+    return count?.toString() || '0';
   };
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow p-6">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-gray-200 rounded w-1/4"></div>
-          <div className="h-10 bg-gray-200 rounded"></div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {[1, 2, 3, 4].map(i => (
-              <div key={i} className="h-32 bg-gray-200 rounded"></div>
-            ))}
+      <div className="min-h-screen bg-gray-50 p-4">
+        <div className="max-w-6xl mx-auto">
+          <div className="bg-white rounded-xl shadow-sm border p-8">
+            <div className="animate-pulse space-y-6">
+              <div className="h-8 bg-gray-200 rounded-lg w-1/4"></div>
+              <div className="h-12 bg-gray-200 rounded-lg"></div>
+              <div className="space-y-4">
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="h-24 bg-gray-200 rounded-lg"></div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -305,108 +367,108 @@ export default function Pages() {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
-        <h1 className="text-2xl font-bold mb-4 md:mb-0">Pages</h1>
-        <button 
-          onClick={() => {
-            if (!user) {
-              setError('Please sign in to create a page');
-              return;
-            }
-            setShowCreateModal(true);
-          }}
-          className="flex items-center bg-blue-600 text-white px-4 py-2 rounded-full font-medium hover:bg-blue-700 mb-4 md:mb-0 transition-colors"
-        >
-          <HiPlus className="w-5 h-5 mr-1" />
-          Create Page
-        </button>
-      </div>
+    <div className="min-h-screen bg-gray-50 p-4">
+      <div className="max-w-6xl mx-auto">
+        {/* Header */}
+        <div className="bg-white rounded-xl shadow-sm border p-6 mb-6">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">Company Pages</h1>
+              <p className="text-gray-600">Discover and follow companies in your industry</p>
+            </div>
+            <button 
+              onClick={() => {
+                if (!user) {
+                  setError('Please sign in to create a page');
+                  return;
+                }
+                setShowCreateModal(true);
+              }}
+              className="flex items-center bg-blue-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-blue-700 transition-all duration-200 shadow-lg hover:shadow-xl mt-4 md:mt-0"
+            >
+              <HiPlus className="w-5 h-5 mr-2" />
+              Create Company Page
+            </button>
+          </div>
 
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
-          {error}
+          {error && (
+            <div className="bg-red-50 border-l-4 border-red-400 text-red-700 px-4 py-3 rounded-lg mb-6">
+              <div className="flex">
+                <div className="ml-3">
+                  <p className="text-sm">{error}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Search */}
+          <div className="relative">
+            <HiSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <input
+              type="text"
+              placeholder="Search companies by name, industry, or description..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full text-gray-900 placeholder-gray-500"
+            />
+          </div>
         </div>
-      )}
 
-      <div className="relative mb-6">
-        <HiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500" />
-        <input
-          type="text"
-          placeholder="Search companies and pages..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
-        />
-      </div>
-
-      {/* User's Followed Pages */}
-      {user && (
-        <div className="mb-8">
-          <h2 className="text-xl font-semibold mb-4">Your Pages</h2>
-          {followedPages.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* User's Followed Pages */}
+        {user && followedPages.length > 0 && (
+          <div className="bg-white rounded-xl shadow-sm border p-6 mb-6">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
+              <HiHeart className="w-6 h-6 mr-2 text-red-500" />
+              Companies You Follow
+            </h2>
+            <div className="space-y-4">
               {followedPages.map(page => {
-                const company = page.company;
-                const IconComponent = getCategoryIcon(company.category);
+                const company = page.companies;
+                const IconComponent = getCategoryIcon(company.industry);
+                const isOwner = user && user.id === company.created_by;
                 return (
-                  <Link 
-                    to={`/company/${company.id}`} 
-                    key={company.id}
-                    className="border rounded-lg p-4 hover:shadow-md transition-shadow relative"
-                  >
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center">
-                        <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center mr-3">
-                          {company.logo_url ? (
-                            <img 
-                              src={company.logo_url} 
-                              alt={company.name}
-                              className="w-full h-full rounded-full object-cover"
-                            />
-                          ) : (
-                            <IconComponent className="w-6 h-6 text-blue-600" />
+                  <Link to={`/page/${company.id}`} key={company.id} className="block hover:bg-gray-50 rounded-xl p-4 transition-colors">
+                    <div className="flex items-center gap-4">
+                      <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0">
+                        {company.logo_url && company.logo_url !== 'https://via.placeholder.com/100' ? (
+                          <img 
+                            src={company.logo_url} 
+                            alt={company.name}
+                            className="w-full h-full rounded-xl object-cover"
+                          />
+                        ) : (
+                          <IconComponent className="w-8 h-8 text-white" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="font-bold text-gray-900 truncate">{company.name}</h3>
+                          {company.verified && (
+                            <HiBadgeCheck className="w-5 h-5 text-blue-500 flex-shrink-0" />
                           )}
                         </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-bold text-gray-900">{company.name}</h3>
-                            {company.verified && (
-                              <div className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
-                                <div className="w-2 h-2 bg-white rounded-full"></div>
-                              </div>
-                            )}
-                          </div>
-                          <p className="text-sm text-gray-600">{company.category}</p>
-                          <p className="text-xs text-gray-500">
-                            {formatFollowerCount(company.follower_count)} followers
-                          </p>
-                        </div>
+                        <p className="text-sm text-gray-600 capitalize truncate">{company.industry}</p>
+                        <p className="text-sm text-gray-600 mt-1 line-clamp-2">{company.description}</p>
                       </div>
-                      <button
-                        onClick={(e) => {
-                          e.preventDefault();
-                          handleUnfollowPage(company.id);
-                        }}
-                        className="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded-full hover:bg-gray-200"
-                      >
-                        Following
-                      </button>
-                    </div>
-                    
-                    <div className="flex items-center justify-between text-xs text-gray-500">
-                      <div className="flex items-center gap-4">
-                        {company.location && (
-                          <span className="flex items-center">
-                            <HiLocationMarker className="w-4 h-4 mr-1" />
-                            {company.location}
-                          </span>
-                        )}
-                        {company.website && (
-                          <span className="flex items-center">
-                            <HiGlobe className="w-4 h-4 mr-1" />
-                            Website
-                          </span>
+                      <div className="flex flex-col items-end gap-2 ml-4">
+                        <p className="text-sm text-gray-500 flex items-center whitespace-nowrap">
+                          <HiUserGroup className="w-4 h-4 mr-1" />
+                          {formatFollowerCount(company.follower_count)} followers
+                        </p>
+                        {isOwner ? (
+                          <button
+                            onClick={(e) => { e.preventDefault(); handleDeletePage(company.id); }}
+                            className="bg-red-100 text-red-700 text-xs px-3 py-1.5 rounded-lg hover:bg-red-200 transition-colors font-medium"
+                          >
+                            Delete
+                          </button>
+                        ) : (
+                          <button
+                            onClick={(e) => { e.preventDefault(); handleUnfollowPage(company.id); }}
+                            className="bg-gray-100 text-gray-700 text-xs px-3 py-1.5 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+                          >
+                            Following
+                          </button>
                         )}
                       </div>
                     </div>
@@ -414,285 +476,295 @@ export default function Pages() {
                 );
               })}
             </div>
+          </div>
+        )}
+
+        {/* Suggested/Search Results */}
+        <div className="bg-white rounded-xl shadow-sm border p-6">
+          <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
+            <HiTrendingUp className="w-6 h-6 mr-2 text-green-500" />
+            {searchQuery ? "Search Results" : "Discover Companies"}
+          </h2>
+          
+          {filteredPages.length > 0 ? (
+            <div className="space-y-4">
+              {filteredPages.map(company => {
+                const IconComponent = getCategoryIcon(company.industry);
+                const isFollowed = followedPages.some(p => p.companies.id === company.id);
+                const isOwner = user && user.id === company.created_by;
+                
+                return (
+                  <div key={company.id} className="border border-gray-200 rounded-xl p-4 bg-white hover:bg-gray-50 transition-colors">
+                    <div className="flex items-center justify-between gap-4">
+                      <Link to={`/page/${company.id}`} className="flex items-center gap-4 flex-1 min-w-0">
+                        <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center mr-4 flex-shrink-0">
+                          {company.logo_url && company.logo_url !== 'https://via.placeholder.com/100' ? (
+                            <img 
+                              src={company.logo_url} 
+                              alt={company.name}
+                              className="w-full h-full rounded-xl object-cover"
+                            />
+                          ) : (
+                            <IconComponent className="w-8 h-8 text-white" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className="font-bold text-gray-900 truncate">{company.name}</h3>
+                            {company.verified && (
+                              <HiBadgeCheck className="w-5 h-5 text-blue-500 flex-shrink-0" />
+                            )}
+                          </div>
+                          <p className="text-sm text-gray-600 capitalize">{company.industry}</p>
+                           <p className="text-sm text-gray-600 mt-1 line-clamp-2">{company.description}</p>
+                        </div>
+                      </Link>
+                      
+                      <div className="flex flex-col items-center gap-2 w-32 flex-shrink-0">
+                        <p className="text-sm text-gray-500 flex items-center">
+                          <HiUserGroup className="w-4 h-4 mr-1" />
+                          {formatFollowerCount(company.follower_count)} followers
+                        </p>
+                        {user ? (
+                          isOwner ? (
+                            <button
+                              onClick={(e) => { e.preventDefault(); handleDeletePage(company.id); }}
+                              className="w-full py-2 rounded-lg font-semibold transition-all duration-200 bg-red-600 hover:bg-red-700 text-white text-sm"
+                            >
+                              Delete Page
+                            </button>
+                          ) : (
+                            <button 
+                              onClick={() => isFollowed ? handleUnfollowPage(company.id) : handleFollowPage(company.id)}
+                              className={`w-full py-2 rounded-lg font-semibold transition-all duration-200 text-sm ${
+                                isFollowed 
+                                  ? 'bg-gray-100 hover:bg-gray-200 text-gray-700' 
+                                  : 'bg-blue-600 hover:bg-blue-700 text-white'
+                              }`}
+                            >
+                              {isFollowed ? 'Following' : 'Follow'}
+                            </button>
+                          )
+                        ) : (
+                          <button 
+                            onClick={() => setError('Please sign in to follow pages')}
+                            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-semibold transition-all duration-200 text-sm"
+                          >
+                            Follow
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           ) : (
-            <div className="text-center py-8 bg-gray-50 rounded-lg">
-              <FaBuilding className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-              <h3 className="text-lg font-medium text-gray-900">No pages yet</h3>
-              <p className="text-gray-500">Follow pages to see them here</p>
+            <div className="text-center py-12">
+              <HiOfficeBuilding className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">No companies found</h3>
+              <p className="text-gray-500 max-w-md mx-auto">
+                {searchQuery 
+                  ? "No companies match your search criteria. Try different keywords." 
+                  : "No companies available at the moment. Be the first to create one!"}
+              </p>
             </div>
           )}
         </div>
-      )}
 
-      {/* Suggested/Search Results */}
-      <div>
-        <h2 className="text-xl font-semibold mb-4">
-          {searchQuery ? "Search Results" : "Suggested Pages"}
-        </h2>
-        
-        {filteredPages.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {filteredPages.map(company => {
-              const IconComponent = getCategoryIcon(company.category);
-              const isFollowed = followedPages.some(p => p.company.id === company.id);
-              
-              return (
-                <div key={company.id} className="border rounded-lg p-4 hover:shadow-md">
-                  <div className="flex items-center mb-3">
-                    <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center mr-3">
-                      {company.logo_url ? (
-                        <img 
-                          src={company.logo_url} 
-                          alt={company.name}
-                          className="w-full h-full rounded-full object-cover"
-                        />
-                      ) : (
-                        <IconComponent className="w-5 h-5 text-blue-600" />
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-bold">{company.name}</h3>
-                        {company.verified && (
-                          <div className="w-3 h-3 bg-blue-500 rounded-full flex items-center justify-center">
-                            <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
-                          </div>
-                        )}
-                      </div>
-                      <p className="text-sm text-gray-500">{company.category}</p>
-                    </div>
-                  </div>
-                  
-                  <p className="text-sm text-gray-600 mb-3 line-clamp-2">{company.description}</p>
-                  <p className="text-sm text-gray-500 mb-3">
-                    {formatFollowerCount(company.follower_count)} followers
-                  </p>
-                  
-                  {user ? (
-                    <button 
-                      onClick={() => isFollowed ? handleUnfollowPage(company.id) : handleFollowPage(company.id)}
-                      className={`w-full py-2 rounded-md font-medium transition-colors ${
-                        isFollowed 
-                          ? 'bg-gray-100 hover:bg-gray-200 text-gray-700' 
-                          : 'bg-blue-100 hover:bg-blue-200 text-blue-700'
-                      }`}
-                    >
-                      {isFollowed ? 'Following' : 'Follow'}
-                    </button>
-                  ) : (
-                    <button 
-                      onClick={() => setError('Please sign in to follow pages')}
-                      className="w-full bg-blue-100 hover:bg-blue-200 text-blue-700 py-2 rounded-md font-medium transition-colors"
-                    >
-                      Follow
-                    </button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="text-center py-8">
-            <FaBuilding className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-            <h3 className="text-lg font-medium text-gray-900">No pages found</h3>
-            <p className="text-gray-500">
-              {searchQuery 
-                ? "No pages match your search" 
-                : "No suggested pages available"}
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* Create Page Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
-            <div className="flex justify-between items-center p-6 border-b">
-              <h2 className="text-2xl font-bold">Create Page</h2>
-              <button 
-                onClick={() => {
-                  setShowCreateModal(false);
-                  setError('');
-                }}
-                className="p-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200"
-              >
-                <HiX className="w-5 h-5" />
-              </button>
-            </div>
-            
-            <div className="flex-1 overflow-y-auto p-6">
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Page Name */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Company Name *
-                    </label>
-                    <input
-                      type="text"
-                      value={pageForm.name}
-                      onChange={(e) => setPageForm(prev => ({ ...prev, name: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Your company name"
-                      required
-                    />
-                  </div>
-
-                  {/* Category */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Category *
-                    </label>
-                    <select
-                      value={pageForm.category}
-                      onChange={(e) => setPageForm(prev => ({ ...prev, category: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      required
-                    >
-                      <option value="">Select category</option>
-                      {pageCategories.map(cat => (
-                        <option key={cat.value} value={cat.value}>{cat.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                {/* Description */}
+        {/* Create Page Modal */}
+        {showCreateModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
+              <div className="flex justify-between items-center p-8 border-b border-gray-200">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    About Your Company *
-                  </label>
-                  <textarea
-                    value={pageForm.description}
-                    onChange={(e) => setPageForm(prev => ({ ...prev, description: e.target.value }))}
-                    rows={4}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Tell people about your company..."
-                    required
-                  />
+                  <h2 className="text-3xl font-bold text-gray-900">Create Company Page</h2>
+                  <p className="text-gray-600 mt-1">Tell the world about your company</p>
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Website */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Website
-                    </label>
-                    <div className="relative">
-                      <HiGlobe className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                      <input
-                        type="url"
-                        value={pageForm.website}
-                        onChange={(e) => setPageForm(prev => ({ ...prev, website: e.target.value }))}
-                        className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="https://yourcompany.com"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Phone */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Phone
-                    </label>
-                    <div className="relative">
-                      <HiPhone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                      <input
-                        type="tel"
-                        value={pageForm.phone}
-                        onChange={(e) => setPageForm(prev => ({ ...prev, phone: e.target.value }))}
-                        className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="+1 (555) 123-4567"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Email */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Email
-                    </label>
-                    <div className="relative">
-                      <HiMail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                      <input
-                        type="email"
-                        value={pageForm.email}
-                        onChange={(e) => setPageForm(prev => ({ ...prev, email: e.target.value }))}
-                        className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="contact@company.com"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Hours */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Business Hours
-                    </label>
-                    <div className="relative">
-                      <HiClock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                <button 
+                  onClick={() => {
+                    setShowCreateModal(false);
+                    setError('');
+                  }}
+                  className="p-2 rounded-xl bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
+                >
+                  <HiX className="w-6 h-6" />
+                </button>
+              </div>
+              
+              <div className="flex-1 overflow-y-auto p-8">
+                <div className="space-y-8">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Company Name */}
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-900 mb-3">
+                        Company Name *
+                      </label>
                       <input
                         type="text"
-                        value={pageForm.hours}
-                        onChange={(e) => setPageForm(prev => ({ ...prev, hours: e.target.value }))}
-                        className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="Mon-Fri 9AM-5PM"
+                        value={pageForm.name}
+                        onChange={(e) => setPageForm(prev => ({ ...prev, name: e.target.value }))}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="Enter your company name"
+                        required
                       />
                     </div>
-                  </div>
-                </div>
 
-                {/* Location */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Location
-                  </label>
-                  <div className="relative">
-                    <HiLocationMarker className="absolute left-3 top-3 text-gray-400" />
+                    {/* Industry */}
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-900 mb-3">
+                        Industry *
+                      </label>
+                      <select
+                        value={pageForm.industry}
+                        onChange={(e) => setPageForm(prev => ({ ...prev, industry: e.target.value }))}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        required
+                      >
+                        <option value="">Select an industry</option>
+                        {pageCategories.map(cat => (
+                          <option key={cat.value} value={cat.value}>{cat.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Description */}
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-900 mb-3">
+                      Company Description *
+                    </label>
                     <textarea
-                      value={pageForm.location}
-                      onChange={(e) => setPageForm(prev => ({ ...prev, location: e.target.value }))}
-                      rows={2}
-                      className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="123 Business St, City, State 12345"
+                      value={pageForm.description}
+                      onChange={(e) => setPageForm(prev => ({ ...prev, description: e.target.value }))}
+                      rows={4}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Describe what your company does, its mission, and what makes it unique..."
+                      required
                     />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Website */}
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-900 mb-3">
+                        Website
+                      </label>
+                      <div className="relative">
+                        <HiGlobe className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                        <input
+                          type="url"
+                          value={pageForm.website}
+                          onChange={(e) => setPageForm(prev => ({ ...prev, website: e.target.value }))}
+                          className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="https://yourcompany.com"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Phone */}
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-900 mb-3">
+                        Phone Number
+                      </label>
+                      <div className="relative">
+                        <HiPhone className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                        <input
+                          type="tel"
+                          value={pageForm.phone}
+                          onChange={(e) => setPageForm(prev => ({ ...prev, phone: e.target.value }))}
+                          className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="+1 (555) 123-4567"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Email */}
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-900 mb-3">
+                        Contact Email
+                      </label>
+                      <div className="relative">
+                        <HiMail className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                        <input
+                          type="email"
+                          value={pageForm.email}
+                          onChange={(e) => setPageForm(prev => ({ ...prev, email: e.target.value }))}
+                          className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="contact@company.com"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Business Hours */}
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-900 mb-3">
+                        Business Hours
+                      </label>
+                      <div className="relative">
+                        <HiClock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                        <input
+                          type="text"
+                          value={pageForm.business_hours}
+                          onChange={(e) => setPageForm(prev => ({ ...prev, business_hours: e.target.value }))}
+                          className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="Mon-Fri 9AM-5PM"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Location */}
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-900 mb-3">
+                      Company Location
+                    </label>
+                    <div className="relative">
+                      <HiLocationMarker className="absolute left-4 top-4 text-gray-400 w-5 h-5" />
+                      <textarea
+                        value={pageForm.location}
+                        onChange={(e) => setPageForm(prev => ({ ...prev, location: e.target.value }))}
+                        rows={2}
+                        className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="123 Business Street, City, State, Country"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-            
-            <div className="p-6 border-t flex justify-end gap-3">
-              <button
-                onClick={() => {
-                  setShowCreateModal(false);
-                  setError('');
-                }}
-                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                disabled={creating}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleCreatePage}
-                disabled={creating}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-blue-400 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                {creating ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    Creating...
-                  </>
-                ) : (
-                  'Create Page'
-                )}
-              </button>
+              
+              <div className="p-8 border-t border-gray-200 flex justify-end gap-4">
+                <button
+                  onClick={() => {
+                    setShowCreateModal(false);
+                    setError('');
+                  }}
+                  className="px-8 py-3 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-semibold"
+                  disabled={creating}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCreatePage}
+                  disabled={creating}
+                  className="px-8 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors disabled:bg-blue-400 disabled:cursor-not-allowed flex items-center gap-3 font-semibold shadow-lg hover:shadow-xl"
+                >
+                  {creating ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      Creating...
+                    </>
+                  ) : (
+                    'Create Company Page'
+                  )}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 } 

@@ -111,7 +111,7 @@ export const NotificationProvider = ({ children }) => {
   };
 
   const addNotification = useCallback((message, type = 'info', duration = 5000) => {
-    const id = Date.now() + Math.random();
+    const id = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const notification = { id, message, type, duration };
     
     setNotifications(prev => [...prev, notification]);
@@ -219,7 +219,6 @@ const NotificationItem = ({ notification, onRemove }) => {
           icon: HiExclamationTriangle,
           iconColor: 'text-yellow-600'
         };
-      case 'info':
       default:
         return {
           bg: 'bg-blue-50 border-blue-200',
@@ -248,23 +247,5 @@ const NotificationItem = ({ notification, onRemove }) => {
     </div>
   );
 };
-
-// CSS for animations (you can add this to your main CSS file)
-const styles = `
-  @keyframes fade-in {
-    from {
-      opacity: 0;
-      transform: translateX(100%);
-    }
-    to {
-      opacity: 1;
-      transform: translateX(0);
-    }
-  }
-  
-  .animate-fade-in {
-    animation: fade-in 0.3s ease-out;
-  }
-`;
 
 export default NotificationProvider; 

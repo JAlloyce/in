@@ -22,12 +22,60 @@ export const realtime = supabase.realtime
 
 export const posts = {
   async getFeed(limit = 20) {
-    const { data, error } = await supabase
-      .from('posts')
-      .select('*, author:profiles(*), comments(count), likes(count)')
-      .order('created_at', { ascending: false })
-      .limit(limit)
-    return { data, error }
+    try {
+      // Get the current user
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      
+      let query = supabase
+        .from('posts')
+        .select(`
+          *,
+          author:profiles(*),
+          likes_count,
+          comments_count,
+          shares_count
+        `)
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+      const { data: posts, error } = await query;
+      
+      if (error) {
+        return { data: null, error };
+      }
+
+      if (!posts) {
+        return { data: [], error: null };
+      }
+
+      // If user is authenticated, check which posts they've liked
+      if (user) {
+        const { data: userLikes } = await supabase
+          .from('likes')
+          .select('post_id')
+          .eq('user_id', user.id);
+
+        const likedPostIds = new Set(userLikes?.map(like => like.post_id) || []);
+
+        const postsWithLikeStatus = posts.map(post => ({
+          ...post,
+          user_liked: likedPostIds.has(post.id)
+        }));
+
+        return { data: postsWithLikeStatus, error: null };
+      }
+
+      // For non-authenticated users, set user_liked to false
+      const postsWithLikeStatus = posts.map(post => ({
+        ...post,
+        user_liked: false
+      }));
+
+      return { data: postsWithLikeStatus, error: null };
+    } catch (err) {
+      console.error('Get feed exception:', err);
+      return { data: null, error: err };
+    }
   },
   async create(postData) {
     const { data, error } = await supabase
@@ -208,7 +256,8 @@ export const comments = {
   
   async getByPost(postId) {
     try {
-      const { data, error } = await supabase
+      // First, get all comments for the post
+      const { data: allComments, error } = await supabase
         .from('comments')
         .select(`
           *,
@@ -222,7 +271,49 @@ export const comments = {
         .eq('post_id', postId)
         .order('created_at', { ascending: true });
       
-      return { data, error };
+      if (error) {
+        return { data: null, error };
+      }
+
+      if (!allComments) {
+        return { data: [], error: null };
+      }
+
+      // Organize comments into threaded structure
+      const topLevelComments = [];
+      const repliesMap = new Map();
+
+      // First pass: separate top-level comments and replies
+      allComments.forEach(comment => {
+        if (!comment.parent_id) {
+          // Top-level comment
+          topLevelComments.push({
+            ...comment,
+            replies: []
+          });
+        } else {
+          // Reply to another comment
+          if (!repliesMap.has(comment.parent_id)) {
+            repliesMap.set(comment.parent_id, []);
+          }
+          repliesMap.get(comment.parent_id).push(comment);
+        }
+      });
+
+      // Second pass: attach replies to their parent comments
+      const organizeReplies = (comments) => {
+        return comments.map(comment => {
+          const replies = repliesMap.get(comment.id) || [];
+          return {
+            ...comment,
+            replies: organizeReplies(replies) // Recursive for nested replies
+          };
+        });
+      };
+
+      const organizedComments = organizeReplies(topLevelComments);
+      
+      return { data: organizedComments, error: null };
     } catch (err) {
       console.error('Error fetching comments:', err);
       return { data: null, error: err };

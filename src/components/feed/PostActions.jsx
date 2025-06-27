@@ -5,6 +5,7 @@ import {
 } from "react-icons/hi"
 import { posts } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
+import { supabase } from '../../lib/supabase'
 
 /**
  * PostActions Component - Mobile-Optimized with Enhanced Features
@@ -63,9 +64,24 @@ export default function PostActions({
       
       console.log('🔄 Like action initiated:', { postId, isLiked })
 
-      if (isLiked) {
-        // Unlike the post
-        const { error: unlikeError } = await posts.unlike(postId)
+      // First, check the current like status from the database to ensure sync
+      const { data: existingLike } = await supabase
+        .from('likes')
+        .select('id')
+        .eq('post_id', postId)
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      const hasExistingLike = !!existingLike;
+      console.log('📊 Database like status:', { hasExistingLike, uiIsLiked: isLiked });
+
+      if (hasExistingLike) {
+        // Unlike the post - delete the existing like
+        const { error: unlikeError } = await supabase
+          .from('likes')
+          .delete()
+          .eq('post_id', postId)
+          .eq('user_id', user.id);
         
         if (unlikeError) {
           console.error('Unlike error:', unlikeError)
@@ -77,8 +93,10 @@ export default function PostActions({
         setLikeCount(prev => Math.max(0, prev - 1))
         console.log('👎 Post unliked successfully')
       } else {
-        // Like the post
-        const { error: likeError } = await posts.like(postId)
+        // Like the post - create new like
+        const { error: likeError } = await supabase
+          .from('likes')
+          .insert({ post_id: postId, user_id: user.id });
         
         if (likeError) {
           console.error('Like error:', likeError)
@@ -93,7 +111,7 @@ export default function PostActions({
 
       // Notify parent component of the change
       if (onLikeChange) {
-        onLikeChange(postId, !isLiked)
+        onLikeChange(postId, !hasExistingLike)
       }
     } catch (err) {
       console.error('Like action error:', err)

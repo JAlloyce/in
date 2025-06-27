@@ -168,7 +168,7 @@ function AppContent() {
                         <Route path="/database-fix" element={<DatabaseFix />} />
                         <Route path="/communities" element={<Communities />} />
                         <Route path="/communities/:id" element={<CommunityDetail />} />
-                        <Route path="/company/:slug" element={<CompanyPage />} />
+                        <Route path="/page/:companyId" element={<CompanyPage />} />
                         <Route path="/pages" element={<Pages />} />
                         <Route path="/recent" element={<Recent />} />
                         <Route path="/saved" element={<Saved />} />
