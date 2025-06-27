@@ -25,6 +25,8 @@ export default function Network() {
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [showConnectionMenu, setShowConnectionMenu] = useState(null);
   const [userConnections, setUserConnections] = useState([]);
+  const [pendingReceived, setPendingReceived] = useState([]);
+  const [pendingSent, setPendingSent] = useState([]);
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -46,9 +48,10 @@ export default function Network() {
 
       console.log('🌐 Loading network for user:', user.email);
 
-      // Load connections and suggestions
+      // Load connections, pending requests, and suggestions
       await Promise.all([
         loadConnections(user.id),
+        loadPendingRequests(user.id),
         loadSuggestions(user.id)
       ]);
 
@@ -71,10 +74,12 @@ export default function Network() {
           receiver:profiles!connections_receiver_id_fkey(id, name, headline, avatar_url)
         `)
         .or(`requester_id.eq.${userId},receiver_id.eq.${userId}`)
-        .eq('status', 'accepted');
+        .eq('status', 'accepted')
+        .limit(50);  // Limit to first 50 connections for performance
     
       if (connectionsError) {
         console.error('Error loading connections:', connectionsError);
+        setUserConnections([]); // Set empty array on error
         return;
       }
 
@@ -98,6 +103,66 @@ export default function Network() {
     }
   };
 
+  const loadPendingRequests = async (userId) => {
+    try {
+      // Load pending requests received (incoming)
+      const { data: receivedData, error: receivedError } = await supabase
+        .from('connections')
+        .select(`
+          id,
+          created_at,
+          requester:profiles!connections_requester_id_fkey(id, name, headline, avatar_url)
+        `)
+        .eq('receiver_id', userId)
+        .eq('status', 'pending');
+
+      if (receivedError) {
+        console.error('Error loading received requests:', receivedError);
+        setPendingReceived([]);
+      } else {
+        const transformedReceived = receivedData.map(conn => ({
+          id: conn.id,
+          userId: conn.requester.id,
+          name: conn.requester.name || 'User',
+          title: conn.requester.headline || 'Professional',
+          avatar_url: conn.requester.avatar_url,
+          requested: formatTimestamp(conn.created_at)
+        }));
+        setPendingReceived(transformedReceived);
+        console.log('✅ Loaded pending received:', transformedReceived.length);
+      }
+
+      // Load pending requests sent (outgoing)
+      const { data: sentData, error: sentError } = await supabase
+        .from('connections')
+        .select(`
+          id,
+          created_at,
+          receiver:profiles!connections_receiver_id_fkey(id, name, headline, avatar_url)
+        `)
+        .eq('requester_id', userId)
+        .eq('status', 'pending');
+
+      if (sentError) {
+        console.error('Error loading sent requests:', sentError);
+        setPendingSent([]);
+      } else {
+        const transformedSent = sentData.map(conn => ({
+          id: conn.id,
+          userId: conn.receiver.id,
+          name: conn.receiver.name || 'User',
+          title: conn.receiver.headline || 'Professional',
+          avatar_url: conn.receiver.avatar_url,
+          requested: formatTimestamp(conn.created_at)
+        }));
+        setPendingSent(transformedSent);
+        console.log('✅ Loaded pending sent:', transformedSent.length);
+      }
+    } catch (err) {
+      console.error('Error in loadPendingRequests:', err);
+    }
+  };
+
   const loadSuggestions = async (userId) => {
     try {
       // Get users who are not connected to the current user
@@ -105,17 +170,31 @@ export default function Network() {
         .from('profiles')
         .select('id, name, headline, avatar_url')
         .neq('id', userId)
-        .limit(20);
+        .limit(10);  // Reduce limit for faster loading
     
       if (suggestionsError) {
         console.error('Error loading suggestions:', suggestionsError);
+        setSuggestions([]); // Set empty array on error
         return;
       }
 
+      // Get current user's connection IDs for filtering
+      const { data: existingConnections } = await supabase
+        .from('connections')
+        .select('requester_id, receiver_id')
+        .or(`requester_id.eq.${userId},receiver_id.eq.${userId}`)
+        .in('status', ['accepted', 'pending']);
+
+      const existingConnectionIds = new Set();
+      if (existingConnections) {
+        existingConnections.forEach(conn => {
+          existingConnectionIds.add(conn.requester_id === userId ? conn.receiver_id : conn.requester_id);
+        });
+      }
+
       // Filter out existing connections
-      const existingConnectionIds = userConnections.map(conn => conn.userId);
       const filteredSuggestions = suggestionsData.filter(
-        profile => !existingConnectionIds.includes(profile.id)
+        profile => !existingConnectionIds.has(profile.id)
       );
 
       // Transform suggestions data
@@ -174,25 +253,107 @@ export default function Network() {
     }
   };
 
+  const handleAcceptConnection = async (connectionId, senderId) => {
+    try {
+      const { error } = await supabase
+        .from('connections')
+        .update({ status: 'accepted' })
+        .eq('id', connectionId);
+
+      if (error) {
+        console.error('Error accepting connection:', error);
+        alert('Failed to accept connection request');
+        return;
+      }
+
+      // Refresh the pending requests and connections
+      await Promise.all([
+        loadConnections(user.id),
+        loadPendingRequests(user.id)
+      ]);
+
+      alert('Connection request accepted!');
+    } catch (err) {
+      console.error('Error accepting connection:', err);
+      alert('Failed to accept connection request');
+    }
+  };
+
+  const handleRejectConnection = async (connectionId) => {
+    try {
+      const { error } = await supabase
+        .from('connections')
+        .update({ status: 'rejected' })
+        .eq('id', connectionId);
+
+      if (error) {
+        console.error('Error rejecting connection:', error);
+        alert('Failed to reject connection request');
+        return;
+      }
+
+      // Remove from pending received requests
+      setPendingReceived(prev => prev.filter(req => req.id !== connectionId));
+      alert('Connection request rejected');
+    } catch (err) {
+      console.error('Error rejecting connection:', err);
+      alert('Failed to reject connection request');
+    }
+  };
+
   const handleSendConnectionRequest = async (receiverId) => {
+    console.log('🔍 DEBUG: handleSendConnectionRequest called with:', {
+      receiverId,
+      user: user?.id,
+      userEmail: user?.email,
+      userMetadata: user?.user_metadata
+    });
+
     if (!user) {
       alert('Please log in to send connection requests');
       return;
     }
 
+    if (!receiverId) {
+      console.error('❌ receiverId is null/undefined');
+      alert('Invalid recipient for connection request');
+      return;
+    }
+
     try {
-      const { error } = await supabase
-        .from('connections')
-        .insert({
+      console.log('📝 Inserting connection request:', {
           requester_id: user.id,
           receiver_id: receiverId,
           status: 'pending'
         });
-      if (error) {
-        console.error('Error sending connection request:', error);
-        alert('Failed to send connection request');
+
+      // TEMPORARILY: Use RPC to avoid notification schema trigger issues
+      const { data, error: connectionError } = await supabase.rpc('create_connection_safely', {
+        req_id: user.id,
+        rec_id: receiverId
+      });
+      
+      if (connectionError) {
+        console.error('RPC Error sending connection request:', connectionError);
+        alert('Failed to send connection request: ' + connectionError.message);
         return;
       }
+      
+      // Check if the function returned an error
+      if (data && data.error) {
+        console.error('Function returned error:', data);
+        if (data.code === '23505') {
+          alert('Connection request already sent or you are already connected!');
+        } else {
+          alert('Failed to send connection request: ' + data.error);
+        }
+        return;
+      }
+
+      console.log('✅ Connection request created successfully');
+
+      // Refresh pending requests to show the new sent request
+      await loadPendingRequests(user.id);
 
       // Remove from suggestions
       setSuggestions(prev => prev.filter(s => s.id !== receiverId));
@@ -399,6 +560,132 @@ export default function Network() {
           )}
         </div>
       </div>
+
+      {/* Pending Requests Received Section */}
+      {pendingReceived.length > 0 && (
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold">Connection Requests ({pendingReceived.length})</h2>
+            <button 
+              onClick={() => loadPendingRequests(user?.id)}
+              className="text-blue-600 text-sm font-medium"
+            >
+              Refresh
+            </button>
+          </div>
+          
+          <div className="space-y-4">
+            {pendingReceived.map((request) => (
+              <div key={request.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                <div className="flex items-center space-x-3">
+                  <Link 
+                    to={`/profile/${request.userId}`}
+                    className="w-12 h-12 rounded-full bg-gray-300 flex-shrink-0 hover:ring-2 hover:ring-blue-300 transition-all overflow-hidden"
+                  >
+                    {request.avatar_url ? (
+                      <img 
+                        src={request.avatar_url} 
+                        alt={request.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gray-300 flex items-center justify-center">
+                        <span className="text-gray-600 font-semibold">
+                          {request.name.charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                    )}
+                  </Link>
+                  
+                  <div className="flex-1 min-w-0">
+                    <Link 
+                      to={`/profile/${request.userId}`}
+                      className="hover:text-blue-600 transition-colors"
+                    >
+                      <h3 className="font-semibold text-gray-900 truncate">{request.name}</h3>
+                      <p className="text-sm text-gray-600 truncate mb-1">{request.title}</p>
+                      <p className="text-xs text-gray-500">Sent {request.requested}</p>
+                    </Link>
+                  </div>
+                  
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => handleAcceptConnection(request.id, request.userId)}
+                      className="bg-blue-600 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                    >
+                      Accept
+                    </button>
+                    <button
+                      onClick={() => handleRejectConnection(request.id)}
+                      className="bg-gray-300 text-gray-700 py-2 px-4 rounded-lg text-sm font-medium hover:bg-gray-400 transition-colors"
+                    >
+                      Ignore
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Pending Requests Sent Section */}
+      {pendingSent.length > 0 && (
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold">Pending Invitations ({pendingSent.length})</h2>
+            <button 
+              onClick={() => loadPendingRequests(user?.id)}
+              className="text-blue-600 text-sm font-medium"
+            >
+              Refresh
+            </button>
+          </div>
+          
+          <div className="space-y-4">
+            {pendingSent.map((request) => (
+              <div key={request.id} className="border rounded-lg p-4 bg-yellow-50 border-yellow-200">
+                <div className="flex items-center space-x-3">
+                  <Link 
+                    to={`/profile/${request.userId}`}
+                    className="w-12 h-12 rounded-full bg-gray-300 flex-shrink-0 hover:ring-2 hover:ring-blue-300 transition-all overflow-hidden"
+                  >
+                    {request.avatar_url ? (
+                      <img 
+                        src={request.avatar_url} 
+                        alt={request.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gray-300 flex items-center justify-center">
+                        <span className="text-gray-600 font-semibold">
+                          {request.name.charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                    )}
+                  </Link>
+                  
+                  <div className="flex-1 min-w-0">
+                    <Link 
+                      to={`/profile/${request.userId}`}
+                      className="hover:text-blue-600 transition-colors"
+                    >
+                      <h3 className="font-semibold text-gray-900 truncate">{request.name}</h3>
+                      <p className="text-sm text-gray-600 truncate mb-1">{request.title}</p>
+                      <p className="text-xs text-gray-500">Invitation sent {request.requested}</p>
+                    </Link>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm text-yellow-600 font-medium">Pending</span>
+                    <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       
       {/* Suggestions Section */}
       <div className="bg-white rounded-lg shadow p-6">

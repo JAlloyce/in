@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   HiOutlineCheck, 
   HiOutlineChevronDown, 
@@ -28,9 +28,16 @@ export default function TasksPanel({ tasks: propTasks = [], onTaskComplete, topi
 
   const refreshTasks = async () => {
     setLoading(true);
-    const workspaceData = await workspaceService.fetchWorkspaceData();
-    setTasks(workspaceData.tasks);
-    setLoading(false);
+    try {
+      const workspaceData = await workspaceService.fetchWorkspaceData();
+      setTasks(workspaceData.tasks);
+    } catch (error) {
+      console.error('Failed to refresh tasks:', error);
+      setError('Failed to refresh tasks. Please try again.');
+      setTimeout(() => setError(null), 5000);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleToggleTask = async (taskId, currentStatus) => {
@@ -61,9 +68,15 @@ export default function TasksPanel({ tasks: propTasks = [], onTaskComplete, topi
   };
 
   const handleCreateTask = async (newTaskData) => {
-    const createdTask = await workspaceService.createTask(newTaskData);
-    setTasks(prev => [...prev, createdTask]);
-    setShowCreateTaskModal(false);
+    try {
+      const createdTask = await workspaceService.createTask(newTaskData);
+      setTasks(prev => [...prev, createdTask]);
+      setShowCreateTaskModal(false);
+    } catch (error) {
+      console.error('Failed to create task:', error);
+      setError('Failed to create task. Please try again.');
+      setTimeout(() => setError(null), 5000);
+    }
   };
   
   const toggleTopicExpansion = (topicId) => {
@@ -74,18 +87,30 @@ export default function TasksPanel({ tasks: propTasks = [], onTaskComplete, topi
     );
   };
 
-  const tasksByTopic = topics
-    .map(topic => ({
-      ...topic,
-      tasks: tasks.filter(task => task.topic_id === topic.id)
-    }))
-    .filter(topic => topic.tasks.length > 0);
-    
-  const unassignedTasks = tasks.filter(task => !task.topic_id);
+  // Memoized calculations for performance
+  const tasksByTopic = useMemo(() => 
+    topics
+      .map(topic => ({
+        ...topic,
+        tasks: tasks.filter(task => task.topic_id === topic.id)
+      }))
+      .filter(topic => topic.tasks.length > 0),
+    [topics, tasks]
+  );
+  
+  const unassignedTasks = useMemo(() => 
+    tasks.filter(task => !task.topic_id),
+    [tasks]
+  );
 
-  const totalTasks = tasks.length;
-  const completedTasks = tasks.filter(task => task.status === 'completed').length;
-  const completionPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+  const completionStats = useMemo(() => {
+    const totalTasks = tasks.length;
+    const completedTasks = tasks.filter(task => task.status === 'completed').length;
+    const completionPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+    return { totalTasks, completedTasks, completionPercentage };
+  }, [tasks]);
+
+  const { totalTasks, completedTasks, completionPercentage } = completionStats;
 
   return (
     <div className="bg-white rounded-lg shadow-sm border h-full flex flex-col">
@@ -309,12 +334,25 @@ const CreateTaskModal = ({ topics, onClose, onTaskCreated }) => {
   const [priority, setPriority] = useState('medium');
   const [dueDate, setDueDate] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!title.trim()) return;
+    
+    // Input validation
+    if (title.trim().length > 100) {
+      setError('Task title must be less than 100 characters');
+      return;
+    }
+    
+    if (description.trim().length > 500) {
+      setError('Description must be less than 500 characters');
+      return;
+    }
 
     setLoading(true);
+    setError(null);
     try {
       const taskData = {
         title: title.trim(),
@@ -329,7 +367,7 @@ const CreateTaskModal = ({ topics, onClose, onTaskCreated }) => {
       onClose();
     } catch (error) {
       console.error('Failed to create task:', error);
-      alert('Error creating task: ' + error.message);
+      setError(error.message || 'Failed to create task. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -359,6 +397,13 @@ const CreateTaskModal = ({ topics, onClose, onTaskCreated }) => {
                 <HiOutlineX />
               </button>
             </div>
+
+            {/* Error Display */}
+            {error && (
+              <div className="mb-4 text-sm text-red-600 bg-red-50 p-3 rounded border border-red-200">
+                {error}
+              </div>
+            )}
 
             <div className="space-y-4">
               <div>
@@ -431,6 +476,7 @@ const CreateTaskModal = ({ topics, onClose, onTaskCreated }) => {
                     type="date"
                     value={dueDate}
                     onChange={(e) => setDueDate(e.target.value)}
+                    min={new Date().toISOString().split('T')[0]}
                     className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>

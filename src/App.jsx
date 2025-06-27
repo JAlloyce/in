@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-route
 import { Suspense, lazy } from 'react'
 import { AuthProvider } from './context/AuthContext'
 import { ModalProvider, useModal } from './context/ModalContext'
+import { NotificationProvider } from './context/NotificationContext'
 // Optimized Framer Motion imports - only import what we need
 import { motion, AnimatePresence } from 'framer-motion'
 import { ErrorBoundary } from './components/ui'
@@ -217,16 +218,18 @@ export default function App() {
   return (
     <ErrorBoundary>
       <AuthProvider>
-        <Router
-          future={{
-            v7_startTransition: true,
-            v7_relativeSplatPath: true
-          }}
-        >
-          <ModalProvider>
-            <AppContent />
-          </ModalProvider>
-        </Router>
+        <NotificationProvider>
+          <Router
+            future={{
+              v7_startTransition: true,
+              v7_relativeSplatPath: true
+            }}
+          >
+            <ModalProvider>
+              <AppContent />
+            </ModalProvider>
+          </Router>
+        </NotificationProvider>
       </AuthProvider>
     </ErrorBoundary>
   )

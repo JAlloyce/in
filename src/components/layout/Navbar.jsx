@@ -12,6 +12,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion'
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import { useNotifications } from '../../context/NotificationContext'
 import { Avatar, Button } from '../ui'
 import LoginForm from '../auth/LoginForm'
 import IntruLogo from '../ui/IntruLogo'
@@ -32,6 +33,7 @@ export default function Navbar() {
   const [showLoginModal, setShowLoginModal] = useState(false)
   const [error, setError] = useState(null)
   const { user, signOut } = useAuth()
+  const { unreadMessageCount, unreadJobCount, markMessagesAsRead, markJobsAsRead } = useNotifications()
   const location = useLocation()
 
   // Close mobile menu on route change
@@ -119,17 +121,44 @@ export default function Navbar() {
           <div className="hidden lg:flex items-center space-x-1">
             {navigation.filter(item => !item.authRequired || user).map((item) => {
               const isActive = location.pathname === item.href
+              
+              // Get notification count for specific items
+              let notificationCount = 0
+              if (item.name === 'Messaging') {
+                notificationCount = unreadMessageCount
+              } else if (item.name === 'Jobs') {
+                notificationCount = unreadJobCount
+              }
+              
+              const handleNavClick = () => {
+                // Mark notifications as read when clicking the nav item
+                if (item.name === 'Messaging' && unreadMessageCount > 0) {
+                  markMessagesAsRead()
+                } else if (item.name === 'Jobs' && unreadJobCount > 0) {
+                  markJobsAsRead()
+                }
+              }
+              
               return (
                 <motion.div key={item.name} whileHover={{ y: -2 }} whileTap={{ y: 0 }}>
                 <Link
                     to={item.href}
-                    className={`flex flex-col items-center px-3 py-2 text-xs font-medium rounded-lg transition-colors
+                    onClick={handleNavClick}
+                    className={`relative flex flex-col items-center px-3 py-2 text-xs font-medium rounded-lg transition-colors
                               ${isActive 
                                 ? 'text-blue-600 bg-blue-50' 
                                 : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                   }`}
                 >
-                    <item.icon className="h-6 w-6 mb-1" />
+                    <div className="relative">
+                      <item.icon className="h-6 w-6 mb-1" />
+                      {/* Notification Indicator */}
+                      {notificationCount > 0 && (
+                        <div className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-medium">
+                          {notificationCount > 9 ? '9+' : notificationCount}
+                        </div>
+                      )}
+                    </div>
                     <span>{item.name}</span>
                 </Link>
                 </motion.div>

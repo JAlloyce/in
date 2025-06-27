@@ -18,8 +18,10 @@ export default function AuthCallback() {
       try {
         // Get the current URL to extract any error or code parameters
         const urlParams = new URLSearchParams(window.location.search)
-        const error = urlParams.get('error')
-        const errorDescription = urlParams.get('error_description')
+        const hashParams = new URLSearchParams(window.location.hash.substring(1))
+        
+        const error = urlParams.get('error') || hashParams.get('error')
+        const errorDescription = urlParams.get('error_description') || hashParams.get('error_description')
 
         if (error) {
           setError(errorDescription || 'Authentication failed')
@@ -27,8 +29,9 @@ export default function AuthCallback() {
           return
         }
 
-        // Handle OAuth callback - check for code and exchange for session
+        // Handle OAuth callback - check for code (PKCE) or access_token (implicit flow)
         const code = urlParams.get('code')
+        const accessToken = hashParams.get('access_token')
         
         if (code) {
           console.log('✅ OAuth code received, exchanging for session...')
@@ -57,6 +60,36 @@ export default function AuthCallback() {
             navigate('/', { replace: true })
           } else {
             console.warn('⚠️ No session found after code exchange')
+            setError('Authentication completed but no session was created')
+            setLoading(false)
+          }
+        } else if (accessToken) {
+          console.log('✅ Access token received (implicit flow)...')
+          
+          // For implicit flow, the session should be automatically established
+          // Wait a moment for the session to be available
+          await new Promise(resolve => setTimeout(resolve, 1000))
+          
+          const { session, error: sessionError } = await auth.getSession()
+
+          if (sessionError) {
+            console.error('Session error after implicit flow:', sessionError)
+            setError('Failed to establish session')
+            setLoading(false)
+            return
+          }
+
+          if (session?.user) {
+            console.log('✅ Implicit flow authentication successful:', session.user.email)
+            console.log('Provider:', session.user.app_metadata?.provider)
+            
+            // Give time for database triggers to create profile
+            await new Promise(resolve => setTimeout(resolve, 2000))
+            
+            // Redirect to home page after successful authentication
+            navigate('/', { replace: true })
+          } else {
+            console.warn('⚠️ No session found after implicit flow')
             setError('Authentication completed but no session was created')
             setLoading(false)
           }

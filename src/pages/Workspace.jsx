@@ -96,15 +96,27 @@ export default function Workspace() {
         return;
       }
 
-      // Load all workspace data
-      const workspaceData = await workspaceService.fetchWorkspaceData();
-      setTopics(workspaceData.topics);
-      setTasks(workspaceData.tasks);
-      setActivities(workspaceData.activities);
+      // Load workspace data with timeout and error handling
+      const timeout = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Request timeout')), 10000)
+      );
+
+      const dataPromise = workspaceService.fetchWorkspaceData();
+      
+      const workspaceData = await Promise.race([dataPromise, timeout]);
+      
+      setTopics(workspaceData.topics || []);
+      setTasks(workspaceData.tasks || []);
+      setActivities(workspaceData.activities || []);
 
     } catch (err) {
       console.error('Error initializing workspace:', err);
-      setError('Failed to load workspace data');
+      setError(err.message === 'Request timeout' ? 'Loading took too long. Please try again.' : 'Failed to load workspace data');
+      
+      // Set empty arrays as fallback
+      setTopics([]);
+      setTasks([]);
+      setActivities([]);
     } finally {
       setLoading(false);
     }

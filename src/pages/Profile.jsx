@@ -161,6 +161,16 @@ export default function Profile({ isEditable = true, userData }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
+  // Editing states
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [editFormData, setEditFormData] = useState({
+    name: '',
+    headline: '',
+    about: '',
+    location: '',
+    website: ''
+  });
+  
   // Sidebar navigation items
   const sidebarItems = [
     { id: 'posts', label: 'Posts', icon: HiOutlineNewspaper },
@@ -200,7 +210,7 @@ export default function Profile({ isEditable = true, userData }) {
         const { data: connectionsData, error: connectionsError } = await supabase
           .from('connections')
           .select('*')
-          .or(`user_id.eq.${user.id},connected_user_id.eq.${user.id}`)
+          .or(`requester_id.eq.${user.id},receiver_id.eq.${user.id}`)
           .eq('status', 'accepted');
         if (connectionsError) console.warn('Failed to load connections:', connectionsError);
 
@@ -208,7 +218,7 @@ export default function Profile({ isEditable = true, userData }) {
         const { data: experiencesData, error: experiencesError } = await supabase
           .from('experiences')
           .select('*')
-          .eq('user_id', user.id)
+          .eq('profile_id', user.id)
           .order('start_date', { ascending: false });
         if (experiencesError) console.warn('Failed to load experiences:', experiencesError);
 
@@ -216,7 +226,7 @@ export default function Profile({ isEditable = true, userData }) {
         const { data: educationData, error: educationError } = await supabase
           .from('education')
           .select('*')
-          .eq('user_id', user.id)
+          .eq('profile_id', user.id)
           .order('start_date', { ascending: false });
         if (educationError) console.warn('Failed to load education:', educationError);
 
@@ -224,16 +234,16 @@ export default function Profile({ isEditable = true, userData }) {
         const { data: skillsData, error: skillsError } = await supabase
           .from('skills')
           .select('*')
-          .eq('user_id', user.id);
+          .eq('profile_id', user.id);
         if (skillsError) console.warn('Failed to load skills:', skillsError);
 
         // Set profile data with OAuth metadata
-        setProfileData({
+        const finalProfileData = {
           ...profile,
           name: profile?.name || user.user_metadata?.full_name || user.user_metadata?.name || 'User',
           avatar_url: profile?.avatar_url || user.user_metadata?.avatar_url || user.user_metadata?.picture,
-          headline: profile?.headline || 'Professional at Intru',
-          location: profile?.location || 'Location not specified',
+          headline: profile?.headline || 'Update your headline to tell others about yourself',
+          location: profile?.location || 'Add your location',
           bio: profile?.bio || 'No bio available yet. Update your profile to tell others about yourself!',
           website: profile?.website || '',
           connections: connectionsData?.length || 0,
@@ -260,6 +270,17 @@ export default function Profile({ isEditable = true, userData }) {
             name: skill.name,
             endorsements: skill.endorsements_count // Database uses 'endorsements_count'
           })) || []
+        };
+
+        setProfileData(finalProfileData);
+        
+        // Initialize edit form data
+        setEditFormData({
+          name: finalProfileData.name,
+          headline: finalProfileData.headline,
+          about: finalProfileData.bio,
+          location: finalProfileData.location,
+          website: finalProfileData.website
         });
 
         // Set user posts with proper formatting and debug logging
@@ -294,10 +315,10 @@ export default function Profile({ isEditable = true, userData }) {
         // Fallback to OAuth data if database fails
         setProfileData({
           name: user.user_metadata?.full_name || user.user_metadata?.name || 'User',
-          headline: 'Professional at Intru',
-          location: 'Location not specified',
+          headline: 'Update your headline to tell others about yourself',
+          location: 'Add your location',
           avatar_url: user.user_metadata?.avatar_url || user.user_metadata?.picture,
-          bio: 'Welcome to Intru! Complete your profile to get started.',
+          bio: 'Add a bio to tell others about yourself!',
           website: '',
           connections: 0,
           followers: 0,
@@ -363,6 +384,42 @@ export default function Profile({ isEditable = true, userData }) {
     } catch (err) {
       console.error('Error deleting post:', err)
       alert('Failed to delete post. Please try again.')
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    try {
+      if (!user) throw new Error('User not authenticated');
+
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          name: editFormData.name,
+          headline: editFormData.headline,
+          about: editFormData.about,
+          location: editFormData.location,
+          website: editFormData.website,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', user.id);
+
+      if (error) throw error;
+
+      // Update local state
+      setProfileData(prev => ({
+        ...prev,
+        name: editFormData.name,
+        headline: editFormData.headline,
+        bio: editFormData.about,
+        location: editFormData.location,
+        website: editFormData.website
+      }));
+
+      setIsEditingProfile(false);
+      alert('Profile updated successfully!');
+    } catch (err) {
+      console.error('Error updating profile:', err);
+      alert('Failed to update profile. Please try again.');
     }
   };
 
@@ -564,9 +621,87 @@ export default function Profile({ isEditable = true, userData }) {
     <div className="bg-white rounded-lg shadow p-6">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-bold">About</h2>
-        {isEditable && <HiPencil className="w-5 h-5 text-gray-500 cursor-pointer hover:text-blue-600" />}
+        {isEditable && !isEditingProfile && (
+          <HiPencil 
+            className="w-5 h-5 text-gray-500 cursor-pointer hover:text-blue-600" 
+            onClick={() => setIsEditingProfile(true)}
+          />
+        )}
       </div>
+      
+      {isEditingProfile ? (
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+            <input
+              type="text"
+              value={editFormData.name}
+              onChange={(e) => setEditFormData(prev => ({ ...prev, name: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Headline</label>
+            <input
+              type="text"
+              value={editFormData.headline}
+              onChange={(e) => setEditFormData(prev => ({ ...prev, headline: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="e.g., Software Engineer at Google"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">About</label>
+            <textarea
+              value={editFormData.about}
+              onChange={(e) => setEditFormData(prev => ({ ...prev, about: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[100px]"
+              placeholder="Tell us about yourself..."
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
+            <input
+              type="text"
+              value={editFormData.location}
+              onChange={(e) => setEditFormData(prev => ({ ...prev, location: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="e.g., San Francisco, CA"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Website</label>
+            <input
+              type="url"
+              value={editFormData.website}
+              onChange={(e) => setEditFormData(prev => ({ ...prev, website: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="https://yourwebsite.com"
+            />
+          </div>
+          
+          <div className="flex gap-3">
+            <button
+              onClick={handleSaveProfile}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+            >
+              Save Changes
+            </button>
+            <button
+              onClick={() => setIsEditingProfile(false)}
+              className="border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : (
       <p className="text-gray-700 whitespace-pre-line leading-relaxed">{profileData?.bio}</p>
+      )}
     </div>
   );
 
@@ -574,12 +709,20 @@ export default function Profile({ isEditable = true, userData }) {
     <div className="bg-white rounded-lg shadow p-6">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-bold">Experience</h2>
-        {isEditable && <HiPlus className="w-5 h-5 text-gray-500 cursor-pointer hover:text-blue-600" />}
+        {isEditable && <HiPlus className="w-5 h-5 text-gray-500 cursor-pointer hover:text-blue-600" onClick={() => alert('Add experience feature coming soon!')} />}
       </div>
       <div className="space-y-6">
-        {profileData?.experience?.map((exp, index) => (
-          <ExperienceItem key={exp.id} role={exp.role} company={exp.company} duration={exp.duration} description={exp.description} location={exp.location} />
-        ))}
+        {profileData?.experience?.length > 0 ? (
+          profileData.experience.map((exp, index) => (
+            <ExperienceItem key={exp.id || index} role={exp.role} company={exp.company} duration={exp.duration} description={exp.description} location={exp.location} />
+          ))
+        ) : (
+          <div className="text-center py-8 text-gray-500">
+            <HiBriefcase className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+            <p>No experience added yet</p>
+            {isEditable && <p className="text-sm">Click the + button to add your work experience</p>}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -588,12 +731,20 @@ export default function Profile({ isEditable = true, userData }) {
     <div className="bg-white rounded-lg shadow p-6">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-bold">Education</h2>
-        {isEditable && <HiPlus className="w-5 h-5 text-gray-500 cursor-pointer hover:text-blue-600" />}
+        {isEditable && <HiPlus className="w-5 h-5 text-gray-500 cursor-pointer hover:text-blue-600" onClick={() => alert('Add education feature coming soon!')} />}
       </div>
       <div className="space-y-6">
-        {profileData?.education?.map((edu, index) => (
-          <EducationItem key={edu.id} institution={edu.institution} degree={edu.degree} duration={edu.duration} />
-        ))}
+        {profileData?.education?.length > 0 ? (
+          profileData.education.map((edu, index) => (
+            <EducationItem key={edu.id || index} institution={edu.institution} degree={edu.degree} duration={edu.duration} />
+          ))
+        ) : (
+          <div className="text-center py-8 text-gray-500">
+            <HiAcademicCap className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+            <p>No education added yet</p>
+            {isEditable && <p className="text-sm">Click the + button to add your education</p>}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -602,12 +753,20 @@ export default function Profile({ isEditable = true, userData }) {
     <div className="bg-white rounded-lg shadow p-6">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-bold">Skills</h2>
-        {isEditable && <HiPlus className="w-5 h-5 text-gray-500 cursor-pointer hover:text-blue-600" />}
+        {isEditable && <HiPlus className="w-5 h-5 text-gray-500 cursor-pointer hover:text-blue-600" onClick={() => alert('Add skills feature coming soon!')} />}
       </div>
       <div className="space-y-4">
-        {profileData?.skills?.map((skill, index) => (
+        {profileData?.skills?.length > 0 ? (
+          profileData.skills.map((skill, index) => (
           <SkillItem key={index} skill={skill.name} endorsements={skill.endorsements} />
-        ))}
+          ))
+        ) : (
+          <div className="text-center py-8 text-gray-500">
+            <HiSparkles className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+            <p>No skills added yet</p>
+            {isEditable && <p className="text-sm">Click the + button to add your skills</p>}
+          </div>
+        )}
       </div>
     </div>
   );

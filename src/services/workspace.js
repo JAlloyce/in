@@ -32,6 +32,18 @@ class WorkspaceService {
       const user = await this.getCurrentUser();
       if (!user) throw new Error('User not authenticated');
 
+      // Check cache first (if data is less than 2 minutes old)
+      if (this.cache.lastFetch && 
+          (new Date() - this.cache.lastFetch) < 120000 && 
+          this.cache.topics.length >= 0) {
+        console.log('📦 Using cached workspace data');
+        return {
+          topics: this.cache.topics,
+          tasks: this.cache.tasks,
+          activities: this.cache.activities
+        };
+      }
+
       let topics = [];
       let tasks = [];
       let activities = [];
