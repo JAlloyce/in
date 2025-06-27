@@ -72,9 +72,9 @@ export default function CreatePost({ user, onPostCreated }) {
 
     const uploadedUrls = []
     
-    for (const file of mediaFiles) {
+    for (const [index, file] of mediaFiles.entries()) {
       const fileExt = file.name.split('.').pop()
-      const fileName = `${user.id}/${Date.now()}.${fileExt}`
+      const fileName = `${user.id}/${Date.now()}_${index}_${Math.random().toString(36).substring(2)}.${fileExt}`
       
       const { data, error } = await storage.uploadFile('post-media', fileName, file)
       
@@ -92,7 +92,7 @@ export default function CreatePost({ user, onPostCreated }) {
 
   const handleSubmit = async () => {
     if (!user) {
-      alert('Please log in to create posts')
+      setError('Please log in to create posts')
       return
     }
 

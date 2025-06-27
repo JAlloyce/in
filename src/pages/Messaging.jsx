@@ -35,6 +35,7 @@ export default function Messaging() {
   const [error, setError] = useState(null);
   const [sendingMessage, setSendingMessage] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [toastMessage, setToastMessage] = useState(null);
   const messagesEndRef = useRef(null);
   
   // Real-time subscription
@@ -250,7 +251,8 @@ export default function Messaging() {
       
       if (error) {
         console.error('Error sending message:', error);
-        alert('Failed to send message');
+        setToastMessage('Failed to send message');
+        setTimeout(() => setToastMessage(null), 3000);
         return;
       }
 
@@ -362,7 +364,8 @@ export default function Messaging() {
         break;
       case 'copy':
         navigator.clipboard.writeText(message.content);
-        alert('Message copied to clipboard!');
+        setToastMessage('Message copied to clipboard!');
+        setTimeout(() => setToastMessage(null), 3000);
         break;
       default:
         break;
@@ -370,17 +373,20 @@ export default function Messaging() {
   };
 
   const handleAudioCall = () => {
-    alert(`Starting audio call with ${activeConversation.name}...`);
+    setToastMessage(`Starting audio call with ${activeConversation.name}...`);
+    setTimeout(() => setToastMessage(null), 3000);
   };
 
   const handleReport = () => {
-    alert(`Reported conversation with ${activeConversation.name}`);
+    setToastMessage(`Reported conversation with ${activeConversation.name}`);
+    setTimeout(() => setToastMessage(null), 3000);
     setShowMoreMenu(false);
   };
 
   const handleBlock = () => {
     if (window.confirm(`Are you sure you want to block ${activeConversation.name}?`)) {
-      alert(`Blocked ${activeConversation.name}`);
+      setToastMessage(`Blocked ${activeConversation.name}`);
+      setTimeout(() => setToastMessage(null), 3000);
       setShowMoreMenu(false);
       closeConversation();
     }
@@ -786,6 +792,13 @@ export default function Messaging() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Toast Message */}
+      {toastMessage && (
+        <div className="fixed bottom-4 right-4 bg-gray-800 text-white px-4 py-2 rounded-lg shadow-lg z-50">
+          {toastMessage}
         </div>
       )}
     </div>

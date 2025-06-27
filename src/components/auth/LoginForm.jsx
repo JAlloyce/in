@@ -77,7 +77,7 @@ export default function LoginForm({ onClose }) {
           </div>
         )}
 
-        {debugInfo && (
+        {debugInfo && process.env.NODE_ENV === 'development' && (
           <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded mb-4 text-xs">
             <strong>Debug Info:</strong>
             <pre className="mt-2 whitespace-pre-wrap">{debugInfo}</pre>
@@ -85,24 +85,28 @@ export default function LoginForm({ onClose }) {
         )}
 
         <div className="space-y-4">
-          {/* Debug Info */}
-          <div className="bg-gray-50 border border-gray-200 text-gray-700 px-4 py-3 rounded text-xs">
-            <strong>Current Setup:</strong><br/>
-            Origin: {window.location.origin}<br/>
-            Redirect URL: {window.location.origin}/auth/callback<br/>
-            <br/>
-            <strong>Required in Google Cloud Console:</strong><br/>
-            http://localhost:3000/auth/callback<br/>
-            https://nuntsizvwfmjzucuubcd.supabase.co/auth/v1/callback
-          </div>
+          {/* Debug Info - Development only */}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="bg-gray-50 border border-gray-200 text-gray-700 px-4 py-3 rounded text-xs">
+              <strong>Current Setup:</strong><br/>
+              Origin: {window.location.origin}<br/>
+              Redirect URL: {window.location.origin}/auth/callback<br/>
+              <br/>
+              <strong>Required in Google Cloud Console:</strong><br/>
+              http://localhost:3000/auth/callback<br/>
+              https://your-supabase-project.supabase.co/auth/v1/callback
+            </div>
+          )}
 
-          {/* Test Connection Button */}
-          <button
-            onClick={testSupabaseConnection}
-            className="w-full flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg text-gray-700 bg-gray-50 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
-          >
-            🔧 Test Supabase Connection
-          </button>
+          {/* Test Connection Button - Development only */}
+          {process.env.NODE_ENV === 'development' && (
+            <button
+              onClick={testSupabaseConnection}
+              className="w-full flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg text-gray-700 bg-gray-50 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
+            >
+              🔧 Test Supabase Connection
+            </button>
+          )}
 
           {/* Google OAuth */}
           <button
@@ -130,7 +134,9 @@ export default function LoginForm({ onClose }) {
             <div className="w-full border-t border-gray-300" />
           </div>
           <div className="relative flex justify-center text-sm">
-            <span className="px-2 bg-white text-gray-500">Debug Mode</span>
+            <span className="px-2 bg-white text-gray-500">
+              {process.env.NODE_ENV === 'development' ? 'Debug Mode' : 'Authentication'}
+            </span>
           </div>
         </div>
 
@@ -143,11 +149,13 @@ export default function LoginForm({ onClose }) {
           </button>
         </div>
 
-        <div className="mt-6 text-xs text-gray-500 text-center">
-          <p>
-            Debug Mode Active - Check console for detailed logs
-          </p>
-        </div>
+        {process.env.NODE_ENV === 'development' && (
+          <div className="mt-6 text-xs text-gray-500 text-center">
+            <p>
+              Debug Mode Active - Check console for detailed logs
+            </p>
+          </div>
+        )}
       </div>
     </div>
   )

@@ -304,19 +304,7 @@ body::before {
   animation: shimmer 2s infinite;
 }
 
-/* Modern card enhancements */
-.card-modern {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: var(--shadow-soft);
-  transition: all 0.3s ease;
-}
-
-.card-modern:hover {
-  box-shadow: var(--shadow-medium);
-  transform: translateY(-2px);
-}
+/* Modern card enhancements - removed duplicate definition */
 
 /* Enhanced Intru-specific styles */
 .intru-post {

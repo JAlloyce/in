@@ -30,6 +30,7 @@ export default function Navbar() {
   const [searchFocused, setSearchFocused] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [showLoginModal, setShowLoginModal] = useState(false)
+  const [error, setError] = useState(null)
   const { user, signOut } = useAuth()
   const location = useLocation()
 
@@ -43,6 +44,7 @@ export default function Navbar() {
       await signOut()
     } catch (error) {
       console.error('Error signing out:', error)
+      setError('Failed to sign out. Please try again.')
     }
   }
 
@@ -291,6 +293,19 @@ export default function Navbar() {
       {/* Login Modal */}
       {showLoginModal && (
         <LoginForm onClose={() => setShowLoginModal(false)} />
+      )}
+
+      {/* Error Display */}
+      {error && (
+        <div className="fixed top-20 right-4 bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-lg shadow-lg z-50">
+          {error}
+          <button 
+            onClick={() => setError(null)}
+            className="ml-2 text-red-500 hover:text-red-700"
+          >
+            ×
+          </button>
+        </div>
       )}
     </motion.header>
   )

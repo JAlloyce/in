@@ -67,7 +67,8 @@ export default function Sidebar() {
         console.error('Error loading connections:', connectionsError);
       }
 
-      const profileViewers = Math.max(0, (connections?.length || 0) * 2 + Math.floor(Math.random() * 50));
+      // Calculate profile viewers based on actual data without random component
+      const profileViewers = Math.max(0, (connections?.length || 0) * 2 + (posts?.length || 0) * 3);
       
       setUserStats({
         profileViewers,

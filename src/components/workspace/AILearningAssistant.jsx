@@ -91,17 +91,17 @@ const AILearningAssistant = ({ topic, onContentGenerated, onClose }) => {
       }
       
       // Parse content based on current section
-      if (trimmed.length > 10) {
+      if (trimmed.length > 0) {
         if (currentSection === 'objectives' && (trimmed.match(/^\d+\./) || trimmed.startsWith('-') || trimmed.startsWith('*'))) {
           const objective = trimmed.replace(/^\d+\.|\-|\*/, '').trim();
-          if (objective.length > 5) {
+          if (objective.length > 0) {
             objectives.push(objective);
           }
         }
         
         if (currentSection === 'studyPlan' && (trimmed.match(/^\d+\./) || trimmed.startsWith('-') || trimmed.startsWith('*'))) {
           const stepText = trimmed.replace(/^\d+\.|\-|\*/, '').trim();
-          if (stepText.length > 5) {
+          if (stepText.length > 0) {
             // Extract time estimates and difficulty from text
             const timeMatch = stepText.match(/(\d+)\s*(hour|hr|min|week|day)/i);
             const difficultyMatch = stepText.match(/(beginner|intermediate|advanced)/i);
@@ -118,7 +118,7 @@ const AILearningAssistant = ({ topic, onContentGenerated, onClose }) => {
         
         if (currentSection === 'resources' && (trimmed.match(/^\d+\./) || trimmed.startsWith('-') || trimmed.startsWith('*'))) {
           const resourceText = trimmed.replace(/^\d+\.|\-|\*/, '').trim();
-          if (resourceText.length > 5) {
+          if (resourceText.length > 0) {
             // Try to extract URLs
             const urlMatch = resourceText.match(/https?:\/\/[^\s)]+/);
             const typeMatch = resourceText.match(/(book|course|video|website|tool|app|tutorial|documentation)/i);
@@ -145,23 +145,31 @@ const AILearningAssistant = ({ topic, onContentGenerated, onClose }) => {
 
   // Fallback parser for unstructured responses
   const parseUnstructuredResponse = (content) => {
-    const lines = content.split('\n').filter(line => line.trim().length > 10);
+    const lines = content.split('\n').filter(line => line.trim().length > 0);
+    const totalLines = lines.length;
+    const objectivesCount = Math.min(5, Math.ceil(totalLines * 0.3));
+    const studyPlanCount = Math.min(10, Math.ceil(totalLines * 0.5));
+    const resourcesCount = Math.min(10, totalLines - objectivesCount - studyPlanCount);
     
     return {
-      objectives: lines.slice(0, 5).map(line => line.trim()),
-      studyPlan: lines.slice(5, 15).map((line, index) => ({
-        title: `Study Step ${index + 1}`,
-        description: line.trim(),
-        estimatedTime: '1 hour',
-        difficulty: 'intermediate',
-        type: 'study'
-      })),
-      resources: lines.slice(15, 25).map((line, index) => ({
-        title: `Resource ${index + 1}`,
-        description: line.trim(),
-        type: 'resource',
-        level: 'all levels'
-      }))
+      objectives: lines.slice(0, objectivesCount).map(line => line.trim()),
+      studyPlan: lines
+        .slice(objectivesCount, objectivesCount + studyPlanCount)
+        .map((line, index) => ({
+          title: `Study Step ${index + 1}`,
+          description: line.trim(),
+          estimatedTime: '1 hour',
+          difficulty: 'intermediate',
+          type: 'study'
+        })),
+      resources: lines
+        .slice(objectivesCount + studyPlanCount, objectivesCount + studyPlanCount + resourcesCount)
+        .map((line, index) => ({
+          title: `Resource ${index + 1}`,
+          description: line.trim(),
+          type: 'resource',
+          level: 'all levels'
+        }))
     };
   };
 

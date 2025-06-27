@@ -104,7 +104,6 @@ export default function Home() {
       switch (sortBy) {
         case 'popular':
           return (b.likes + b.comments + b.shares) - (a.likes + a.comments + a.shares)
-        case 'recent':
         default:
           return new Date(b.timestamp) - new Date(a.timestamp)
       }
@@ -199,7 +198,7 @@ export default function Home() {
 
   const handleLike = useCallback(async (postId) => {
     if (!user) {
-      alert('Please log in to like posts')
+      setError('Please log in to like posts')
       return
     }
 
@@ -228,7 +227,7 @@ export default function Home() {
       }
     } catch (err) {
       console.error('Error toggling like:', err)
-      alert('Failed to update like: ' + err.message)
+      setError('Failed to update like: ' + err.message)
     }
   }, [user, feedPosts])
 
@@ -313,12 +312,12 @@ export default function Home() {
     }
   }
 
-  const handleShare = async (post) => {
+    const handleShare = async (post) => {
     try {
       if (navigator.share) {
         // Use native Web Share API if available
         await navigator.share({
-                          title: 'Intru Post',
+          title: 'Intru Post',
           text: post.content,
           url: window.location.href
         });
@@ -326,13 +325,13 @@ export default function Home() {
         // Fallback - copy to clipboard
         const shareText = `Check out this post: "${post.content}" - ${window.location.href}`;
         await navigator.clipboard.writeText(shareText);
-        alert('Post link copied to clipboard!');
+        setError('Post link copied to clipboard!');
+        setTimeout(() => setError(null), 3000);
       }
     } catch (err) {
       console.error('Share failed:', err);
-      // Fallback for older browsers
-      const shareText = `Check out this post: "${post.content}" - ${window.location.href}`;
-      prompt('Copy this link to share:', shareText);
+      setError('Failed to share post. Please try again.');
+      setTimeout(() => setError(null), 3000);
     }
   };
 

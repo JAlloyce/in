@@ -371,6 +371,21 @@ const CreateTopicModal = ({ onClose, onTopicCreated, user }) => {
     const selectedFile = e.target.files[0];
     if (!selectedFile) return;
     
+    // File validation
+    const maxSizeMB = 10;
+    const maxSizeBytes = maxSizeMB * 1024 * 1024;
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/bmp', 'image/webp', 'application/pdf', 'text/plain', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    
+    if (selectedFile.size > maxSizeBytes) {
+      alert(`File size must be less than ${maxSizeMB}MB`);
+      return;
+    }
+    
+    if (!allowedTypes.includes(selectedFile.type)) {
+      alert('File type not supported. Please upload an image, PDF, or document file.');
+      return;
+    }
+    
     setIsProcessing(true);
     setFile(selectedFile);
     if (!fileTitle) setFileTitle(selectedFile.name.replace(/\.[^/.]+$/, ""));

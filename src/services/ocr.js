@@ -3,6 +3,16 @@
  * Tesseract.js is only loaded when actually needed for text extraction
  */
 
+// Define supported formats in one place
+const SUPPORTED_IMAGE_FORMATS = [
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/gif',
+  'image/bmp',
+  'image/webp'
+];
+
 let TesseractWorker = null;
 
 const initializeTesseract = async () => {
@@ -31,8 +41,7 @@ const ocrService = {
   // Check if a file is an image that can be processed by OCR
   isImageFile(file) {
     if (!file || !file.type) return false;
-    return file.type.startsWith('image/') && 
-           ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/bmp', 'image/webp'].includes(file.type);
+    return SUPPORTED_IMAGE_FORMATS.includes(file.type);
   },
 
   // Extract text from image file with lazy loading
@@ -129,14 +138,7 @@ const ocrService = {
 
   // Get supported image formats
   getSupportedFormats() {
-    return [
-      'image/jpeg',
-      'image/jpg', 
-      'image/png',
-      'image/gif',
-      'image/bmp',
-      'image/webp'
-    ];
+    return [...SUPPORTED_IMAGE_FORMATS];
   },
 
   // Validate file size and type before processing

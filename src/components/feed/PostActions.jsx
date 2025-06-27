@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { 
   HiThumbUp, HiChat, HiShare, HiSparkles, 
   HiOutlineBookmark, HiDotsVertical, HiFlag, HiEyeOff, HiDotsHorizontal, HiOutlineEyeOff
@@ -31,7 +31,23 @@ export default function PostActions({
   const [likeCount, setLikeCount] = useState(likes)
   const [isLoading, setIsLoading] = useState(false)
   const [showDropdown, setShowDropdown] = useState(false)
+  const [shareStatus, setShareStatus] = useState(null)
   const [error, setError] = useState(null)
+  const dropdownRef = useRef(null)
+
+  // Click outside handler for dropdown
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowDropdown(false)
+      }
+    }
+
+    if (showDropdown) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showDropdown])
 
   const handleLike = async () => {
     if (!user) {
@@ -103,15 +119,11 @@ export default function PostActions({
         const textToShare = `${shareData.text}\n\n${shareData.url}`
         await navigator.clipboard.writeText(textToShare)
         
-        // Show temporary success message
-        const originalText = 'Share'
-        const button = document.activeElement
-        if (button && button.textContent.includes('Share')) {
-          button.textContent = 'Copied!'
-          setTimeout(() => {
-            button.textContent = originalText
-          }, 2000)
-        }
+        // Use React state for UI feedback instead of DOM manipulation
+        setShareStatus('copied')
+        setTimeout(() => {
+          setShareStatus(null)
+        }, 2000)
         
         console.log('📋 Post link copied to clipboard')
       }
@@ -165,7 +177,7 @@ export default function PostActions({
 
           {/* Comment Button */}
           <button
-            onClick={() => onCommentToggle && onCommentToggle(postId)}
+            onClick={() => onCommentToggle?.(postId)}
             className="flex items-center space-x-2 px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-all"
           >
             <HiChat className="w-5 h-5" />
@@ -181,13 +193,13 @@ export default function PostActions({
           >
             <HiShare className="w-5 h-5" />
             <span className="text-sm font-medium">
-              {shares > 0 ? shares : 'Share'}
+              {shareStatus === 'copied' ? 'Copied!' : shares > 0 ? shares : 'Share'}
             </span>
           </button>
         </div>
 
         {/* More Options */}
-        <div className="relative">
+        <div className="relative" ref={dropdownRef}>
           <button
             onClick={() => setShowDropdown(!showDropdown)}
             className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all"

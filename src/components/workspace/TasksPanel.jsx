@@ -34,16 +34,29 @@ export default function TasksPanel({ tasks: propTasks = [], onTaskComplete, topi
 
   const handleToggleTask = async (taskId, currentStatus) => {
     const newStatus = currentStatus === 'completed' ? 'pending' : 'completed';
-    await workspaceService.updateTask(taskId, { 
-      status: newStatus,
-      completed_at: newStatus === 'completed' ? new Date().toISOString() : null 
-    });
     
+    // Optimistic update
     setTasks(currentTasks => currentTasks.map(task => 
       task.id === taskId ? { ...task, status: newStatus } : task
     ));
     
-    if (onTaskComplete) onTaskComplete(taskId, newStatus);
+    try {
+      await workspaceService.updateTask(taskId, { 
+        status: newStatus,
+        completed_at: newStatus === 'completed' ? new Date().toISOString() : null 
+      });
+      
+      if (onTaskComplete) onTaskComplete(taskId, newStatus);
+    } catch (error) {
+      // Revert optimistic update on error
+      setTasks(currentTasks => currentTasks.map(task => 
+        task.id === taskId ? { ...task, status: currentStatus } : task
+      ));
+      
+      console.error('Failed to update task:', error);
+      // You could add a toast notification here
+      alert('Failed to update task. Please try again.');
+    }
   };
 
   const handleCreateTask = async (newTaskData) => {
