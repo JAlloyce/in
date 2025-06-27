@@ -186,7 +186,7 @@ export default function CreatePost({ user, onPostCreated }) {
       <Card className="text-center">
         <HiChat className="w-12 h-12 text-gray-400 mx-auto mb-4" />
         <h3 className="text-heading-3 mb-2">Share with your network</h3>
-        <p className="text-body text-gray-600 mb-4">Join LinkedIn to start sharing your thoughts and experiences</p>
+                        <p className="text-body text-gray-600 mb-4">Join Intru to start sharing your thoughts and experiences</p>
         <Button variant="primary" size="md">
           Sign In
         </Button>

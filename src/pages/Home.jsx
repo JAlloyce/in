@@ -318,7 +318,7 @@ export default function Home() {
       if (navigator.share) {
         // Use native Web Share API if available
         await navigator.share({
-          title: 'LinkedIn Clone Post',
+                          title: 'Intru Post',
           text: post.content,
           url: window.location.href
         });
@@ -394,7 +394,7 @@ export default function Home() {
   }
 
   const FeedPost = ({ post }) => (
-    <Card className="linkedin-post mb-6">
+                <Card className="intru-post mb-6">
       {/* Post Header */}
       <div className="flex items-start gap-3 mb-4">
         <div className="relative">

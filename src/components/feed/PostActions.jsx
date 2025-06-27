@@ -90,7 +90,7 @@ export default function PostActions({
   const handleShare = async () => {
     try {
       const shareData = {
-        title: 'LinkedIn Clone Post',
+                    title: 'Intru Post',
         text: post?.content || 'Check out this post!',
         url: window.location.href
       }

@@ -232,7 +232,7 @@ export default function Profile({ isEditable = true, userData }) {
           ...profile,
           name: profile?.name || user.user_metadata?.full_name || user.user_metadata?.name || 'User',
           avatar_url: profile?.avatar_url || user.user_metadata?.avatar_url || user.user_metadata?.picture,
-          headline: profile?.headline || 'Professional at LinkedIn Clone',
+          headline: profile?.headline || 'Professional at Intru',
           location: profile?.location || 'Location not specified',
           bio: profile?.bio || 'No bio available yet. Update your profile to tell others about yourself!',
           website: profile?.website || '',
@@ -294,10 +294,10 @@ export default function Profile({ isEditable = true, userData }) {
         // Fallback to OAuth data if database fails
         setProfileData({
           name: user.user_metadata?.full_name || user.user_metadata?.name || 'User',
-          headline: 'Professional at LinkedIn Clone',
+          headline: 'Professional at Intru',
           location: 'Location not specified',
           avatar_url: user.user_metadata?.avatar_url || user.user_metadata?.picture,
-          bio: 'Welcome to LinkedIn Clone! Complete your profile to get started.',
+          bio: 'Welcome to Intru! Complete your profile to get started.',
           website: '',
           connections: 0,
           followers: 0,

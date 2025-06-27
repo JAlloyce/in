@@ -318,20 +318,20 @@ body::before {
   transform: translateY(-2px);
 }
 
-/* Enhanced LinkedIn-specific styles */
-.linkedin-post {
+/* Enhanced Intru-specific styles */
+.intru-post {
   @apply card-modern;
 }
 
-.linkedin-post:hover {
+.intru-post:hover {
   box-shadow: var(--shadow-glow);
 }
 
-.linkedin-sidebar {
+.intru-sidebar {
   @apply card-modern;
 }
 
-.linkedin-news {
+.intru-news {
   @apply card-modern;
 }
 

@@ -1,7 +1,8 @@
 import React, { useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
-import { FaGoogle, FaGithub, FaLinkedin } from 'react-icons/fa'
+import { FaGoogle, FaGithub } from 'react-icons/fa'
+import IntruLogo from '../ui/IntruLogo'
 
 export default function LoginForm({ onClose }) {
   const [loading, setLoading] = useState(false)
@@ -65,9 +66,9 @@ export default function LoginForm({ onClose }) {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
         <div className="text-center mb-6">
-          <FaLinkedin className="text-blue-600 text-4xl mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Welcome Back</h2>
-          <p className="text-gray-600">Sign in to your LinkedIn account</p>
+          <IntruLogo size="xl" className="mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Welcome to Intru</h2>
+          <p className="text-gray-600">Connect with professionals and grow your network</p>
         </div>
 
         {error && (

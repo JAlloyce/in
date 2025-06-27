@@ -14,6 +14,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { Avatar, Button } from '../ui'
 import LoginForm from '../auth/LoginForm'
+import IntruLogo from '../ui/IntruLogo'
 
 const navigation = [
   { name: 'Home', href: '/', icon: HomeIcon, authRequired: false },
@@ -55,18 +56,11 @@ export default function Navbar() {
         <div className="flex items-center justify-between h-16">
           
           {/* Logo */}
-          <motion.div 
-            className="flex-shrink-0"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
+          <div className="flex items-center">
             <Link to="/" className="flex items-center space-x-2">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-xl">i</span>
-          </div>
-              <span className="hidden md:block text-xl font-bold text-gray-900">Intru</span>
+              <IntruLogo size="md" showText={true} />
             </Link>
-          </motion.div>
+          </div>
 
           {/* Search Bar */}
           <div className="flex-1 max-w-lg mx-4">

@@ -5,6 +5,8 @@ import { useAuth } from "../../context/AuthContext"
 import { useModal } from "../../context/ModalContext"
 import { supabase } from "../../lib/supabase"
 import SettingsModal from "../settings/SettingsModal"
+import LoginForm from "../auth/LoginForm"
+import IntruLogo from "../ui/IntruLogo"
 
 /**
  * Sidebar Component - Professional Edition
@@ -16,6 +18,7 @@ import SettingsModal from "../settings/SettingsModal"
  * - Smooth hover interactions
  * - Professional typography and spacing
  * - Functional settings modal
+ * - Working login functionality
  */
 export default function Sidebar() {
   const location = useLocation();
@@ -23,6 +26,7 @@ export default function Sidebar() {
   const { isSettingsOpen, openSettings, closeSettings, isAnyModalOpen } = useModal();
   const [userStats, setUserStats] = useState({ profileViewers: 0, postImpressions: 0 });
   const [loading, setLoading] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
   const isWorkspace = location.pathname.startsWith("/workspace");
   
   if (isWorkspace) return null; // Hide app sidebar when in workspace
@@ -87,39 +91,46 @@ export default function Sidebar() {
   // Show login prompt for non-authenticated users
   if (!isAuthenticated) {
     return (
-      <aside className="hidden md:block w-60 md:w-64 lg:w-72 flex-shrink-0">
-        <div className="bg-white rounded-lg shadow sticky top-24">
-          <div className="p-6 text-center">
-            <div className="w-16 h-16 mx-auto mb-4 bg-blue-100 rounded-full flex items-center justify-center">
-              <HiLogin className="w-8 h-8 text-blue-600" />
+      <>
+        <aside className="hidden md:block w-60 md:w-64 lg:w-72 flex-shrink-0">
+          <div className="bg-white rounded-lg shadow sticky top-24">
+            <div className="p-6 text-center">
+              <div className="w-16 h-16 mx-auto mb-4 bg-blue-100 rounded-full flex items-center justify-center">
+                <HiLogin className="w-8 h-8 text-blue-600" />
+              </div>
+                              <h3 className="font-bold text-gray-900 mb-2">Join Intru</h3>
+              <p className="text-sm text-gray-500 mb-4">Connect with professionals and discover opportunities</p>
+              <button 
+                onClick={() => setShowLoginModal(true)}
+                className="inline-block bg-blue-600 text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-blue-700 transition-colors"
+              >
+                Sign In
+              </button>
             </div>
-            <h3 className="font-bold text-gray-900 mb-2">Join LinkedIn Clone</h3>
-            <p className="text-sm text-gray-500 mb-4">Connect with professionals and discover opportunities</p>
-            <Link 
-              to="/" 
-              className="inline-block bg-blue-600 text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-blue-700 transition-colors"
-            >
-              Sign In
-            </Link>
+            
+            <div className="border-t">
+              <ul className="p-4 space-y-2">
+                {menuItems.filter(item => item.path === '/' || item.path === '/jobs' || item.path === '/pages').map((item, index) => (
+                  <li key={index}>
+                    <Link 
+                      to={item.path}
+                      className="flex items-center py-2 px-3 rounded hover:bg-gray-100 transition-colors group"
+                    >
+                      <item.icon className={`w-5 h-5 mr-3 ${item.color} group-hover:${item.color}`} />
+                      <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900">{item.text}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
-          
-          <div className="border-t">
-            <ul className="p-4 space-y-2">
-              {menuItems.filter(item => item.path === '/' || item.path === '/jobs' || item.path === '/pages').map((item, index) => (
-                <li key={index}>
-                  <Link 
-                    to={item.path}
-                    className="flex items-center py-2 px-3 rounded hover:bg-gray-100 transition-colors group"
-                  >
-                    <item.icon className={`w-5 h-5 mr-3 ${item.color} group-hover:${item.color}`} />
-                    <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900">{item.text}</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      </aside>
+        </aside>
+
+        {/* Login Modal for Non-Authenticated Users */}
+        {showLoginModal && (
+          <LoginForm onClose={() => setShowLoginModal(false)} />
+        )}
+      </>
     );
   }
 
@@ -145,7 +156,7 @@ export default function Sidebar() {
               </div>
               <h3 className="font-bold text-gray-900">{getUserDisplayName()}</h3>
               <p className="text-sm text-gray-500 mb-3">
-                {user?.user_metadata?.headline || user?.user_metadata?.job_title || 'Professional at LinkedIn Clone'}
+                {user?.user_metadata?.headline || user?.user_metadata?.job_title || 'Professional at Intru'}
               </p>
 
               <div className="border-t pt-3 space-y-1">

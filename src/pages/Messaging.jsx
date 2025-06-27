@@ -126,7 +126,7 @@ export default function Messaging() {
             id: conv.id,
             name: otherParticipant.name || 'User',
             position: otherParticipant.headline || "Professional",
-            company: "LinkedIn Member",
+            company: "Intru Member",
             lastMessage: "Start a conversation", // Since last_message doesn't exist
             time: formatTimestamp(conv.updated_at),
             unread: false, // TODO: Track read status

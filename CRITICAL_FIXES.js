@@ -1,4 +1,4 @@
-// CRITICAL FIXES FOR LINKEDIN CLONE
+// CRITICAL FIXES FOR INTRU
 
 // 1. Fix likes with better auth checking
 export const likeFix = `
@@ -142,7 +142,7 @@ export const shareButtonFix = `
     try {
       if (navigator.share) {
         await navigator.share({
-          title: 'LinkedIn Clone Post',
+          title: 'Intru Post',
           text: post.content,
           url: window.location.href
         });
