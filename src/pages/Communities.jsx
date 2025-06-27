@@ -155,7 +155,7 @@ export default function Communities() {
           category: communityForm.category,
           rules: communityForm.rules,
           is_active: true,
-          created_by: user.id
+          admin_id: user.id
         })
         .select()
         .single();
@@ -320,7 +320,7 @@ export default function Communities() {
           <h2 className="text-xl font-semibold mb-4">Your Communities</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {joinedCommunities.map(community => (
-              <div key={community.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+              <Link to={`/communities/${community.id}`} key={community.id} className="block border rounded-lg p-4 hover:shadow-md transition-shadow">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center">
                     <div className="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center mr-3">
@@ -337,7 +337,7 @@ export default function Communities() {
                   <span className="text-xs bg-gray-100 px-2 py-1 rounded">{community.category}</span>
                   <span className="text-xs text-green-600">{community.activity}</span>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         </div>
@@ -372,7 +372,7 @@ export default function Communities() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {filteredCommunities.map(community => (
-              <div key={community.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+              <Link to={`/communities/${community.id}`} key={community.id} className="block border rounded-lg p-4 hover:shadow-md transition-shadow">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center">
                     <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center mr-3">
@@ -394,7 +394,7 @@ export default function Communities() {
                     Join
                   </button>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         )}

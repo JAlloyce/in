@@ -4,12 +4,14 @@ import {
   HiPlus, HiOutlineDotsHorizontal, HiOutlineBookmark, 
   HiOutlineShare, HiOutlineFlag, HiOutlineChevronDown, HiSearch,
   HiOutlineLocationMarker, HiOutlineClock, HiOutlineUserGroup,
-  HiOutlineCalendar, HiOutlineTicket, HiOutlinePresentationChartLine
+  HiOutlineCalendar, HiOutlineTicket, HiOutlinePresentationChartLine,
+  HiBan, HiUserAdd
 } from "react-icons/hi";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import CreatePost from "../components/feed/CreatePost";
 import Post from "../components/feed/Post";
 import CommunityAdminPanel from '../components/community/CommunityAdminPanel';
+import { supabase } from '../lib/supabase';
 
 const CommunityDetail = () => {
   const { id } = useParams();
@@ -297,9 +299,7 @@ const CommunityDetail = () => {
       {/* Admin Panel */}
       {isAdmin && showAdminPanel && (
         <CommunityAdminPanel 
-          blockedMembers={blockedMembers}
-          onBlockMember={(memberId) => setBlockedMembers([...blockedMembers, memberId])}
-          onUnblockMember={(memberId) => setBlockedMembers(blockedMembers.filter(id => id !== memberId))}
+          communityId={id}
         />
       )}
       
