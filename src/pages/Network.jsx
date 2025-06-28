@@ -58,7 +58,7 @@ export default function Network() {
       setLoading(true);
       setError(null);
 
-      console.log('🌐 Loading network for user:', user.email);
+      // console.log('🌐 Loading network for user:', user.email);
 
       // Load connections, pending requests, and suggestions
       await Promise.all([
@@ -68,7 +68,7 @@ export default function Network() {
       ]);
 
     } catch (err) {
-      console.error('Error loading network:', err);
+      // console.error('Error loading network:', err);
       setError('Failed to load network data');
     } finally {
       setLoading(false);
@@ -90,7 +90,7 @@ export default function Network() {
         .limit(50);  // Limit to first 50 connections for performance
     
       if (connectionsError) {
-        console.error('Error loading connections:', connectionsError);
+        // console.error('Error loading connections:', connectionsError);
         setUserConnections([]); // Set empty array on error
         return;
       }
@@ -98,7 +98,7 @@ export default function Network() {
       // Transform the data to match our UI format
       const transformedConnections = connectionsData.map(conn => {
         if (!conn.requester || !conn.receiver) {
-          console.warn('Missing profile data for connection:', conn.id);
+          // console.warn('Missing profile data for connection:', conn.id);
           return null;
         }
         const otherUser = conn.requester.id === userId ? conn.receiver : conn.requester;
@@ -113,9 +113,9 @@ export default function Network() {
       }).filter(Boolean);
 
       setUserConnections(transformedConnections);
-      console.log('✅ Loaded connections:', transformedConnections.length);
+      // console.log('✅ Loaded connections:', transformedConnections.length);
     } catch (err) {
-      console.error('Error in loadConnections:', err);
+      // console.error('Error in loadConnections:', err);
     }
   };
 
@@ -133,7 +133,7 @@ export default function Network() {
         .eq('status', 'pending');
 
       if (receivedError) {
-        console.error('Error loading received requests:', receivedError);
+        // console.error('Error loading received requests:', receivedError);
         setPendingReceived([]);
       } else {
         const transformedReceived = receivedData.map(conn => ({
@@ -145,7 +145,7 @@ export default function Network() {
           requested: formatTimestamp(conn.created_at)
         }));
         setPendingReceived(transformedReceived);
-        console.log('✅ Loaded pending received:', transformedReceived.length);
+        // console.log('✅ Loaded pending received:', transformedReceived.length);
       }
 
       // Load pending requests sent (outgoing)
@@ -160,7 +160,7 @@ export default function Network() {
         .eq('status', 'pending');
 
       if (sentError) {
-        console.error('Error loading sent requests:', sentError);
+        // console.error('Error loading sent requests:', sentError);
         setPendingSent([]);
       } else {
         const transformedSent = sentData.map(conn => ({
@@ -172,10 +172,10 @@ export default function Network() {
           requested: formatTimestamp(conn.created_at)
         }));
         setPendingSent(transformedSent);
-        console.log('✅ Loaded pending sent:', transformedSent.length);
+        // console.log('✅ Loaded pending sent:', transformedSent.length);
       }
     } catch (err) {
-      console.error('Error in loadPendingRequests:', err);
+      // console.error('Error in loadPendingRequests:', err);
     }
   };
 
@@ -189,7 +189,7 @@ export default function Network() {
         .limit(10);  // Reduce limit for faster loading
     
       if (suggestionsError) {
-        console.error('Error loading suggestions:', suggestionsError);
+        // console.error('Error loading suggestions:', suggestionsError);
         setSuggestions([]); // Set empty array on error
         return;
       }
@@ -223,9 +223,9 @@ export default function Network() {
       }));
 
       setSuggestions(transformedSuggestions);
-      console.log('✅ Loaded suggestions:', transformedSuggestions.length);
+      // console.log('✅ Loaded suggestions:', transformedSuggestions.length);
     } catch (err) {
-      console.error('Error in loadSuggestions:', err);
+      // console.error('Error in loadSuggestions:', err);
     }
   };
 
@@ -255,7 +255,7 @@ export default function Network() {
         .update({ status: 'rejected' })
         .eq('id', connectionId);
       if (error) {
-        console.error('Error removing connection:', error);
+        // console.error('Error removing connection:', error);
         showError('Failed to remove connection');
         return;
       }
@@ -265,7 +265,7 @@ export default function Network() {
       setShowConnectionMenu(null);
       showSuccess('Connection removed successfully');
     } catch (err) {
-      console.error('Error removing connection:', err);
+      // console.error('Error removing connection:', err);
       showError('Failed to remove connection');
     }
   };
@@ -278,21 +278,21 @@ export default function Network() {
         .eq('id', connectionId);
 
       if (error) {
-        console.error('Error accepting connection:', error);
-        showError('Failed to accept connection request');
+        // console.error('Error accepting connection:', error);
+        showError('Failed to accept connection');
         return;
       }
 
-      // Refresh the pending requests and connections
-      await Promise.all([
-        loadConnections(user.id),
-        loadPendingRequests(user.id)
-      ]);
-
+      // Move from pending to connections
+      const acceptedRequest = pendingReceived.find(req => req.id === connectionId);
+      if (acceptedRequest) {
+        setUserConnections(prev => [...prev, { ...acceptedRequest, connected: 'Just now' }]);
+        setPendingReceived(prev => prev.filter(req => req.id !== connectionId));
+      }
       showSuccess('Connection request accepted!');
     } catch (err) {
-      console.error('Error accepting connection:', err);
-      showError('Failed to accept connection request');
+      // console.error('Error in handleAcceptConnection:', err);
+      showError('Failed to accept connection');
     }
   };
 
@@ -300,68 +300,75 @@ export default function Network() {
     try {
       const { error } = await supabase
         .from('connections')
-        .update({ status: 'rejected' })
+        .delete()
         .eq('id', connectionId);
 
       if (error) {
-        console.error('Error rejecting connection:', error);
-        showError('Failed to reject connection request');
+        // console.error("Error ignoring connection:", error);
+        showError('Failed to ignore connection');
         return;
       }
-
-      await loadPendingRequests(user.id);
-      showSuccess('Connection request rejected');
+      
+      setPendingReceived(prev => prev.filter(req => req.id !== connectionId));
+      showSuccess('Connection request ignored');
     } catch (err) {
-      console.error('Error rejecting connection:', err);
-      showError('Failed to reject connection request');
+      // console.error('Error in handleRejectConnection:', err);
+      showError('Failed to ignore connection');
     }
   };
 
   const handleSendConnectionRequest = async (receiverId) => {
     if (!user) {
-      showWarning('Please log in to send connection requests');
+      showError("You must be logged in to send connection requests.");
       return;
     }
-
-    if (!receiverId) {
-      showError('Invalid recipient for connection request');
+    
+    // Check for duplicate requests to prevent errors
+    const isAlreadyConnected = userConnections.some(c => c.userId === receiverId);
+    const isAlreadySent = pendingSent.some(s => s.userId === receiverId);
+    const isAlreadyReceived = pendingReceived.some(r => r.userId === receiverId);
+    
+    if (isAlreadyConnected || isAlreadySent || isAlreadyReceived) {
+      showWarning("You're already connected or have a pending request with this user.");
       return;
     }
 
     try {
-      const { data, error: connectionError } = await supabase.rpc('create_connection_request', {
-        requester_id: user.id,
-        receiver_id: receiverId
-      });
-
-      if (connectionError) {
-        console.error('Error sending connection request:', connectionError);
-        showError('Failed to send connection request: ' + connectionError.message);
+      const { error } = await supabase
+        .from('connections')
+        .insert({
+          requester_id: user.id,
+          receiver_id: receiverId,
+          status: 'pending'
+        });
+      
+      if (error) {
+        // console.error('Error creating connection request:', error);
+        showError('Failed to send connection request. Please try again.');
         return;
+      }
+
+      // Optimistically add to pending sent list
+      const suggestion = suggestions.find(s => s.id === receiverId);
+      if (suggestion) {
+        const newSentRequest = {
+          id: `temp-${Date.now()}`,
+          userId: suggestion.id,
+          name: suggestion.name,
+          title: suggestion.title,
+          avatar_url: suggestion.avatar_url,
+          requested: 'Just now'
+        };
+        setPendingSent(prev => [...prev, newSentRequest]);
       }
       
-      // Check if the function returned an error
-      if (data?.error) {
-        console.error('Function returned error:', data);
-        if (data.code === '23505') {
-          showWarning('Connection request already sent or you are already connected!');
-        } else {
-          showError('Failed to send connection request: ' + data.error);
-        }
-        return;
-      }
-
-      console.log('✅ Connection request created successfully');
-
-      // Refresh pending requests to show the new sent request
-      await loadPendingRequests(user.id);
-
-      // Remove from suggestions
-      setSuggestions(prev => prev.filter(s => s.id !== receiverId));
+      setSuggestions(prev => prev.filter(s => s.id !== receiverId)); // Remove from suggestions
       showSuccess('Connection request sent!');
+      // console.log('✅ Connection request created successfully');
+
     } catch (err) {
-      console.error('Error sending connection request:', err);
-      showError('Failed to send connection request');
+      // console.error('Error sending connection request:', err);
+      showError('An unexpected error occurred. Please try again.');
     }
   };
 

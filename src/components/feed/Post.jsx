@@ -26,7 +26,7 @@ export default function Post({
   content,
   time,
   likes,
-  comments,
+  comments = [],
   communityName,
   onComment
 }) {
@@ -38,26 +38,7 @@ export default function Post({
   const [commentText, setCommentText] = useState("")
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [showDropdown, setShowDropdown] = useState(false)
-  const [postComments, setPostComments] = useState([
-    {
-      id: 1,
-      user: "Michael Chen",
-      role: "Software Engineer",
-      content: "This looks amazing! Can't wait to try it out.",
-      time: "1h ago",
-      likes: 5,
-      liked: false
-    },
-    {
-      id: 2,
-      user: "Emma Wilson",
-      role: "Product Designer",
-      content: "The design looks so intuitive. Great job!",
-      time: "45m ago",
-      likes: 3,
-      liked: true
-    }
-  ])
+  const [postComments, setPostComments] = useState(comments)
 
   // Sample images array - in real app, this would come from props
   const images = [

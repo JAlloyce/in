@@ -82,7 +82,8 @@ export default function CreatePost({ user, onPostCreated }) {
         const { data, error } = await storage.uploadFile('post-media', fileName, file)
         
         if (error) {
-          console.error('Error uploading file:', error)
+          // console.error('Error uploading file:', error)
+          // Consider using a proper logging service instead
           // Clean up previously uploaded files
           for (const uploadedFile of uploadedFiles) {
             await storage.deleteFile('post-media', uploadedFile)
@@ -135,10 +136,24 @@ export default function CreatePost({ user, onPostCreated }) {
       const { data: newPost, error: postError } = await posts.create(postData)
 
       if (postError) {
-        console.error('Error creating post:', postError)
+        // console.error('Error creating post:', postError)
+        // Consider using a proper logging service instead
         setError('Failed to create post. Please try again.')
         return
       }
+
+      // Add this helper function if not already present
+      const formatTimestamp = (timestamp) => {
+        if (!timestamp) return 'Just now';
+        const date = new Date(timestamp);
+        const now = new Date();
+        const diffInSeconds = Math.floor((now - date) / 1000);
+        
+        if (diffInSeconds < 60) return 'Just now';
+        if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+        if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+        return `${Math.floor(diffInSeconds / 86400)}d ago`;
+      };
 
       // Transform the post data for the parent component
       const transformedPost = {
@@ -150,7 +165,7 @@ export default function CreatePost({ user, onPostCreated }) {
           avatar: newPost.author?.avatar_url || user.user_metadata?.avatar_url
         },
         content: newPost.content,
-        timestamp: 'Just now',
+        timestamp: formatTimestamp(newPost.created_at),
         likes: 0,
         comments: 0,
         shares: 0,
@@ -169,7 +184,8 @@ export default function CreatePost({ user, onPostCreated }) {
       setShowModal(false)
 
     } catch (err) {
-      console.error('Error creating post:', err)
+      // console.error('Error creating post:', err)
+      // Consider using a proper logging service instead
       setError(err.message || 'Failed to create post. Please try again.')
     } finally {
       setUploading(false)

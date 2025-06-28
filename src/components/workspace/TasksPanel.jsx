@@ -17,6 +17,7 @@ export default function TasksPanel({ tasks: propTasks = [], onTaskComplete, topi
   const [error, setError] = useState(null);
   const [showCreateTaskModal, setShowCreateTaskModal] = useState(false);
   const [expandedTopics, setExpandedTopics] = useState([]);
+  const [updatingTasks, setUpdatingTasks] = useState(new Set());
 
   useEffect(() => {
     setTasks(propTasks);
@@ -47,8 +48,11 @@ export default function TasksPanel({ tasks: propTasks = [], onTaskComplete, topi
   };
 
   const handleToggleTask = async (taskId, currentStatus) => {
+    if (updatingTasks.has(taskId)) return; // Prevent concurrent updates
+
     const newStatus = currentStatus === 'completed' ? 'pending' : 'completed';
     
+    setUpdatingTasks(prev => new Set(prev).add(taskId));
     // Optimistic update
     setTasks(currentTasks => currentTasks.map(task => 
       task.id === taskId ? { ...task, status: newStatus } : task
@@ -69,6 +73,12 @@ export default function TasksPanel({ tasks: propTasks = [], onTaskComplete, topi
       
       console.error('Failed to update task:', error);
       setError('Failed to update task. Please try again.');
+    } finally {
+      setUpdatingTasks(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(taskId);
+        return newSet;
+      });
     }
   };
 
@@ -194,6 +204,7 @@ export default function TasksPanel({ tasks: propTasks = [], onTaskComplete, topi
                 isExpanded={expandedTopics.includes(topic.id)}
                 onToggleExpansion={() => toggleTopicExpansion(topic.id)}
                 onToggleTask={handleToggleTask}
+                updatingTasks={updatingTasks}
               />
             ))}
 
@@ -204,6 +215,7 @@ export default function TasksPanel({ tasks: propTasks = [], onTaskComplete, topi
                 isExpanded={expandedTopics.includes(null)}
                 onToggleExpansion={() => toggleTopicExpansion(null)}
                 onToggleTask={handleToggleTask}
+                updatingTasks={updatingTasks}
               />
             )}
           </div>
@@ -223,7 +235,7 @@ export default function TasksPanel({ tasks: propTasks = [], onTaskComplete, topi
 }
 
 // Task Topic Group Component
-const TaskTopicGroup = ({ topic, isExpanded, onToggleExpansion, onToggleTask }) => {
+const TaskTopicGroup = ({ topic, isExpanded, onToggleExpansion, onToggleTask, updatingTasks }) => {
   const completedCount = topic.tasks.filter(t => t.status === 'completed').length;
   const totalCount = topic.tasks.length;
   const progress = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
@@ -262,12 +274,13 @@ const TaskTopicGroup = ({ topic, isExpanded, onToggleExpansion, onToggleTask }) 
             transition={{ duration: 0.3 }}
             className="overflow-hidden"
           >
-            <div className="p-4 space-y-3 bg-white">
+            <div className="p-4 space-y-2">
               {topic.tasks.map(task => (
                 <TaskItem 
-                  key={task.id} 
-                  task={task} 
-                  onToggle={() => onToggleTask(task.id, task.status)}
+                  key={task.id}
+                  task={task}
+                  onToggle={onToggleTask}
+                  isUpdating={updatingTasks.has(task.id)}
                 />
               ))}
             </div>
@@ -279,50 +292,37 @@ const TaskTopicGroup = ({ topic, isExpanded, onToggleExpansion, onToggleTask }) 
 };
 
 // Individual Task Item Component
-const TaskItem = ({ task, onToggle }) => {
+const TaskItem = ({ task, onToggle, isUpdating }) => {
   const isCompleted = task.status === 'completed';
   
   return (
-    <div className={`flex items-start space-x-3 p-3 rounded-lg border transition-all ${
-      isCompleted ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200 hover:border-gray-300'
-    }`}>
-      <button
-        onClick={onToggle}
-        className={`mt-0.5 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
-          isCompleted 
-            ? 'bg-green-500 border-green-500 text-white' 
-            : 'border-gray-300 hover:border-green-400'
-        }`}
-      >
-        {isCompleted && <HiOutlineCheck className="w-3 h-3" />}
-      </button>
-      
-      <div className="flex-1 min-w-0">
-        <p className={`font-medium ${isCompleted ? 'line-through text-gray-500' : 'text-gray-900'}`}>
-          {task.title}
-        </p>
-        {task.description && (
-          <p className={`text-sm mt-1 ${isCompleted ? 'text-gray-400' : 'text-gray-600'}`}>
-            {task.description}
-          </p>
-        )}
-        
-        <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
-          {task.due_date && (
-            <span className="flex items-center gap-1">
-              <HiOutlineCalendar className="w-3 h-3" />
-              {new Date(task.due_date).toLocaleDateString()}
-            </span>
+    <div
+      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+    >
+      <div className="flex items-center space-x-3">
+        <button
+          onClick={() => onToggle(task.id, task.status)}
+          disabled={isUpdating}
+          className={`w-6 h-6 flex items-center justify-center rounded-full border-2 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
+            isCompleted 
+              ? 'bg-blue-500 border-blue-500 text-white' 
+              : 'bg-white border-gray-300 text-transparent'
+          } ${isUpdating ? 'cursor-not-allowed opacity-50' : 'hover:border-blue-500'}`}
+        >
+          {isUpdating ? (
+            <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+          ) : (
+            <HiOutlineCheck className="w-4 h-4" />
           )}
-          {task.priority && (
-            <span className={`flex items-center gap-1 px-2 py-1 rounded-full ${
-              task.priority === 'high' ? 'bg-red-100 text-red-700' :
-              task.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' :
-              'bg-green-100 text-green-700'
-            }`}>
-              <HiOutlineFlag className="w-3 h-3" />
-              {task.priority}
-            </span>
+        </button>
+        <div>
+          <p className={`font-medium ${isCompleted ? 'line-through text-gray-500' : 'text-gray-800'}`}>
+            {task.title}
+          </p>
+          {task.due_date && (
+            <p className="text-xs text-gray-500">
+              Due: {new Date(task.due_date).toLocaleDateString()}
+            </p>
           )}
         </div>
       </div>
