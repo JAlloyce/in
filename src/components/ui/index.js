@@ -13,5 +13,17 @@ export { default as LoadingSpinner } from './LoadingSpinner'
 export { default as ErrorBoundary } from './ErrorBoundary'
 export { default as IntruLogo } from './IntruLogo'
 
+// Mobile & Responsive Components
+export { TouchableButton } from './TouchableButton'
+export { HapticButton } from './HapticButton' 
+export { PullToRefresh } from './PullToRefresh'
+export { ResponsiveText } from './ResponsiveText'
+export { SpacingContainer } from './SpacingContainer'
+export { SkeletonLoader, FeedSkeleton } from './SkeletonLoader'
+export { ProgressiveImage } from './ProgressiveImage'
+export { StaggeredList } from './StaggeredList'
+export { OnlineStatus } from './OnlineStatus'
+export { NotificationBadge } from './NotificationBadge'
+
 // Design system tokens
 export { designTokens } from '../../styles/design-tokens' 

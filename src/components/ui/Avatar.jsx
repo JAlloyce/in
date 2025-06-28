@@ -1,5 +1,6 @@
 import { forwardRef, useState } from 'react'
 import { HiUser } from 'react-icons/hi2'
+import { OnlineStatus } from './OnlineStatus'
 
 /**
  * Avatar Component
@@ -17,6 +18,8 @@ const Avatar = forwardRef(({
   className = '',
   onClick,
   status,
+  userId,
+  showOnlineStatus = false,
   ...props
 }, ref) => {
   const [imageError, setImageError] = useState(false)
@@ -59,6 +62,15 @@ const Avatar = forwardRef(({
     offline: 'bg-gray-400 border-white',
     away: 'bg-yellow-500 border-white',
     busy: 'bg-red-500 border-white'
+  }
+
+  const onlineStatusSizes = {
+    xs: 'sm',
+    sm: 'sm',
+    md: 'sm',
+    lg: 'md',
+    xl: 'md',
+    '2xl': 'lg'
   }
 
   const baseClasses = [
@@ -127,10 +139,16 @@ const Avatar = forwardRef(({
     >
       {renderContent()}
       
-      {status && (
+      {status && !showOnlineStatus && (
         <div
           className={`absolute ${statusPositions[size]} ${statusSizes[size]} ${statusColors[status]} rounded-full border-2`}
         />
+      )}
+      
+      {showOnlineStatus && userId && (
+        <div className={`absolute ${statusPositions[size]}`}>
+          <OnlineStatus userId={userId} size={onlineStatusSizes[size]} />
+        </div>
       )}
     </div>
   )

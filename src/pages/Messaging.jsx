@@ -21,6 +21,7 @@
  */
 
 import { useState, useRef, useEffect } from "react"
+import { motion, AnimatePresence } from 'framer-motion'
 import { 
   HiSearch, HiPaperClip, HiEmojiHappy, HiMicrophone, 
   HiPaperAirplane, HiDotsVertical, HiOutlinePhone, 
@@ -32,6 +33,7 @@ import { useAuth } from '../context/AuthContext';
 import { ErrorBoundary } from '../components/ui';
 import { Link, useLocation } from 'react-router-dom';
 import { useNotification } from '../context/NotificationContext';
+import { MessageItem } from "../components/chat/MessageItem";
 
 /**
  * Messaging Page Component - Real-time Database Communication Hub
@@ -855,77 +857,27 @@ export default function Messaging() {
                     </div>
                   </div>
 
-                  {/* Messages - Enhanced mobile spacing */}
-                  <div 
-                    className="flex-1 overflow-y-auto p-4 space-y-4"
-                  >
-                    {conversationMessages.map((msg, index) => {
-                      const isOwnMessage = msg.isOwnMessage;
-                      const showHeader = index === 0 || 
-                        conversationMessages[index - 1]?.isOwnMessage !== msg.isOwnMessage ||
-                        (new Date(msg.created_at) - new Date(conversationMessages[index - 1]?.created_at)) > 300000; // 5 min gap
-                      
-                      return (
-                        <div key={msg.id} className={`flex mt-4 group ${isOwnMessage ? 'justify-end' : 'justify-start'}`}>
-                          <div className={`w-fit flex flex-col gap-1 ${isOwnMessage ? 'items-end' : 'items-start'}`} style={{ maxWidth: 'min(75vw, 500px)' }}>
-                            {showHeader && (
-                              <div className={`flex items-center gap-2 text-xs px-3 ${isOwnMessage ? 'justify-end flex-row-reverse' : ''}`}>
-                                <span className="font-medium">{msg.sender_name}</span>
-                                <span className="text-gray-500 text-xs">
-                                  {new Date(msg.created_at).toLocaleTimeString('en-US', {
-                                    hour: '2-digit',
-                                    minute: '2-digit',
-                                    hour12: true,
-                                  })}
-                                </span>
-                              </div>
-                            )}
-                            <div className="relative flex items-center gap-2">
-                              <div
-                                className={`py-3 px-4 rounded-2xl text-base w-fit relative ${
-                                  msg.isDeleted 
-                                    ? 'bg-gray-200 text-gray-500 italic'
-                                    : isOwnMessage 
-                                      ? 'bg-blue-600 text-white rounded-br-none' 
-                                      : 'bg-gray-100 text-gray-900 rounded-bl-none'
-                                }`}
-                                style={{
-                                  maxWidth: 'min(75vw, 500px)',
-                                  wordBreak: 'break-word',
-                                  whiteSpace: 'pre-wrap'
-                                }}
-                              >
-                                {msg.content}
-                              </div>
-                              
-                              {/* Delete button - only show for own messages and when not deleted */}
-                              {isOwnMessage && !msg.isDeleted && (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    deleteMessage(msg.id);
-                                  }}
-                                  className="opacity-0 group-hover:opacity-100 p-2 text-gray-400 hover:text-red-500 transition-all duration-200 touch-target focus-visible"
-                                  title="Delete message"
-                                  aria-label="Delete message"
-                                >
-                                  <HiTrash className="w-4 h-4" />
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                    
-                    {conversationMessages.length === 0 && (
-                      <div className="text-center text-gray-500 py-8">
-                        <p>Start your conversation with {activeConversation.name}</p>
+                  {/* Messages */}
+                  <div ref={messagesEndRef} className="flex-1 p-4 overflow-y-auto bg-gray-50/50">
+                    {conversationMessages.length > 0 ? (
+                      <AnimatePresence>
+                        {conversationMessages.map((msg) => (
+                          <MessageItem
+                            key={msg.id}
+                            message={msg}
+                            isOwnMessage={msg.sender_id === user.id}
+                            userAvatar={getOtherParticipant(activeConversation)?.avatar}
+                            onDelete={deleteMessage}
+                          />
+                        ))}
+                      </AnimatePresence>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center h-full text-center text-gray-500">
+                        <HiOutlineUserCircle className="w-16 h-16 mb-4" />
+                        <h3 className="text-lg font-semibold">Start a conversation</h3>
+                        <p>Send a message to get things started.</p>
                       </div>
                     )}
-                    
-                    {/* Auto-scroll anchor */}
-                    <div ref={messagesEndRef} />
                   </div>
 
                   {/* Message Input - Enhanced for mobile */}
