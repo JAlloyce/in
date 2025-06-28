@@ -30,7 +30,7 @@ import {
 } from "react-icons/hi"
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
-import { ErrorBoundary } from '../components/ui';
+import { ErrorBoundary, OnlineStatus } from '../components/ui';
 import { Link, useLocation } from 'react-router-dom';
 import { useNotification } from '../context/NotificationContext';
 import { MessageItem } from "../components/chat/MessageItem";
@@ -65,6 +65,27 @@ export default function Messaging() {
   useEffect(() => {
     if (!authLoading && isAuthenticated && user) {
       initializeMessaging();
+      
+      // Subscribe to presence changes
+      const presenceChannel = supabase
+        .channel('online-users')
+        .on('presence', { event: 'sync' }, () => {
+          console.log('🔄 Presence data synced');
+        })
+        .subscribe(async (status) => {
+          if (status === 'SUBSCRIBED') {
+            // Track current user's presence
+            await presenceChannel.track({
+              online_at: new Date().toISOString(),
+              user_id: user.id
+            });
+            console.log('✅ User presence tracked');
+          }
+        });
+        
+      return () => {
+        supabase.removeChannel(presenceChannel);
+      };
     } else if (!authLoading && !isAuthenticated) {
       setError('Please log in to view messages');
       setLoading(false);
@@ -301,6 +322,23 @@ export default function Messaging() {
     if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d`;
     
     return date.toLocaleDateString();
+  };
+
+  // Function to get the other participant's info from conversation
+  const getOtherParticipant = (conversation) => {
+    if (!conversation) return null;
+    
+    // Find the profile data of the other participant
+    const otherUserId = conversation.userId || 
+      (conversation.participant_1_id === user.id ? 
+        conversation.participant_2_id : conversation.participant_1_id);
+        
+    return {
+      id: otherUserId,
+      name: conversation.name || 'User',
+      position: conversation.position || '',
+      avatar: conversation.avatar || null
+    };
   };
 
   const handleSendMessage = async () => {
@@ -830,7 +868,7 @@ export default function Messaging() {
                         <div>
                           <h2 className="font-semibold text-gray-900">{activeConversation.name}</h2>
                           <p className="text-sm text-gray-600">{activeConversation.position}</p>
-                          <p className="text-xs text-green-600">● Available</p>
+                          <OnlineStatus userId={getOtherParticipant(activeConversation).id} showText={true} />
                         </div>
                       </div>
                       
